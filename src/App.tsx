@@ -672,7 +672,7 @@ function App() {
       if (data && data.answer) {
         setAnalysisData(prev => {
           if (!prev) return null;
-          const newDeepDives = { ...prev.deep_dives } || {};
+          const newDeepDives = { ...prev.deep_dives };
           const sectionDives = newDeepDives[sectionId] || [];
           newDeepDives[sectionId] = [...sectionDives, {
             question,

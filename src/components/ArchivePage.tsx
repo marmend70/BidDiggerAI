@@ -126,7 +126,7 @@ export function ArchivePage({ userId, onLoadAnalysis }: ArchivePageProps) {
     }
 
     const getOfferDeadline = (analysis: AnalysisResult): string | null => {
-        const timeline = analysis['5_scadenze']?.timeline || [];
+        const timeline = analysis['5_scadenze']?.[0]?.timeline || [];
         // Look for keywords indicating the deadline
         const deadlineEvent = timeline.find(t =>
             t.evento.toLowerCase().includes('termine') ||

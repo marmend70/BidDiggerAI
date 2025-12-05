@@ -63,7 +63,7 @@ export function Layout({ children, activeSection, onSectionClick, data, userPref
                         const isDisabled = isAnalyzing && (!hasData || isLoading || sectionId === 'faq');
 
                         // Determine if we need a header
-                        let header = null;
+                        let header: string | null = null;
                         const prevBatch = index > 0 ? SECTION_BATCH_MAP[MENU_ORDER[index - 1]] : null;
 
                         if (batch && batch !== prevBatch) {

@@ -129,7 +129,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 Requisiti di Ordine Generale
                             </h3>
                             <div className="grid gap-4 md:grid-cols-2">
-                                {data['1_requisiti_partecipazione'].ordine_generale.map((req, i) => (
+                                {data['1_requisiti_partecipazione'][0]?.ordine_generale?.map((req, i) => (
                                     <Card key={i} className="hover:shadow-md transition-shadow">
                                         <CardContent className="pt-6">
                                             <p className="text-sm text-slate-700">{req.requisito}</p>
@@ -147,7 +147,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 Requisiti di Ordine Speciale
                             </h3>
                             <div className="grid gap-4 md:grid-cols-2">
-                                {data['1_requisiti_partecipazione'].ordine_speciale.map((req, i) => (
+                                {data['1_requisiti_partecipazione'][0]?.ordine_speciale?.map((req, i) => (
                                     <Card key={i} className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
                                         <CardContent className="pt-6">
                                             <p className="text-sm text-slate-700">{req.requisito}</p>
@@ -165,7 +165,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 Idoneità Professionale
                             </h3>
                             <div className="grid gap-4 md:grid-cols-2">
-                                {data['1_requisiti_partecipazione'].idoneita_professionale.map((req, i) => (
+                                {data['1_requisiti_partecipazione'][0]?.idoneita_professionale?.map((req, i) => (
                                     <Card key={i} className="hover:shadow-md transition-shadow">
                                         <CardContent className="pt-6">
                                             <p className="text-sm text-slate-700">{req.requisito}</p>
@@ -183,7 +183,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 Capacità Tecnica e Professionale
                             </h3>
                             <div className="grid gap-4 md:grid-cols-2">
-                                {data['1_requisiti_partecipazione'].capacita_tecnica.map((req, i) => (
+                                {data['1_requisiti_partecipazione'][0]?.capacita_tecnica?.map((req, i) => (
                                     <Card key={i} className="hover:shadow-md transition-shadow">
                                         <CardContent className="pt-6">
                                             <p className="text-sm text-slate-700">{req.requisito}</p>
@@ -251,7 +251,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                 );
 
             case '3b_checklist_amministrativa':
-                const checklistData = data['3b_checklist_amministrativa'];
+                const checklistData = data['3b_checklist_amministrativa']?.[0];
                 if (!checklistData) {
                     return (
                         <div className="p-8 text-center text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-300">
@@ -449,7 +449,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </CardHeader>
                                 <CardContent>
                                     <ul className="space-y-2">
-                                        {data['4_servizi'].attivita.map((att, i) => (
+                                        {data['4_servizi'][0]?.attivita?.map((att, i) => (
                                             <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
                                                 <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0" />
                                                 {att}
@@ -466,7 +466,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-sm text-slate-700">{data['4_servizi'].innovazioni}</p>
+                                    <p className="text-sm text-slate-700">{data['4_servizi'][0]?.innovazioni}</p>
                                 </CardContent>
                             </Card>
                         </div>
@@ -475,7 +475,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardTitle>Fabbisogno Stimato</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-700">{data['4_servizi'].fabbisogno}</p>
+                                <p className="text-slate-700">{data['4_servizi'][0]?.fabbisogno}</p>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data.semantic_analysis_data?.['4_servizi']} />
@@ -497,7 +497,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             Timeline e Scadenze
                         </h2>
                         <div className="relative border-l-2 border-slate-200 ml-4 space-y-8">
-                            {data['5_scadenze'].timeline.map((event, i) => (
+                            {data['5_scadenze'][0]?.timeline?.map((event, i) => (
                                 <div key={i} className="relative pl-6">
                                     <div className="absolute -left-[9px] top-1 h-4 w-4 rounded-full bg-white border-2 border-blue-500" />
                                     <div className="text-sm text-slate-500 font-mono mb-1">{event.data}</div>
@@ -516,15 +516,15 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             <CardContent className="grid gap-4 md:grid-cols-2">
                                 <div>
                                     <span className="text-sm font-medium text-slate-500">Previsto</span>
-                                    <p className="font-semibold">{data['5_scadenze'].sopralluogo.previsto}</p>
+                                    <p className="font-semibold">{data['5_scadenze'][0]?.sopralluogo?.previsto}</p>
                                 </div>
                                 <div>
                                     <span className="text-sm font-medium text-slate-500">Obbligatorio</span>
-                                    <p className="font-semibold">{data['5_scadenze'].sopralluogo.obbligatorio}</p>
+                                    <p className="font-semibold">{data['5_scadenze'][0]?.sopralluogo?.obbligatorio}</p>
                                 </div>
                                 <div className="md:col-span-2">
                                     <span className="text-sm font-medium text-slate-500">Modalità</span>
-                                    <p className="text-sm text-slate-700">{data['5_scadenze'].sopralluogo.modalita}</p>
+                                    <p className="text-sm text-slate-700">{data['5_scadenze'][0]?.sopralluogo?.modalita}</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -551,7 +551,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardContent className="pt-6 text-center">
                                     <p className="text-sm font-medium text-green-800 mb-1">Base d'Asta Totale</p>
                                     <p className="text-3xl font-bold text-green-700">
-                                        {new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(data['6_importi'].base_asta_totale)}
+                                        {new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(data['6_importi'][0]?.base_asta_totale || 0)}
                                     </p>
                                 </CardContent>
                             </Card>
@@ -559,7 +559,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardContent className="pt-6 text-center">
                                     <p className="text-sm font-medium text-slate-500 mb-1">Costi della Manodopera</p>
                                     <p className="text-2xl font-semibold text-slate-700">
-                                        {new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(data['6_importi'].costi_manodopera)}
+                                        {new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(data['6_importi'][0]?.costi_manodopera || 0)}
                                     </p>
                                 </CardContent>
                             </Card>
@@ -577,7 +577,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {data['6_importi'].dettaglio.map((item, i) => (
+                                        {data['6_importi'][0]?.dettaglio?.map((item, i) => (
                                             <TableRow key={i}>
                                                 <TableCell className="font-medium">{item.voce}</TableCell>
                                                 <TableCell className="text-right font-mono">
@@ -613,7 +613,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     <CardTitle>Durata Base</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-xl font-semibold text-slate-800">{data['7_durata'].durata_base}</p>
+                                    <p className="text-xl font-semibold text-slate-800">{data['7_durata'][0]?.durata_base}</p>
                                 </CardContent>
                             </Card>
                             <Card>
@@ -621,7 +621,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     <CardTitle>Opzioni di Proroga</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-slate-700">{data['7_durata'].proroghe}</p>
+                                    <p className="text-slate-700">{data['7_durata'][0]?.proroghe}</p>
                                 </CardContent>
                             </Card>
                         </div>
@@ -630,7 +630,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardTitle>Tempistiche Operative</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-700">{data['7_durata'].tempistiche_operative}</p>
+                                <p className="text-slate-700">{data['7_durata'][0]?.tempistiche_operative}</p>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data.semantic_analysis_data?.['7_durata']} />
@@ -657,7 +657,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardHeader>
                             <CardContent>
                                 <div className="flex flex-wrap gap-2">
-                                    {data['8_ccnl'].contratti.map((c, i) => (
+                                    {data['8_ccnl'][0]?.contratti?.map((c, i) => (
                                         <Badge key={i} variant="secondary" className="text-sm py-1 px-3">
                                             {c}
                                         </Badge>
@@ -665,7 +665,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </div>
                                 <div className="mt-4">
                                     <h4 className="text-sm font-semibold text-slate-900 mb-1">Equivalenze</h4>
-                                    <p className="text-sm text-slate-600">{data['8_ccnl'].equivalenze}</p>
+                                    <p className="text-sm text-slate-600">{data['8_ccnl'][0]?.equivalenze}</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -674,7 +674,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardTitle>Clausola Sociale</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-700">{data['8_ccnl'].clausola_sociale}</p>
+                                <p className="text-slate-700">{data['8_ccnl'][0]?.clausola_sociale}</p>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data.semantic_analysis_data?.['8_ccnl']} />
@@ -702,7 +702,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </CardHeader>
                                 <CardContent>
                                     <ul className="space-y-2">
-                                        {data['9_oneri'].carico_fornitore.map((item, i) => (
+                                        {data['9_oneri'][0]?.carico_fornitore?.map((item, i) => (
                                             <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
                                                 <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0" />
                                                 {item}
@@ -717,7 +717,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </CardHeader>
                                 <CardContent>
                                     <ul className="space-y-2">
-                                        {data['9_oneri'].carico_stazione.map((item, i) => (
+                                        {data['9_oneri'][0]?.carico_stazione?.map((item, i) => (
                                             <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
                                                 <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-green-500 flex-shrink-0" />
                                                 {item}
@@ -750,19 +750,19 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             <Card className="bg-pink-50 border-pink-200">
                                 <CardContent className="pt-6 text-center">
                                     <p className="text-sm font-medium text-pink-800 mb-1">Punteggio Tecnico</p>
-                                    <p className="text-4xl font-bold text-pink-700">{data['10_punteggi'].tecnico}</p>
+                                    <p className="text-4xl font-bold text-pink-700">{data['10_punteggi'][0]?.tecnico}</p>
                                 </CardContent>
                             </Card>
                             <Card className="bg-blue-50 border-blue-200">
                                 <CardContent className="pt-6 text-center">
                                     <p className="text-sm font-medium text-blue-800 mb-1">Punteggio Economico</p>
-                                    <p className="text-4xl font-bold text-blue-700">{data['10_punteggi'].economico}</p>
+                                    <p className="text-4xl font-bold text-blue-700">{data['10_punteggi'][0]?.economico}</p>
                                 </CardContent>
                             </Card>
                             <Card className="bg-slate-50 border-slate-200">
                                 <CardContent className="pt-6 text-center">
                                     <p className="text-sm font-medium text-slate-600 mb-1">Soglia Sbarramento</p>
-                                    <p className="text-4xl font-bold text-slate-700">{data['10_punteggi'].soglia_sbarramento}</p>
+                                    <p className="text-4xl font-bold text-slate-700">{data['10_punteggi'][0]?.soglia_sbarramento}</p>
                                 </CardContent>
                             </Card>
                         </div>
@@ -773,7 +773,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-6">
-                                    {data['10_punteggi'].criteri_tecnici.map((criterio, i) => (
+                                    {data['10_punteggi'][0]?.criteri_tecnici?.map((criterio, i) => (
                                         <div key={i} className="border-b last:border-0 pb-4 last:pb-0">
                                             <div className="flex justify-between items-start mb-2">
                                                 <h4 className="font-semibold text-slate-900">{criterio.criterio}</h4>
@@ -817,7 +817,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             Prescrizioni a Pena di Esclusione
                         </h2>
                         <div className="grid gap-4">
-                            {data['11_pena_esclusione'].map((item, i) => (
+                            {data['11_pena_esclusione'][0]?.elementi?.map((item, i) => (
                                 <Card key={i} className="border-l-4 border-l-red-500">
                                     <CardContent className="pt-6">
                                         <p className="text-slate-800 font-medium">{item.descrizione}</p>
@@ -852,7 +852,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardHeader>
                             <CardContent>
                                 <ul className="space-y-3">
-                                    {data['12_offerta_tecnica'].documenti.map((doc, i) => (
+                                    {data['12_offerta_tecnica'][0]?.documenti?.map((doc, i) => (
                                         <li key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-md">
                                             <CheckSquare className="h-5 w-5 text-blue-500 mt-0.5" />
                                             <span className="text-sm text-slate-700">{doc}</span>
@@ -866,7 +866,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardTitle>Modalità di Presentazione</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-700 whitespace-pre-line">{data['12_offerta_tecnica'].formattazione_modalita}</p>
+                                <p className="text-slate-700 whitespace-pre-line">{data['12_offerta_tecnica'][0]?.formattazione_modalita}</p>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data.semantic_analysis_data?.['12_offerta_tecnica']} />
@@ -893,7 +893,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardHeader>
                             <CardContent>
                                 <ul className="space-y-3">
-                                    {data['13_offerta_economica'].documenti.map((doc, i) => (
+                                    {data['13_offerta_economica'][0]?.documenti?.map((doc, i) => (
                                         <li key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-md">
                                             <CheckSquare className="h-5 w-5 text-green-500 mt-0.5" />
                                             <span className="text-sm text-slate-700">{doc}</span>
@@ -907,7 +907,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardTitle>Modalità di Presentazione</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-700 whitespace-pre-line">{data['13_offerta_economica'].formattazione_modalita}</p>
+                                <p className="text-slate-700 whitespace-pre-line">{data['13_offerta_economica'][0]?.formattazione_modalita}</p>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data.semantic_analysis_data?.['13_offerta_economica']} />
@@ -929,7 +929,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             Note Importanti AI
                         </h2>
                         <div className="grid gap-4">
-                            {data['14_note_importanti'].map((note, i) => (
+                            {data['14_note_importanti'][0]?.note?.map((note, i) => (
                                 <Card key={i} className="bg-amber-50 border-amber-200">
                                     <CardContent className="pt-6 flex gap-4">
                                         <AlertCircle className="h-6 w-6 text-amber-600 flex-shrink-0" />
@@ -967,7 +967,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     <CardTitle>Modalità</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-slate-700">{data['15_remunerazione'].modalita}</p>
+                                    <p className="text-slate-700">{data['15_remunerazione'][0]?.modalita}</p>
                                 </CardContent>
                             </Card>
                             <Card>
@@ -975,7 +975,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     <CardTitle>Pagamenti</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-slate-700">{data['15_remunerazione'].pagamenti}</p>
+                                    <p className="text-slate-700">{data['15_remunerazione'][0]?.pagamenti}</p>
                                 </CardContent>
                             </Card>
                             <Card>
@@ -983,7 +983,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     <CardTitle>Clausole</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-slate-700">{data['15_remunerazione'].clausole}</p>
+                                    <p className="text-slate-700">{data['15_remunerazione'][0]?.clausole}</p>
                                 </CardContent>
                             </Card>
                         </div>
@@ -1011,27 +1011,16 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-4">
-                                    {data['16_sla_penali'].sla?.elenco?.map((s: string, i: number) => (
+                                    {data['16_sla_penali'][0]?.sla?.map((s: any, i: number) => (
                                         <div key={i} className="p-3 bg-slate-50 rounded border border-slate-100 text-sm text-slate-700">
-                                            {s}
+                                            <p><strong>Indicatore:</strong> {s.indicatore}</p>
+                                            <p><strong>Soglia:</strong> {s.soglia}</p>
                                         </div>
                                     ))}
-                                    {(!data['16_sla_penali'].sla?.elenco || data['16_sla_penali'].sla?.elenco.length === 0) && (
+                                    {(!data['16_sla_penali'][0]?.sla || data['16_sla_penali'][0]?.sla.length === 0) && (
                                         <p className="text-slate-500 italic">Nessun SLA specifico rilevato.</p>
                                     )}
                                 </div>
-                                {data['16_sla_penali'].sla?.fonte && data['16_sla_penali'].sla.fonte.length > 0 && (
-                                    <div className="mt-4 pt-4 border-t">
-                                        <p className="text-xs text-slate-500 font-semibold mb-2">Fonti:</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {data['16_sla_penali'].sla.fonte.map((f: any, i: number) => (
-                                                <Badge key={i} variant="outline" className="text-xs">
-                                                    {f.documento} (pag. {f.pagina})
-                                                </Badge>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
                             </CardContent>
                         </Card>
                         <Card>
@@ -1040,30 +1029,19 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-4">
-                                    {data['16_sla_penali'].penali?.elenco?.map((p: string, i: number) => (
+                                    {data['16_sla_penali'][0]?.penali?.map((p: any, i: number) => (
                                         <div key={i} className="p-3 bg-red-50 rounded border border-red-100 text-sm text-slate-700">
-                                            {p}
+                                            <p><strong>Descrizione:</strong> {p.descrizione}</p>
+                                            <p><strong>Calcolo:</strong> {p.calcolo}</p>
                                         </div>
                                     ))}
-                                    {(!data['16_sla_penali'].penali?.elenco || data['16_sla_penali'].penali?.elenco.length === 0) && (
+                                    {(!data['16_sla_penali'][0]?.penali || data['16_sla_penali'][0]?.penali.length === 0) && (
                                         <p className="text-slate-500 italic">Nessuna penale specifica rilevata.</p>
                                     )}
                                 </div>
-                                {data['16_sla_penali'].penali?.fonte && data['16_sla_penali'].penali.fonte.length > 0 && (
-                                    <div className="mt-4 pt-4 border-t">
-                                        <p className="text-xs text-slate-500 font-semibold mb-2">Fonti:</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {data['16_sla_penali'].penali.fonte.map((f: any, i: number) => (
-                                                <Badge key={i} variant="outline" className="text-xs">
-                                                    {f.documento} (pag. {f.pagina})
-                                                </Badge>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
                                 <div className="mt-4 p-3 bg-slate-100 rounded text-sm flex items-start gap-2">
                                     <Info className="h-4 w-4 text-slate-500 mt-0.5" />
-                                    <div><strong>Clausole Cumulative:</strong> {data['16_sla_penali'].clausole_cumulative}</div>
+                                    <div><strong>Clausole Cumulative:</strong> {data['16_sla_penali'][0]?.clausole_cumulative}</div>
                                 </div>
                             </CardContent>
                         </Card>
@@ -1079,7 +1057,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                 );
 
             case '17_ambiguita_punti_da_chiarire':
-                const sectionData = data['17_ambiguita_punti_da_chiarire'];
+                const sectionData = data['17_ambiguita_punti_da_chiarire']?.[0];
                 if (!sectionData) {
                     return (
                         <div className="p-8 text-center text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-300">
@@ -1276,7 +1254,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                 const isFaq = sectionId === 'faq';
 
                                                 // Determine if we need a header
-                                                let header = null;
+                                                let header: string | null = null;
                                                 const batch = SECTION_BATCH_MAP[sectionId];
                                                 const prevBatch = index > 0 ? SECTION_BATCH_MAP[MENU_ORDER[index - 1]] : null;
 

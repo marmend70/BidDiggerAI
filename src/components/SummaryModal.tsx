@@ -17,11 +17,11 @@ export function SummaryModal({ isOpen, onClose, data }: SummaryModalProps) {
     const scadenze = data['5_scadenze'];
 
     // Attempt to find submission deadline
-    const submissionDeadline = scadenze?.timeline?.find(e =>
+    const submissionDeadline = scadenze?.[0]?.timeline?.find(e =>
         e.evento.toLowerCase().includes('termine') ||
         e.evento.toLowerCase().includes('scadenza') ||
         e.evento.toLowerCase().includes('presentazione')
-    )?.data || scadenze?.timeline?.[scadenze.timeline.length - 1]?.data || "N/D";
+    )?.data || scadenze?.[0]?.timeline?.[scadenze[0].timeline.length - 1]?.data || "N/D";
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -61,8 +61,8 @@ export function SummaryModal({ isOpen, onClose, data }: SummaryModalProps) {
                                 <h3 className="font-semibold">Importo a base d'asta</h3>
                             </div>
                             <p className="text-2xl font-bold text-slate-900">
-                                {importi?.base_asta_totale
-                                    ? new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(importi.base_asta_totale)
+                                {importi?.[0]?.base_asta_totale
+                                    ? new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(importi[0].base_asta_totale)
                                     : "N/D"}
                             </p>
                         </div>
@@ -84,7 +84,7 @@ export function SummaryModal({ isOpen, onClose, data }: SummaryModalProps) {
                                 <Clock className="h-4 w-4" />
                                 <h3 className="font-semibold">Durata</h3>
                             </div>
-                            <p className="text-slate-700">{durata?.durata_base || "N/D"}</p>
+                            <p className="text-slate-700">{durata?.[0]?.durata_base || "N/D"}</p>
                         </div>
 
                         {/* Servizi */}

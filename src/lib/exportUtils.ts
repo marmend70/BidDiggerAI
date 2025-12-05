@@ -1,193 +1,381 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle } from "docx";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType } from "docx";
 import { saveAs } from "file-saver";
 import type { AnalysisResult } from "@/types";
 
-export const exportToDocx = async (data: AnalysisResult) => {
+// Helper to safely extract text from either a string or an object property
+function getText(item: any, propName?: string): string {
+    if (item === undefined || item === null) return "-";
+    if (typeof item === 'string') return item;
+    if (typeof item === 'number') return item.toString();
+    if (typeof item === 'object') {
+        if (propName && item[propName]) return safeText(item[propName]);
+
+        // Fallbacks
+        if (item.descrizione) return safeText(item.descrizione);
+        if (item.nota) return safeText(item.nota);
+        if (item.requisito) return safeText(item.requisito);
+        if (item.text) return safeText(item.text);
+        if (item.valore) return safeText(item.valore);
+        if (item.nome) return safeText(item.nome);
+
+        // If it's a simple object with just one or two keys, try to join them
+        const values = Object.values(item).filter(v => typeof v === 'string' || typeof v === 'number');
+        if (values.length > 0 && values.length <= 3) return values.join(" - ");
+
+        return "-";
+    }
+    return String(item);
+}
+
+function safeText(text: any): string {
+    if (text === undefined || text === null) return "-";
+    if (typeof text === 'object') return JSON.stringify(text);
+    return String(text);
+}
+
+// Helper to ensure we have a list of items to iterate over
+function getList(data: any, nestedKey?: string): any[] {
+    if (!data) return [];
+
+    // If it's an array, return it
+    if (Array.isArray(data)) return data;
+
+    // If it has the nested key (e.g. 'elenco'), use that
+    if (nestedKey && data[nestedKey] && Array.isArray(data[nestedKey])) {
+        return data[nestedKey];
+    }
+
+    // If it's an object that looks like a lot container (has 'lotto'), wrap it
+    if (typeof data === 'object' && data.lotto) {
+        return [data];
+    }
+
+    // If it's a generic object, maybe it IS the item? Wrap it.
+    if (typeof data === 'object') {
+        return [data];
+    }
+
+    return [];
+}
+
+// Helper to check if data is likely a multi-lot structure
+function isMultiLot(data: any): boolean {
+    if (Array.isArray(data) && data.length > 0 && data[0].lotto) return true;
+    return false;
+}
+
+export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [key: string]: boolean }) => {
+    const shouldInclude = (sectionKey: string) => {
+        if (!exportPreferences) return true;
+        return exportPreferences[sectionKey] !== false;
+    };
+
     const doc = new Document({
+        styles: {
+            paragraphStyles: [
+                {
+                    id: "Normal",
+                    name: "Normal",
+                    run: {
+                        font: "Calibri",
+                        size: 22, // 11pt
+                    },
+                    paragraph: {
+                        spacing: { line: 276 }, // 1.15 spacing
+                    },
+                },
+            ],
+        },
         sections: [
             {
                 properties: {},
                 children: [
                     // Cover Page
                     new Paragraph({
-                        text: "Report di Analisi Gara",
+                        text: "BID DIGGER AI",
                         heading: HeadingLevel.TITLE,
-                        alignment: "center",
-                        spacing: { after: 300 },
+                        alignment: AlignmentType.CENTER,
+                        spacing: { before: 2000, after: 300 },
+                        run: {
+                            color: "2E74B5",
+                            bold: true,
+                        }
+                    }),
+                    new Paragraph({
+                        text: "Report di Analisi Gara",
+                        heading: HeadingLevel.HEADING_2,
+                        alignment: AlignmentType.CENTER,
+                        spacing: { after: 800 },
+                        run: {
+                            color: "555555",
+                        }
                     }),
                     new Paragraph({
                         text: safeText(data['3_sintesi']?.oggetto),
                         heading: HeadingLevel.HEADING_1,
-                        alignment: "center",
+                        alignment: AlignmentType.CENTER,
                         spacing: { after: 500 },
                     }),
-                    new Paragraph({
-                        children: [
-                            new TextRun({ text: "CIG: ", bold: true }),
-                            new TextRun(safeText(data['3_sintesi']?.codici?.cig)),
-                        ],
-                        alignment: "center",
-                    }),
-                    new Paragraph({
-                        children: [
-                            new TextRun({ text: "CUP: ", bold: true }),
-                            new TextRun(safeText(data['3_sintesi']?.codici?.cup)),
-                        ],
-                        alignment: "center",
-                    }),
+                    createKeyValueLine("CIG", safeText(data['3_sintesi']?.codici?.cig), true),
+                    createKeyValueLine("CUP", safeText(data['3_sintesi']?.codici?.cup), true),
+
                     new Paragraph({
                         text: "",
                         pageBreakBefore: true,
                     }),
 
                     // 1. Requisiti di Partecipazione
-                    createHeading("1. Requisiti di Partecipazione"),
-                    createSubHeading("Ordine Generale"),
-                    ...createRequirementsList(data['1_requisiti_partecipazione']?.ordine_generale),
-                    createSubHeading("Ordine Speciale"),
-                    ...createRequirementsList(data['1_requisiti_partecipazione']?.ordine_speciale),
-                    createSubHeading("Idoneità Professionale"),
-                    ...createRequirementsList(data['1_requisiti_partecipazione']?.idoneita_professionale),
-                    createSubHeading("Capacità Tecnica"),
-                    ...createRequirementsList(data['1_requisiti_partecipazione']?.capacita_tecnica),
+                    ...(shouldInclude('1_requisiti_partecipazione') ? [
+                        createHeading("1. Requisiti di Partecipazione"),
+                        ...renderMultiLotSection(data['1_requisiti_partecipazione'], (lotData) => [
+                            createSubHeading("Ordine Generale"),
+                            ...createList(lotData.ordine_generale, 'requisito'),
+                            createSubHeading("Ordine Speciale"),
+                            ...createList(lotData.ordine_speciale, 'requisito'),
+                            createSubHeading("Idoneità Professionale"),
+                            ...createList(lotData.idoneita_professionale, 'requisito'),
+                            createSubHeading("Capacità Tecnica"),
+                            ...createList(lotData.capacita_tecnica, 'requisito'),
+
+                            ...(lotData.rti_consorzi ? [createKeyValueLine("RTI/Consorzi", lotData.rti_consorzi)] : []),
+                            ...(lotData.avvalimento ? [createKeyValueLine("Avvalimento", lotData.avvalimento)] : []),
+                            ...(lotData.subappalto ? [createKeyValueLine("Subappalto", lotData.subappalto)] : []),
+                        ]),
+                        ...createDeepDiveSection(data.deep_dives?.['1_requisiti_partecipazione']),
+                    ] : []),
 
                     // 3. Sintesi
-                    createHeading("2. Sintesi Gara"),
-                    new Paragraph({ text: safeText(data['3_sintesi']?.scenario) }),
+                    ...(shouldInclude('3_sintesi') ? [
+                        createHeading("2. Sintesi Gara"),
+                        new Paragraph({ text: safeText(data['3_sintesi']?.scenario) }),
+                        createKeyValueLine("Riferimento", data['3_sintesi']?.ref),
+                        ...createDeepDiveSection(data.deep_dives?.['3_sintesi']),
+                    ] : []),
+
+                    // 3b. Checklist Busta Amministrativa
+                    ...(shouldInclude('3b_checklist_amministrativa') ? [
+                        createHeading("2b. Checklist Busta Amministrativa"),
+                        ...renderMultiLotSection(data['3b_checklist_amministrativa'], (lotData) => [
+                            createSubHeading("Garanzia Provvisoria"),
+                            createKeyValueLine("Importo", lotData.garanzia_provvisoria?.importo),
+                            createKeyValueLine("Beneficiario", lotData.garanzia_provvisoria?.beneficiario),
+                            createKeyValueLine("Validità", lotData.garanzia_provvisoria?.validita),
+                            createKeyValueLine("Clausole", lotData.garanzia_provvisoria?.clausole),
+
+                            createSubHeading("Contributo ANAC"),
+                            createKeyValueLine("Importo", lotData.contributo_anac?.importo),
+                            createKeyValueLine("CIG", lotData.contributo_anac?.cig),
+
+                            createSubHeading("Sopralluogo"),
+                            createKeyValueLine("Stato", lotData.sopralluogo?.stato),
+                            createKeyValueLine("Modalità", lotData.sopralluogo?.modalita),
+
+                            createSubHeading("Imposta di Bollo"),
+                            createKeyValueLine("Importo", lotData.imposta_bollo?.importo),
+                            createKeyValueLine("Modalità", lotData.imposta_bollo?.modalita),
+
+                            createSubHeading("Firma e Piattaforma"),
+                            createKeyValueLine("Formato Firma", lotData.firma_formato?.formato),
+                            createKeyValueLine("Piattaforma", lotData.firma_formato?.piattaforma),
+
+                            createSubHeading("Elenco Documenti"),
+                            ...createList(lotData.elenco_documenti, 'documento'),
+                        ]),
+                        ...createDeepDiveSection(data.deep_dives?.['3b_checklist_amministrativa']),
+                    ] : []),
 
                     // 4. Servizi
-                    createHeading("3. Dettaglio Servizi"),
-                    createSubHeading("Attività"),
-                    ...(data['4_servizi']?.attivita?.map(a => createBullet(a)) || [createBullet("Nessuna attività rilevata")]),
-                    createSubHeading("Innovazioni"),
-                    new Paragraph({ text: safeText(data['4_servizi']?.innovazioni) }),
+                    ...(shouldInclude('4_servizi') ? [
+                        createHeading("3. Dettaglio Servizi"),
+                        ...renderMultiLotSection(data['4_servizi'], (lotData) => [
+                            createSubHeading("Attività"),
+                            ...createList(lotData.attivita),
+                            createSubHeading("Innovazioni"),
+                            new Paragraph({ text: safeText(lotData.innovazioni) }),
+                            createKeyValueLine("Fabbisogno", lotData.fabbisogno),
+                        ]),
+                        ...createDeepDiveSection(data.deep_dives?.['4_servizi']),
+                    ] : []),
 
                     // 5. Scadenze
-                    createHeading("4. Scadenze"),
-                    ...(data['5_scadenze'].timeline?.map(s => new Paragraph({
-                        children: [
-                            new TextRun({ text: safeText(s.data) + ": ", bold: true }),
-                            new TextRun(safeText(s.evento))
-                        ],
-                        spacing: { after: 100 }
-                    })) || []),
-                    createSubHeading("Sopralluogo"),
-                    new Paragraph({
-                        children: [
-                            new TextRun({ text: "Previsto: ", bold: true }),
-                            new TextRun(safeText(data['5_scadenze'].sopralluogo?.previsto))
-                        ]
-                    }),
-                    new Paragraph({
-                        children: [
-                            new TextRun({ text: "Obbligatorio: ", bold: true }),
-                            new TextRun(safeText(data['5_scadenze'].sopralluogo?.obbligatorio))
-                        ]
-                    }),
-                    new Paragraph({
-                        children: [
-                            new TextRun({ text: "Modalità: ", bold: true }),
-                            new TextRun(safeText(data['5_scadenze'].sopralluogo?.modalita))
-                        ]
-                    }),
-                    new Paragraph({
-                        children: [
-                            new TextRun({ text: "Scadenze: ", bold: true }),
-                            new TextRun(safeText(data['5_scadenze'].sopralluogo?.scadenze))
-                        ]
-                    }),
+                    ...(shouldInclude('5_scadenze') ? [
+                        createHeading("4. Scadenze"),
+                        ...renderMultiLotSection(data['5_scadenze'], (lotData) => [
+                            ...createList(lotData.timeline, 'evento', 'data'),
+                            createSubHeading("Sopralluogo"),
+                            createKeyValueLine("Previsto", lotData.sopralluogo?.previsto),
+                            createKeyValueLine("Obbligatorio", lotData.sopralluogo?.obbligatorio),
+                            createKeyValueLine("Modalità", lotData.sopralluogo?.modalita),
+                            createKeyValueLine("Scadenze", lotData.sopralluogo?.scadenze),
+                        ]),
+                        ...createDeepDiveSection(data.deep_dives?.['5_scadenze']),
+                    ] : []),
 
                     // 6. Importi
-                    createHeading("5. Quadro Economico"),
-                    new Paragraph({
-                        children: [
-                            new TextRun({ text: "Base d'Asta: ", bold: true }),
-                            new TextRun(formatCurrency(data['6_importi']?.base_asta_totale))
-                        ]
-                    }),
-                    new Paragraph({
-                        children: [
-                            new TextRun({ text: "Costi Manodopera: ", bold: true }),
-                            new TextRun(formatCurrency(data['6_importi']?.costi_manodopera))
-                        ],
-                        spacing: { after: 200 }
-                    }),
-                    createTable(data['6_importi']?.dettaglio?.map(d => [safeText(d.voce), formatCurrency(d.importo)]) || []),
+                    ...(shouldInclude('6_importi') ? [
+                        createHeading("5. Quadro Economico"),
+                        ...renderMultiLotSection(data['6_importi'], (lotData) => [
+                            createKeyValueLine("Base d'Asta", formatCurrency(lotData.base_asta_totale)),
+                            createKeyValueLine("Costi Manodopera", formatCurrency(lotData.costi_manodopera)),
+                            new Paragraph({ text: "", spacing: { after: 200 } }),
+                            createTable(getList(lotData.dettaglio).map(d => [getText(d, 'voce'), formatCurrency(d.importo)])),
+                        ]),
+                        ...createDeepDiveSection(data.deep_dives?.['6_importi']),
+                    ] : []),
 
                     // 7. Durata
-                    createHeading("6. Durata"),
-                    new Paragraph({ text: `Durata Base: ${safeText(data['7_durata']?.durata_base)}` }),
-                    new Paragraph({ text: `Proroghe: ${safeText(data['7_durata']?.proroghe)}` }),
+                    ...(shouldInclude('7_durata') ? [
+                        createHeading("6. Durata"),
+                        ...renderMultiLotSection(data['7_durata'], (lotData) => [
+                            createKeyValueLine("Durata Base", lotData.durata_base),
+                            createKeyValueLine("Proroghe", lotData.proroghe),
+                            createKeyValueLine("Tempistiche Operative", lotData.tempistiche_operative),
+                        ]),
+                        ...createDeepDiveSection(data.deep_dives?.['7_durata']),
+                    ] : []),
 
                     // 8. CCNL
-                    createHeading("7. CCNL"),
-                    createSubHeading("Contratti Applicabili"),
-                    ...(data['8_ccnl']?.contratti?.map(c => createBullet(c)) || [createBullet("Nessun contratto specifico rilevato")]),
-                    createSubHeading("Equivalenze"),
-                    new Paragraph({ text: safeText(data['8_ccnl']?.equivalenze) }),
+                    ...(shouldInclude('8_ccnl') ? [
+                        createHeading("7. CCNL"),
+                        ...renderMultiLotSection(data['8_ccnl'], (lotData) => [
+                            createSubHeading("Contratti Applicabili"),
+                            ...createList(lotData.contratti),
+                            createSubHeading("Equivalenze"),
+                            new Paragraph({ text: safeText(lotData.equivalenze) }),
+                            createSubHeading("Clausola Sociale"),
+                            new Paragraph({ text: safeText(lotData.clausola_sociale) }),
+                        ]),
+                        ...createDeepDiveSection(data.deep_dives?.['8_ccnl']),
+                    ] : []),
 
                     // 9. Oneri
-                    createHeading("8. Ripartizione Oneri"),
-                    createSubHeading("A Carico Fornitore"),
-                    ...(data['9_oneri']?.carico_fornitore?.map(c => createBullet(c)) || [createBullet("Nessun onere specifico rilevato")]),
-                    createSubHeading("A Carico Stazione Appaltante"),
-                    ...(data['9_oneri']?.carico_stazione?.map(c => createBullet(c)) || [createBullet("Nessun onere specifico rilevato")]),
+                    ...(shouldInclude('9_oneri') ? [
+                        createHeading("8. Ripartizione Oneri"),
+                        ...renderMultiLotSection(data['9_oneri'], (lotData) => [
+                            createSubHeading("A Carico Fornitore"),
+                            ...createList(lotData.carico_fornitore),
+                            createSubHeading("A Carico Stazione Appaltante"),
+                            ...createList(lotData.carico_stazione),
+                        ]),
+                        ...createDeepDiveSection(data.deep_dives?.['9_oneri']),
+                    ] : []),
 
                     // 10. Punteggi
-                    createHeading("9. Criteri di Valutazione"),
-                    new Paragraph({ text: `Tecnico: ${data['10_punteggi']?.tecnico || 0} / Economico: ${data['10_punteggi']?.economico || 0}` }),
-                    new Paragraph({ text: `Soglia Sbarramento: ${data['10_punteggi']?.soglia_sbarramento || 0}` }),
-                    createSubHeading("Criteri Tecnici"),
-                    ...(data['10_punteggi']?.criteri_tecnici?.flatMap(c => [
-                        new Paragraph({
-                            children: [
-                                new TextRun({ text: safeText(c.criterio), bold: true }),
-                                new TextRun(` (${c.punti_max || 0} pt)`)
-                            ],
-                            spacing: { before: 200 }
-                        }),
-                        new Paragraph({ text: safeText(c.descrizione) }),
-                        ...(c.subcriteri?.map(s => createBullet(`${safeText(s.descrizione)} (${s.punti_max || 0} pt)`)) || [])
-                    ]) || []),
+                    ...(shouldInclude('10_punteggi') ? [
+                        createHeading("9. Criteri di Valutazione"),
+                        ...renderMultiLotSection(data['10_punteggi'], (lotData) => [
+                            new Paragraph({ text: `Tecnico: ${lotData.tecnico || 0} / Economico: ${lotData.economico || 0}` }),
+                            new Paragraph({ text: `Soglia Sbarramento: ${lotData.soglia_sbarramento || 0}` }),
+                            createSubHeading("Criteri Tecnici"),
+                            ...getList(lotData.criteri_tecnici).flatMap(c => [
+                                new Paragraph({
+                                    children: [
+                                        new TextRun({ text: getText(c, 'criterio'), bold: true }),
+                                        new TextRun(` (${c.punti_max || 0} pt)`)
+                                    ],
+                                    spacing: { before: 200 }
+                                }),
+                                new Paragraph({ text: getText(c, 'descrizione') }),
+                                ...createList(c.subcriteri, 'descrizione')
+                            ]),
+                            createSubHeading("Formula Economica"),
+                            new Paragraph({ text: safeText(lotData.formula_economica) }),
+                        ]),
+                        ...createDeepDiveSection(data.deep_dives?.['10_punteggi']),
+                    ] : []),
 
                     // 11. Pena Esclusione
-                    createHeading("10. Prescrizioni a Pena di Esclusione"),
-                    ...(data['11_pena_esclusione']?.map(p => createBullet(p.descrizione)) || []),
+                    ...(shouldInclude('11_pena_esclusione') ? [
+                        createHeading("10. Prescrizioni a Pena di Esclusione"),
+                        // This section is often just a flat list, or a list of lots.
+                        // We use a generic renderer that handles both.
+                        ...renderGenericListSection(data['11_pena_esclusione'], 'elementi', 'descrizione'),
+                        ...createDeepDiveSection(data.deep_dives?.['11_pena_esclusione']),
+                    ] : []),
 
                     // 12. Offerta Tecnica
-                    createHeading("11. Offerta Tecnica"),
-                    createSubHeading("Documenti Richiesti"),
-                    ...(data['12_offerta_tecnica']?.documenti?.map(d => createBullet(d)) || [createBullet("Nessun documento specifico rilevato")]),
-                    createSubHeading("Modalità e Formattazione"),
-                    new Paragraph({ text: safeText(data['12_offerta_tecnica']?.formattazione_modalita) }),
+                    ...(shouldInclude('12_offerta_tecnica') ? [
+                        createHeading("11. Offerta Tecnica"),
+                        ...renderMultiLotSection(data['12_offerta_tecnica'], (lotData) => [
+                            createSubHeading("Documenti Richiesti"),
+                            ...createList(lotData.documenti),
+                            createSubHeading("Modalità e Formattazione"),
+                            new Paragraph({ text: safeText(lotData.formattazione_modalita) }),
+                        ]),
+                        ...createDeepDiveSection(data.deep_dives?.['12_offerta_tecnica']),
+                    ] : []),
 
                     // 13. Offerta Economica
-                    createHeading("12. Offerta Economica"),
-                    createSubHeading("Documenti Richiesti"),
-                    ...(data['13_offerta_economica']?.documenti?.map(d => createBullet(d)) || [createBullet("Nessun documento specifico rilevato")]),
-                    createSubHeading("Modalità e Formattazione"),
-                    new Paragraph({ text: safeText(data['13_offerta_economica']?.formattazione_modalita) }),
+                    ...(shouldInclude('13_offerta_economica') ? [
+                        createHeading("12. Offerta Economica"),
+                        ...renderMultiLotSection(data['13_offerta_economica'], (lotData) => [
+                            createSubHeading("Documenti Richiesti"),
+                            ...createList(lotData.documenti),
+                            createSubHeading("Modalità e Formattazione"),
+                            new Paragraph({ text: safeText(lotData.formattazione_modalita) }),
+                        ]),
+                        ...createDeepDiveSection(data.deep_dives?.['13_offerta_economica']),
+                    ] : []),
 
                     // 14. Note Importanti
-                    createHeading("13. Note Importanti AI"),
-                    ...(data['14_note_importanti']?.map(n => createBullet(n.nota)) || [createBullet("Nessuna nota particolare")]),
+                    ...(shouldInclude('14_note_importanti') ? [
+                        createHeading("13. Note Importanti AI"),
+                        ...renderGenericListSection(data['14_note_importanti'], 'note', 'nota'),
+                        ...createDeepDiveSection(data.deep_dives?.['14_note_importanti']),
+                    ] : []),
+
+                    // 17. Ambiguità e Punti da Chiarire
+                    ...(shouldInclude('17_ambiguita_punti_da_chiarire') ? [
+                        createHeading("14. Ambiguità e Punti da Chiarire"),
+                        ...renderMultiLotSection(data['17_ambiguita_punti_da_chiarire'], (lotData) => [
+                            createSubHeading("Ambiguità Rilevate"),
+                            ...getList(lotData.ambiguita).flatMap(a => [
+                                new Paragraph({
+                                    children: [
+                                        new TextRun({ text: `[${getText(a, 'tipo')}] `, bold: true }),
+                                        new TextRun(getText(a, 'descrizione'))
+                                    ],
+                                    bullet: { level: 0 }
+                                }),
+                            ]),
+
+                            createSubHeading("Suggerimenti per Quesiti"),
+                            ...getList(lotData.punti_da_chiarire).flatMap(q => [
+                                new Paragraph({
+                                    children: [
+                                        new TextRun({ text: "Quesito: ", bold: true }),
+                                        new TextRun({ text: getText(q, 'quesito_suggerito'), italics: true })
+                                    ],
+                                    bullet: { level: 0 }
+                                }),
+                            ]),
+                        ]),
+                        ...createDeepDiveSection(data.deep_dives?.['17_ambiguita_punti_da_chiarire']),
+                    ] : []),
 
                     // 15. Remunerazione
-                    createHeading("14. Remunerazione"),
-                    new Paragraph({ text: `Modalità: ${safeText(data['15_remunerazione']?.modalita)}` }),
-                    new Paragraph({ text: `Pagamenti: ${safeText(data['15_remunerazione']?.pagamenti)}` }),
-                    new Paragraph({ text: `Clausole: ${safeText(data['15_remunerazione']?.clausole)}` }),
+                    ...(shouldInclude('15_remunerazione') ? [
+                        createHeading("14. Remunerazione"),
+                        ...renderMultiLotSection(data['15_remunerazione'], (lotData) => [
+                            createKeyValueLine("Modalità", lotData.modalita),
+                            createKeyValueLine("Pagamenti", lotData.pagamenti),
+                            createKeyValueLine("Clausole", lotData.clausole),
+                        ]),
+                        ...createDeepDiveSection(data.deep_dives?.['15_remunerazione']),
+                    ] : []),
 
                     // 16. SLA e Penali
-                    createHeading("15. SLA e Penali"),
-                    createSubHeading("SLA"),
-                    createTable(data['16_sla_penali']?.sla?.map(s => [safeText(s.indicatore), safeText(s.soglia)]) || []),
-                    createSubHeading("Penali"),
-                    createTable(data['16_sla_penali']?.penali?.map(p => [safeText(p.descrizione), safeText(p.calcolo)]) || []),
-                    new Paragraph({
-                        text: `Clausole Cumulative: ${safeText(data['16_sla_penali']?.clausole_cumulative)}`,
-                        spacing: { before: 200 }
-                    }),
+                    ...(shouldInclude('16_sla_penali') ? [
+                        createHeading("15. SLA e Penali"),
+                        ...renderSlaPenaliSection(data['16_sla_penali']),
+                        ...createDeepDiveSection(data.deep_dives?.['16_sla_penali']),
+                    ] : []),
+
+                    // 17. FAQ
+                    ...(shouldInclude('faq') && data.deep_dives && Object.keys(data.deep_dives).length > 0 ? [
+                        createHeading("16. FAQ & Approfondimenti"),
+                        ...createDeepDiveSection(data.deep_dives?.['faq']),
+                    ] : []),
 
                     // Footer with Date
                     new Paragraph({
@@ -199,7 +387,7 @@ export const exportToDocx = async (data: AnalysisResult) => {
                             new TextRun({ text: "Data estrazione: ", italics: true }),
                             new TextRun({ text: new Date().toLocaleString('it-IT'), italics: true }),
                         ],
-                        alignment: "right",
+                        alignment: AlignmentType.RIGHT,
                         border: {
                             top: { style: BorderStyle.SINGLE, size: 1, color: "auto" }
                         },
@@ -214,14 +402,128 @@ export const exportToDocx = async (data: AnalysisResult) => {
     saveAs(blob, `Analisi_Gara_${new Date().toISOString().split('T')[0]}.docx`);
 };
 
-// Helpers
-function safeText(text: string | undefined | null): string {
-    return text || "-";
+// --- RENDERERS ---
+
+function renderMultiLotSection(data: any, renderer: (lotData: any) => any[]): any[] {
+    const list = getList(data);
+    if (list.length === 0) return [createNoDataParagraph()];
+
+    // If it's a multi-lot structure, iterate lots
+    if (isMultiLot(list)) {
+        return list.flatMap(lot => [
+            createLotHeader(lot.lotto),
+            ...renderer(lot)
+        ]);
+    }
+
+    // Otherwise, treat as single generic lot
+    return renderer(list[0] || {});
 }
 
-function formatCurrency(amount: number | undefined): string {
-    if (amount === undefined || amount === null) return "-";
-    return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(amount);
+function renderGenericListSection(data: any, nestedKey: string, textProp: string): any[] {
+    const list = getList(data);
+    if (list.length === 0) return [createNoDataParagraph()];
+
+    // Case 1: Multi-lot structure
+    if (isMultiLot(list)) {
+        return list.flatMap(lot => {
+            const items = getList(lot, nestedKey);
+            return [
+                createLotHeader(lot.lotto),
+                ...(items.length > 0 ? createList(items, textProp) : [createBullet("Nessun elemento rilevato")])
+            ];
+        });
+    }
+
+    // Case 2: Flat list of items (e.g. data is just [ {nota: "A"}, {nota: "B"} ])
+    // OR data is { note: [...] }
+    // We try to extract the list from the first item if it looks like a container, or use the list itself
+    let items = list;
+    if (list.length === 1 && list[0][nestedKey]) {
+        items = getList(list[0], nestedKey);
+    }
+
+    if (items.length === 0) return [createNoDataParagraph()];
+    return createList(items, textProp);
+}
+
+function renderSlaPenaliSection(data: any): any[] {
+    const list = getList(data);
+    if (list.length === 0) return [createNoDataParagraph()];
+
+    const renderContent = (item: any) => {
+        // Explicitly extract SLA list
+        let slaList: any[] = [];
+        const slaRaw = item.sla;
+        if (Array.isArray(slaRaw)) {
+            slaList = slaRaw;
+        } else if (slaRaw && typeof slaRaw === 'object') {
+            if (Array.isArray(slaRaw.elenco)) {
+                slaList = slaRaw.elenco;
+            } else {
+                // If it's a single object that looks like data, wrap it. 
+                // If it's just a container with no data, ignore it.
+                if (slaRaw.indicatore || typeof slaRaw === 'string') {
+                    slaList = [slaRaw];
+                }
+            }
+        }
+
+        // Explicitly extract Penali list
+        let penaliList: any[] = [];
+        const penaliRaw = item.penali;
+        if (Array.isArray(penaliRaw)) {
+            penaliList = penaliRaw;
+        } else if (penaliRaw && typeof penaliRaw === 'object') {
+            if (Array.isArray(penaliRaw.elenco)) {
+                penaliList = penaliRaw.elenco;
+            } else {
+                if (penaliRaw.descrizione || typeof penaliRaw === 'string') {
+                    penaliList = [penaliRaw];
+                }
+            }
+        }
+
+        // Check if lists contain strings or objects to decide how to render
+        const isSlaSimple = slaList.length > 0 && typeof slaList[0] === 'string';
+        const isPenaliSimple = penaliList.length > 0 && typeof penaliList[0] === 'string';
+
+        return [
+            createSubHeading("SLA"),
+            ...(slaList.length > 0
+                ? createList(slaList, isSlaSimple ? undefined : 'indicatore')
+                : [createBullet("Nessun SLA rilevato")]),
+
+            createSubHeading("Penali"),
+            ...(penaliList.length > 0
+                ? createList(penaliList, isPenaliSimple ? undefined : 'descrizione')
+                : [createBullet("Nessuna penale rilevata")]),
+
+            new Paragraph({
+                text: `Clausole Cumulative: ${safeText(item.clausole_cumulative)}`,
+                spacing: { before: 200 }
+            })
+        ];
+    };
+
+    if (isMultiLot(list)) {
+        return list.flatMap(lot => [
+            createLotHeader(lot.lotto),
+            ...renderContent(lot)
+        ]);
+    }
+
+    return renderContent(list[0] || {});
+}
+
+// --- COMPONENTS ---
+
+function createNoDataParagraph() {
+    return new Paragraph({
+        text: "Dati non presenti nel risultato dell'analisi.",
+        italics: true,
+        run: { color: "999999" }
+    });
 }
 
 function createHeading(text: string) {
@@ -229,6 +531,7 @@ function createHeading(text: string) {
         text: text,
         heading: HeadingLevel.HEADING_1,
         spacing: { before: 400, after: 200 },
+        run: { color: "2E74B5" }
     });
 }
 
@@ -237,43 +540,99 @@ function createSubHeading(text: string) {
         text: text,
         heading: HeadingLevel.HEADING_2,
         spacing: { before: 200, after: 100 },
+        run: { color: "444444" }
+    });
+}
+
+function createLotHeader(lotto: string | undefined) {
+    if (!lotto || lotto === "Unico / Generale") return new Paragraph({});
+    return new Paragraph({
+        text: `Lotto: ${lotto}`,
+        heading: HeadingLevel.HEADING_3,
+        spacing: { before: 300, after: 100 },
+        run: { bold: true, color: "E25041" }
+    });
+}
+
+function createKeyValueLine(key: string, value: string | undefined | null, center: boolean = false) {
+    return new Paragraph({
+        children: [
+            new TextRun({ text: `${key}: `, bold: true }),
+            new TextRun(safeText(value))
+        ],
+        alignment: center ? AlignmentType.CENTER : AlignmentType.LEFT,
+        spacing: { after: 100 }
     });
 }
 
 function createBullet(text: string) {
     return new Paragraph({
         text: safeText(text),
-        bullet: {
-            level: 0
-        }
+        bullet: { level: 0 }
     });
 }
 
-function createRequirementsList(items: { requisito: string }[] | undefined) {
-    if (!items || items.length === 0) return [createBullet("Nessun requisito specifico rilevato")];
-    return items.map(i => createBullet(i.requisito));
+function createList(items: any[], textProp?: string, labelProp?: string) {
+    if (!items || items.length === 0) return [];
+    return items.map(i => {
+        let text = getText(i, textProp);
+        if (labelProp) {
+            const label = getText(i, labelProp);
+            text = `${label}: ${text}`;
+        }
+        // Add ref if available
+        if (typeof i === 'object' && i.ref) {
+            text += ` [Ref: ${i.ref}]`;
+        }
+        return createBullet(text);
+    });
 }
 
 function createTable(rows: string[][]) {
     if (!rows || rows.length === 0) return new Paragraph("Nessun dato disponibile");
-
     return new Table({
         rows: rows.map(row =>
             new TableRow({
                 children: row.map(cell =>
                     new TableCell({
                         children: [new Paragraph(cell)],
-                        width: {
-                            size: 50,
-                            type: WidthType.PERCENTAGE,
-                        },
+                        width: { size: 100 / row.length, type: WidthType.PERCENTAGE },
                     })
                 ),
             })
         ),
-        width: {
-            size: 100,
-            type: WidthType.PERCENTAGE,
-        }
+        width: { size: 100, type: WidthType.PERCENTAGE }
     });
+}
+
+function createDeepDiveSection(qaList: { question: string, answer: string }[] | undefined) {
+    if (!qaList || qaList.length === 0) return [];
+    return [
+        new Paragraph({
+            text: "Approfondimenti (Q&A)",
+            heading: HeadingLevel.HEADING_3,
+            spacing: { before: 200, after: 100 },
+            run: { color: "555555" }
+        }),
+        ...qaList.flatMap(qa => [
+            new Paragraph({
+                children: [
+                    new TextRun({ text: "D: " + qa.question, bold: true, italics: true, color: "2E74B5" })
+                ],
+                spacing: { after: 50 }
+            }),
+            new Paragraph({
+                children: [
+                    new TextRun({ text: "R: ", bold: true }),
+                    new TextRun(qa.answer)
+                ],
+                spacing: { after: 200 }
+            })
+        ])
+    ];
+}
+
+function formatCurrency(amount: number | undefined): string {
+    if (amount === undefined || amount === null) return "-";
+    return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(amount);
 }

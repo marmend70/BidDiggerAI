@@ -17,7 +17,13 @@ export function Upload({ onUpload, isUploading }: UploadProps) {
         setFiles(prev => [...prev, ...acceptedFiles]);
     }, []);
 
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: {
+            'application/pdf': ['.pdf'],
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
+        }
+    });
 
     const removeFile = (index: number) => {
         setFiles(prev => prev.filter((_, i) => i !== index));
@@ -48,7 +54,7 @@ export function Upload({ onUpload, isUploading }: UploadProps) {
                                 {isDragActive ? "Rilascia i file qui" : "Carica Documenti di Gara"}
                             </h3>
                             <p className="text-sm text-slate-500">
-                                Trascina i file PDF qui, o clicca per selezionarli
+                                Trascina i file PDF o DOCX qui, o clicca per selezionarli
                             </p>
                         </div>
                     </div>

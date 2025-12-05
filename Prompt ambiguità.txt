@@ -1,0 +1,3 @@
+Aggiungi una sezione dopo "Note Importanti", chiamata "Ambiguità e punti da chiarire": qui dovrenno essere riportate le seguenti aree:
+1) Ambiguità: eventuali ambiguità rilevate dal modello AI, quali ad esempio dichiarazioni o richieste discordanti in diverse parti del o dei documenti caricati, carenze informative evidenti, errori di battitura o di mancati riferimenti etc.
+2) Punti da chiarire: qui sono riportati suggerimenti per eventuali quesiti da porre alla stazione appaltante, sulla base di una analisi approfondita dei documenti caricati finalizzata a individuare eventuali chiarimenti necessari per approfondire e dettagliare richieste poco chiare o parzialmente espresse e/o quantificate.

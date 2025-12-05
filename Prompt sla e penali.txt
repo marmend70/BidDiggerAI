@@ -1,0 +1,22 @@
+L'analisi degli SLA, livelli di servizio, penali, non è efficace.
+
+Devi individuare e elencare tutti i livelli di servizio, sla, kpi e relativi indicatori, comprensivi dei target o livelli di soglia attesi.
+Lo stesso per le penali previste.
+Devi anche specificare per ogni livello di servizio eventuali indicatori specifici, modalità e frequenza di rilevazione e come detto valori, soglie, target.
+
+Applica questa struttura di base, che puoi adattare secondo necessità:
+
+sla -> {
+  elenco: string[] (
+    rappresenta ciascun SLA in una singola riga nel formato:
+    "INDICATORE: <nome> | OBIETTIVO: <valore/soglia> | PERIMETRO: <dove si applica> | FINESTRA: <es. mensile/trimestrale> | METODO: <misura/rilevazione> | ESCLUSIONI: <se presenti>"
+  )  
+}
+(Se disponibili, includi anche soglie di tolleranza, formule di calcolo e criteri di arrotondamento.)
+
+penali -> {
+  elenco: string[] (
+    rappresenta ciascuna penale in una singola riga nel formato:
+    "EVENTO: <violazione/condizione> | CONDIZIONE: <es. superamento soglia SLA> | IMPORTO/FORMULA: <€ o % e base di calcolo> | MODALITA': <come si applica/periodo> | NOTE: <franchigie, soglie, cumuli, tetti>"
+  )
+}

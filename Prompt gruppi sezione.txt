@@ -1,0 +1,30 @@
+Imposta esattamente questi gruppi e relativi batch di analisi raggruppati sia nel menu sia nella Configurazione sezioni in "Configurazioni":
+
+1: Sintesi e analisi amministrativa
+
+Sintesi gara
+Checklist amministrativa
+Requisiti di Partecipazione
+Scadenze
+Quadro economico
+CCNL e Clausola sociale
+
+2: Servizi
+
+Dettagli servizi
+Durata e tempistiche
+Oneri e costi
+Remunerazione
+Sla e penali
+
+3: Offerta
+
+Offerta tecnica
+Offerta economica
+Criteri e punteggi
+Pena esclusione
+
+4: Extra
+
+Note importanti
+Ambiguità e chiarimenti

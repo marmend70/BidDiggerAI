@@ -11,6 +11,7 @@ export function Login() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showConfirmation, setShowConfirmation] = useState(false);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -39,9 +40,12 @@ export function Login() {
             const { error } = await supabase.auth.signUp({
                 email,
                 password,
+                options: {
+                    emailRedirectTo: window.location.origin,
+                },
             });
             if (error) throw error;
-            alert('Account creato! Controlla la tua email per confermare la registrazione.');
+            setShowConfirmation(true);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -138,7 +142,32 @@ export function Login() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <Tabs defaultValue="login" className="w-full">
+                        {showConfirmation ? (
+                            <div className="text-center space-y-6 py-4">
+                                <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                                    <MessageSquare className="h-8 w-8 text-green-600" />
+                                </div>
+                                <div className="space-y-2">
+                                    <h3 className="text-xl font-semibold text-slate-900">Controlla la tua email</h3>
+                                    <p className="text-slate-600">
+                                        Abbiamo inviato un link di conferma a <strong>{email}</strong>.
+                                        Clicca sul link per attivare il tuo account e accedere.
+                                    </p>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    className="w-full"
+                                    onClick={() => {
+                                        setShowConfirmation(false);
+                                        setEmail('');
+                                        setPassword('');
+                                    }}
+                                >
+                                    Torna al Login
+                                </Button>
+                            </div>
+                        ) : (
+                            <Tabs defaultValue="login" className="w-full">
                             <TabsList className="grid w-full grid-cols-2 mb-8">
                                 <TabsTrigger value="login">Accedi</TabsTrigger>
                                 <TabsTrigger value="register">Registrati</TabsTrigger>
@@ -201,23 +230,24 @@ export function Login() {
                                     </Button>
                                 </form>
                             </TabsContent>
-                        </Tabs>
+                            </Tabs>
 
-                        <div className="relative my-6">
-                            <div className="absolute inset-0 flex items-center">
-                                <span className="w-full border-t border-slate-200" />
+                            <div className="relative my-6">
+                                <div className="absolute inset-0 flex items-center">
+                                    <span className="w-full border-t border-slate-200" />
+                                </div>
+                                <div className="relative flex justify-center text-xs uppercase">
+                                    <span className="bg-white px-2 text-slate-500">Oppure continua con</span>
+                                </div>
                             </div>
-                            <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-white px-2 text-slate-500">Oppure continua con</span>
-                            </div>
-                        </div>
 
-                        <Button variant="outline" type="button" className="w-full" onClick={handleGoogleLogin}>
-                            <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
-                                <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
-                            </svg>
-                            Google
-                        </Button>
+                            <Button variant="outline" type="button" className="w-full" onClick={handleGoogleLogin}>
+                                <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
+                                    <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
+                                </svg>
+                                Google
+                            </Button>
+                        )}
                     </CardContent>
                     <CardFooter className="flex justify-center">
                         <p className="text-xs text-slate-400 text-center max-w-xs">

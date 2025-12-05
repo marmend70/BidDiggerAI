@@ -6,7 +6,8 @@ import {
     Settings,
     Archive,
     Loader2,
-    CheckCircle2
+    CheckCircle2,
+    FilePlus
 } from 'lucide-react';
 import { SECTIONS_MAP, MENU_ORDER, SECTION_BATCH_MAP } from '@/constants';
 
@@ -18,6 +19,7 @@ interface LayoutProps {
     userPreferences?: UserPreferences;
     isAnalyzing?: boolean;
     loadingBatches?: string[];
+    onNewAnalysis?: () => void;
 }
 
 interface SidebarContentProps {
@@ -28,9 +30,10 @@ interface SidebarContentProps {
     isAnalyzing?: boolean;
     loadingBatches?: string[];
     onExport: () => void;
+    onNewAnalysis?: () => void;
 }
 
-function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport }: SidebarContentProps) {
+function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis }: SidebarContentProps) {
     return (
         <div className="flex flex-col h-full text-white">
             <div className="p-6">
@@ -102,12 +105,13 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                         </React.Fragment>
                     );
                 })}
+            </nav>
 
-                {/* Configuration Section */}
+            <div className="p-4 border-t border-slate-800 space-y-2">
                 <button
                     onClick={() => !isAnalyzing && onSectionClick?.('configurazioni')}
                     disabled={isAnalyzing}
-                    className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors mt-6 border border-slate-700 ${isAnalyzing
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors border border-slate-700 ${isAnalyzing
                         ? 'opacity-50 cursor-not-allowed text-slate-500 border-slate-800'
                         : activeSection === 'configurazioni'
                             ? 'bg-slate-700 text-white'
@@ -118,11 +122,10 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                     Configurazioni
                 </button>
 
-                {/* Archive Section */}
                 <button
                     onClick={() => !isAnalyzing && onSectionClick?.('archivio')}
                     disabled={isAnalyzing}
-                    className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors mt-2 border border-slate-700 ${isAnalyzing
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors border border-slate-700 ${isAnalyzing
                         ? 'opacity-50 cursor-not-allowed text-slate-500 border-slate-800'
                         : activeSection === 'archivio'
                             ? 'bg-slate-700 text-white'
@@ -132,23 +135,31 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                     <Archive className="h-4 w-4" />
                     Archivio
                 </button>
-            </nav>
 
-            <div className="p-4 border-t border-slate-800 space-y-2">
                 <button
                     onClick={onExport}
                     disabled={!data}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300 rounded-md hover:bg-slate-800 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300 rounded-md hover:bg-slate-800 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed border border-transparent"
                 >
                     <Download className="h-4 w-4" />
                     Esporta DOCX
                 </button>
+
+                <button
+                    onClick={onNewAnalysis}
+                    disabled={!data}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300 rounded-md hover:bg-slate-800 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed border border-transparent"
+                >
+                    <FilePlus className="h-4 w-4" />
+                    Nuova Analisi
+                </button>
+
                 <button
                     onClick={async () => {
                         await import('@/lib/supabase').then(m => m.supabase.auth.signOut());
                         window.location.reload();
                     }}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300 rounded-md hover:bg-slate-800 hover:text-white"
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300 rounded-md hover:bg-slate-800 hover:text-white border border-transparent"
                 >
                     Esci
                 </button>
@@ -157,7 +168,8 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
     );
 }
 
-export function Layout({ children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [] }: LayoutProps) {
+export function Layout(props: LayoutProps) {
+    const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [] } = props;
     const handleExport = async () => {
         if (!data) return;
         try {
@@ -171,6 +183,7 @@ export function Layout({ children, activeSection, onSectionClick, data, userPref
     return (
         <div className="flex h-screen bg-slate-50 overflow-hidden">
             {/* Desktop Sidebar */}
+
             <aside className="flex w-80 bg-slate-900 flex-shrink-0 flex-col h-full overflow-hidden">
                 <SidebarContent
                     activeSection={activeSection}
@@ -180,6 +193,7 @@ export function Layout({ children, activeSection, onSectionClick, data, userPref
                     isAnalyzing={isAnalyzing}
                     loadingBatches={loadingBatches}
                     onExport={handleExport}
+                    onNewAnalysis={props.onNewAnalysis}
                 />
             </aside>
 

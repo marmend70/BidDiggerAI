@@ -691,6 +691,19 @@ function App() {
     }
   };
 
+  const handleNewAnalysis = () => {
+    if (analysisData) {
+      const confirmed = window.confirm(
+        "Attenzione: le sezioni verranno ripulite. Se prosegui, l'analisi verrà archiviata. Vuoi procedere?"
+      );
+      if (confirmed) {
+        window.location.reload();
+      }
+    } else {
+      window.location.reload();
+    }
+  };
+
   if (!session) {
     return <Login />;
   }
@@ -703,6 +716,7 @@ function App() {
       userPreferences={userPreferences}
       isAnalyzing={isUploading}
       loadingBatches={loadingBatches}
+      onNewAnalysis={handleNewAnalysis}
     >
       <TimeoutModal
         isOpen={showTimeoutModal}

@@ -7,7 +7,9 @@ import {
     Archive,
     Loader2,
     CheckCircle2,
-    FilePlus
+    FilePlus,
+    Menu,
+    X
 } from 'lucide-react';
 import { SECTIONS_MAP, MENU_ORDER, SECTION_BATCH_MAP } from '@/constants';
 
@@ -170,6 +172,8 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
 
 export function Layout(props: LayoutProps) {
     const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [] } = props;
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+
     const handleExport = async () => {
         if (!data) return;
         try {
@@ -181,10 +185,9 @@ export function Layout(props: LayoutProps) {
     };
 
     return (
-        <div className="flex h-screen bg-slate-50 overflow-hidden">
+        <div className="flex h-screen bg-slate-50 overflow-hidden flex-col md:flex-row">
             {/* Desktop Sidebar */}
-
-            <aside className="flex w-80 bg-slate-900 flex-shrink-0 flex-col h-full overflow-hidden">
+            <aside className="hidden md:flex w-80 bg-slate-900 flex-shrink-0 flex-col h-full overflow-hidden">
                 <SidebarContent
                     activeSection={activeSection}
                     onSectionClick={onSectionClick}
@@ -197,8 +200,61 @@ export function Layout(props: LayoutProps) {
                 />
             </aside>
 
+            {/* Mobile Header */}
+            <div className="md:hidden h-16 bg-slate-900 flex items-center justify-between px-4 flex-shrink-0 z-20">
+                <div className="flex items-center gap-2">
+                    <img src="/logo.png" alt="Bid Digger Logo" className="h-8 w-8 object-contain" />
+                    <span className="text-white font-bold text-lg">Bid Digger AI</span>
+                </div>
+                <button
+                    onClick={() => setIsMobileMenuOpen(true)}
+                    className="text-white p-2"
+                >
+                    <Menu className="h-6 w-6" />
+                </button>
+            </div>
+
+            {/* Mobile Menu Overlay */}
+            {isMobileMenuOpen && (
+                <div className="fixed inset-0 z-50 md:hidden">
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                    />
+
+                    {/* Drawer */}
+                    <div className="absolute inset-y-0 left-0 w-80 bg-slate-900 shadow-xl flex flex-col">
+                        <div className="absolute top-4 right-4 z-50">
+                            <button
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="text-slate-400 hover:text-white p-1"
+                            >
+                                <X className="h-6 w-6" />
+                            </button>
+                        </div>
+                        <SidebarContent
+                            activeSection={activeSection}
+                            onSectionClick={(id) => {
+                                onSectionClick?.(id);
+                                setIsMobileMenuOpen(false);
+                            }}
+                            data={data}
+                            userPreferences={userPreferences}
+                            isAnalyzing={isAnalyzing}
+                            loadingBatches={loadingBatches}
+                            onExport={handleExport}
+                            onNewAnalysis={() => {
+                                props.onNewAnalysis?.();
+                                setIsMobileMenuOpen(false);
+                            }}
+                        />
+                    </div>
+                </div>
+            )}
+
             {/* Main Content */}
-            <main className="flex-1 overflow-auto min-w-0 p-6">
+            <main className="flex-1 overflow-auto min-w-0 p-4 md:p-6 relative z-10">
                 <div className="h-full">
                     {children}
                 </div>

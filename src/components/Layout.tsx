@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { exportToDocx } from '@/lib/exportUtils';
 import type { AnalysisResult, UserPreferences } from '@/types';
 import {
@@ -6,12 +6,9 @@ import {
     Settings,
     Archive,
     Loader2,
-    CheckCircle2,
-    Menu
+    CheckCircle2
 } from 'lucide-react';
 import { SECTIONS_MAP, MENU_ORDER, SECTION_BATCH_MAP } from '@/constants';
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -161,8 +158,6 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
 }
 
 export function Layout({ children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [] }: LayoutProps) {
-    const [isMobileOpen, setIsMobileOpen] = useState(false);
-
     const handleExport = async () => {
         if (!data) return;
         try {
@@ -173,15 +168,10 @@ export function Layout({ children, activeSection, onSectionClick, data, userPref
         }
     };
 
-    const handleSectionClick = (id: string) => {
-        onSectionClick?.(id);
-        setIsMobileOpen(false);
-    };
-
     return (
         <div className="flex h-screen bg-slate-50 overflow-hidden">
             {/* Desktop Sidebar */}
-            <aside className="hidden md:flex w-80 bg-slate-900 flex-shrink-0 flex-col h-full overflow-hidden">
+            <aside className="flex w-80 bg-slate-900 flex-shrink-0 flex-col h-full overflow-hidden">
                 <SidebarContent
                     activeSection={activeSection}
                     onSectionClick={onSectionClick}
@@ -193,34 +183,8 @@ export function Layout({ children, activeSection, onSectionClick, data, userPref
                 />
             </aside>
 
-            {/* Mobile Header */}
-            <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900 z-50 flex items-center justify-between px-4 shadow-md">
-                <div className="flex items-center gap-2">
-                    <img src="/logo.png" alt="Bid Digger Logo" className="h-8 w-8 object-contain" />
-                    <span className="text-amber-500 font-bold text-lg">Bid Digger AI</span>
-                </div>
-                <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
-                    <SheetTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-white hover:bg-slate-800">
-                            <Menu className="h-6 w-6" />
-                        </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="p-0 bg-slate-900 border-r-slate-800 w-80">
-                        <SidebarContent
-                            activeSection={activeSection}
-                            onSectionClick={handleSectionClick}
-                            data={data}
-                            userPreferences={userPreferences}
-                            isAnalyzing={isAnalyzing}
-                            loadingBatches={loadingBatches}
-                            onExport={handleExport}
-                        />
-                    </SheetContent>
-                </Sheet>
-            </div>
-
             {/* Main Content */}
-            <main className="flex-1 overflow-auto w-full pt-16 md:pt-0">
+            <main className="flex-1 overflow-auto min-w-0 p-6">
                 <div className="h-full">
                     {children}
                 </div>

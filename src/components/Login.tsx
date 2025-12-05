@@ -128,7 +128,7 @@ export function Login() {
                 </div>
 
                 <div className="relative z-10 text-sm text-slate-400 mt-12">
-                    © 2024 Bid Digger AI. All rights reserved.
+                    © 2025 Bid Digger AI. All rights reserved.
                 </div>
             </div>
 

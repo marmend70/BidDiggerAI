@@ -521,8 +521,7 @@ function renderSlaPenaliSection(data: any): any[] {
 function createNoDataParagraph() {
     return new Paragraph({
         text: "Dati non presenti nel risultato dell'analisi.",
-        italics: true,
-        run: { color: "999999" }
+        run: { color: "999999", italics: true }
     });
 }
 

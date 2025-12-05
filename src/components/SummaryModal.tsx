@@ -94,13 +94,13 @@ export function SummaryModal({ isOpen, onClose, data }: SummaryModalProps) {
                                 <h3 className="font-semibold">Servizi Richiesti</h3>
                             </div>
                             <ul className="list-disc list-inside text-sm text-slate-700 space-y-1">
-                                {servizi?.attivita?.slice(0, 3).map((s, i) => (
+                                {servizi?.[0]?.attivita?.slice(0, 3).map((s, i) => (
                                     <li key={i} className="truncate">{s}</li>
                                 ))}
-                                {servizi?.attivita?.length > 3 && (
-                                    <li className="text-slate-500 italic">...e altri {servizi.attivita.length - 3}</li>
+                                {servizi?.[0]?.attivita?.length > 3 && (
+                                    <li className="text-slate-500 italic">...e altri {servizi[0].attivita.length - 3}</li>
                                 )}
-                                {!servizi?.attivita?.length && <li>N/D</li>}
+                                {!servizi?.[0]?.attivita?.length && <li>N/D</li>}
                             </ul>
                         </div>
                     </div>

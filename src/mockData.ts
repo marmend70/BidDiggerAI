@@ -1,6 +1,6 @@
 import type { AnalysisResult } from './types';
 
-export const MOCK_ANALYSIS: AnalysisResult = {
+export const MOCK_ANALYSIS: any = {
     "1_requisiti_generali": [
         { requisito: "Iscrizione CCIAA", norme: "Art. 100 D.Lgs. 36/2023", doc_richiesti: "Visura Camerale", ref: "Disc. p. 12" },
         { requisito: "Assenza motivi esclusione", norme: "Art. 94-95 D.Lgs. 36/2023", doc_richiesti: "DGUE Parte III", ref: "Disc. p. 13" }

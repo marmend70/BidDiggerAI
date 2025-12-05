@@ -167,6 +167,10 @@ export interface AnalysisResult {
         };
     };
     tender_id?: string;
+    _batch_name?: string;
+    _semantic_debug_info?: any;
+    _semantic_error?: any;
+    [key: string]: any;
 }
 
 export interface UserPreferences {

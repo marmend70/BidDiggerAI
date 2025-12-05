@@ -418,7 +418,8 @@ Deno.serve(async (req) => {
                   // CRITICAL FIX: Do NOT return null to trigger local fallback if file is large.
                   // Local fallback crashes the Edge Function (CPU limit).
                   // Better to throw error and fail this file than crash the whole process.
-                  throw new Error("Gemini Extraction Failed (All Models). Local fallback disabled to prevent crash.");
+                  // throw new Error("Gemini Extraction Failed (All Models). Local fallback disabled to prevent crash.");
+                  throw new Error("Gemini Extraction Failed (All Models).");
                }
             }
 
@@ -434,9 +435,9 @@ Deno.serve(async (req) => {
          } catch (e: any) {
             console.error("[GeminiExtract] Failed:", e);
             // IMPORTANT: If we explicitly threw an error to avoid local fallback, re-throw it!
-            if (e.message && e.message.includes("Local fallback disabled")) {
-               throw e;
-            }
+            // if (e.message && e.message.includes("Local fallback disabled")) {
+            //    throw e;
+            // }
             return null;
          }
       };

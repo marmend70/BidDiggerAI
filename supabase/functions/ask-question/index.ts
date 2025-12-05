@@ -161,9 +161,9 @@ serve(async (req) => {
 
             } catch (e: any) {
                 console.error("[GeminiExtract] Failed:", e);
-                if (e.message && e.message.includes("Local fallback disabled")) {
-                    throw e;
-                }
+                // if (e.message && e.message.includes("Local fallback disabled")) {
+                //     throw e;
+                // }
                 return null;
             }
         };
@@ -238,7 +238,7 @@ serve(async (req) => {
                     }
                 } catch (e: any) {
                     console.error(`[Extract] Error processing ${filePath}:`, e);
-                    fileResult = `\n=== ERRORE GENERICO: ${filePath} ===\n`;
+                    fileResult = `\n=== ERRORE GENERICO: ${filePath} (${e.message || e}) ===\n`;
                 }
                 fullPdfText += fileResult;
             }
@@ -256,6 +256,12 @@ serve(async (req) => {
             if (!error && data) {
                 fullPdfText = await data.text();
                 console.log(`[AskQuestion] Loaded pre-extracted text (${fullPdfText.length} chars)`);
+
+                // CHECK FOR BAD CACHE: If the stored text contains errors, discard it and force re-extraction
+                if (fullPdfText.includes("ERRORE GENERICO") || fullPdfText.includes("ERRORE DOWNLOAD") || fullPdfText.includes("[TESTO VUOTO]")) {
+                    console.warn("[AskQuestion] Detected error markers in cached text. Discarding cache and forcing re-extraction.");
+                    fullPdfText = "";
+                }
             }
         } catch (e) {
             console.warn("[AskQuestion] Failed to load pre-extracted text, falling back to processing:", e);
@@ -265,6 +271,11 @@ serve(async (req) => {
         if (!fullPdfText) {
             console.log("[AskQuestion] Pre-extracted text not found. Processing files...");
             fullPdfText = await extractTextFromFiles();
+        }
+
+        // DEBUG: If extraction failed, return the error directly
+        if (fullPdfText.includes("ERRORE GENERICO") || fullPdfText.includes("ERRORE DOWNLOAD")) {
+            return new Response(JSON.stringify({ answer: "SI È VERIFICATO UN ERRORE TECNICO DURANTE L'ESTRAZIONE DEL TESTO.\n\nEcco i dettagli dell'errore (copia e incolla questo messaggio all'assistenza):\n\n" + fullPdfText }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
 
         console.log(`[AskQuestion] Sending request to AI Model (${model || 'gpt-5-mini'})...`);

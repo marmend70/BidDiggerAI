@@ -11,6 +11,7 @@ import {
     Menu,
     X
 } from 'lucide-react';
+import { Footer } from './Footer';
 import { SECTIONS_MAP, MENU_ORDER, SECTION_BATCH_MAP } from '@/constants';
 
 interface LayoutProps {
@@ -254,10 +255,11 @@ export function Layout(props: LayoutProps) {
             )}
 
             {/* Main Content */}
-            <main className="flex-1 overflow-auto min-w-0 p-4 md:p-6 relative z-10">
-                <div className="h-full">
+            <main className="flex-1 overflow-auto min-w-0 relative z-10 flex flex-col">
+                <div className="flex-1 p-4 md:p-6">
                     {children}
                 </div>
+                <Footer />
             </main>
         </div>
     );

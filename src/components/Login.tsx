@@ -4,7 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, UploadCloud, Sliders, FileText, MessageSquare } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Loader2, UploadCloud, Sliders, FileText, MessageSquare, AlertTriangle } from 'lucide-react';
+import { TERMS_AND_CONDITIONS, PRIVACY_POLICY } from '@/constants/legalText';
+import { LegalModal } from './LegalModal';
 
 export function Login() {
     const [email, setEmail] = useState('');
@@ -12,6 +15,16 @@ export function Login() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showConfirmation, setShowConfirmation] = useState(false);
+
+    // Consents State
+    const [acceptedTerms, setAcceptedTerms] = useState(false);
+    const [acceptedPublicNature, setAcceptedPublicNature] = useState(false);
+    const [acceptedAiLimits, setAcceptedAiLimits] = useState(false);
+
+    // Modal State
+    const [modalOpen, setModalOpen] = useState<'APP_TERMS' | 'PRIVACY' | null>(null);
+
+    const isConsentsValid = acceptedTerms && acceptedPublicNature && acceptedAiLimits;
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -37,11 +50,21 @@ export function Login() {
         setError(null);
 
         try {
+            if (!isConsentsValid) {
+                throw new Error("Devi accettare tutti i termini e le condizioni per procedere.");
+            }
+
             const { error } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
                     emailRedirectTo: window.location.origin,
+                    data: {
+                        accepted_terms: acceptedTerms,
+                        accepted_public_nature: acceptedPublicNature,
+                        accepted_ai_limits: acceptedAiLimits,
+                        consents_timestamp: new Date().toISOString()
+                    }
                 },
             });
             if (error) throw error;
@@ -225,8 +248,67 @@ export function Login() {
                                                     className="bg-white"
                                                 />
                                             </div>
+                                            <div className="space-y-4 mt-6">
+                                                <div className="flex items-start space-x-3">
+                                                    <Checkbox
+                                                        id="terms"
+                                                        checked={acceptedTerms}
+                                                        onCheckedChange={(checked) => setAcceptedTerms(checked as boolean)}
+                                                    />
+                                                    <div className="grid gap-1.5 leading-none">
+                                                        <label
+                                                            htmlFor="terms"
+                                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700"
+                                                        >
+                                                            Termini di Servizio
+                                                        </label>
+                                                        <p className="text-sm text-slate-500 text-muted-foreground">
+                                                            Ho letto, compreso e accetto integralmente i <button type="button" onClick={() => setModalOpen('APP_TERMS')} className="text-blue-600 hover:underline">Termini e Condizioni del Servizio</button> e la <button type="button" onClick={() => setModalOpen('PRIVACY')} className="text-blue-600 hover:underline">Privacy Policy</button>.
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-start space-x-3">
+                                                    <Checkbox
+                                                        id="public_nature"
+                                                        checked={acceptedPublicNature}
+                                                        onCheckedChange={(checked) => setAcceptedPublicNature(checked as boolean)}
+                                                    />
+                                                    <div className="grid gap-1.5 leading-none">
+                                                        <label
+                                                            htmlFor="public_nature"
+                                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700"
+                                                        >
+                                                            Natura Pubblica dei Documenti
+                                                        </label>
+                                                        <p className="text-sm text-slate-500 text-muted-foreground">
+                                                            Dichiaro sotto la mia esclusiva responsabilità di caricare sulla piattaforma esclusivamente documenti di natura pubblica (es. Bandi, Disciplinari, Capitolati di dominio pubblico). Confermo che i file non contengono dati personali sensibili, informazioni riservate o segreti industriali, manlevando Bid Digger AI da ogni responsabilità civile e penale in materia di trattamento dati.
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-start space-x-3">
+                                                    <Checkbox
+                                                        id="ai_limits"
+                                                        checked={acceptedAiLimits}
+                                                        onCheckedChange={(checked) => setAcceptedAiLimits(checked as boolean)}
+                                                    />
+                                                    <div className="grid gap-1.5 leading-none">
+                                                        <label
+                                                            htmlFor="ai_limits"
+                                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700"
+                                                        >
+                                                            Limiti dell'AI
+                                                        </label>
+                                                        <p className="text-sm text-slate-500 text-muted-foreground">
+                                                            Sono consapevole e accetto che il servizio è basato su sistemi di Intelligenza Artificiale sperimentali. Comprendo che le analisi generate possono contenere errori, omissioni o imprecisioni ('allucinazioni') e mi impegno a verificare personalmente la correttezza di ogni dato sui documenti originali prima di qualsiasi utilizzo, esonerando il fornitore da ogni responsabilità per eventuali danni, esclusioni o mancati guadagni.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-md border border-red-100">{error}</div>}
-                                            <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800" disabled={loading}>
+                                            <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-50" disabled={loading || !isConsentsValid}>
                                                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Crea Account'}
                                             </Button>
                                         </form>
@@ -258,6 +340,13 @@ export function Login() {
                     </CardFooter>
                 </Card>
             </div>
+
+            <LegalModal
+                isOpen={!!modalOpen}
+                onClose={() => setModalOpen(null)}
+                title={modalOpen === 'APP_TERMS' ? 'Termini e Condizioni' : 'Privacy Policy'}
+                content={modalOpen === 'APP_TERMS' ? TERMS_AND_CONDITIONS : PRIVACY_POLICY}
+            />
         </div>
     );
 }

@@ -1,0 +1,11 @@
+Mettimi tre check box che abilitano la registrazione degli utenti:
+
+1. Checkbox: Termini di Servizio
+"Ho letto, compreso e accetto integralmente i Termini e Condizioni del Servizio e la Privacy Policy.". 
+Linka i due Termini e Condizioni del Servizio e la Privacy Policy. ai rispettivi modali
+
+2. Checkbox: Natura Pubblica dei Documenti
+"Dichiaro sotto la mia esclusiva responsabilità di caricare sulla piattaforma esclusivamente documenti di natura pubblica (es. Bandi, Disciplinari, Capitolati di dominio pubblico). Confermo che i file non contengono dati personali sensibili, informazioni riservate o segreti industriali, manlevando Bid Digger AI da ogni responsabilità civile e penale in materia di trattamento dati."
+
+3. Checkbox: Limiti dell'AI
+"Sono consapevole e accetto che il servizio è basato su sistemi di Intelligenza Artificiale sperimentali. Comprendo che le analisi generate possono contenere errori, omissioni o imprecisioni ('allucinazioni') e mi impegno a verificare personalmente la correttezza di ogni dato sui documenti originali prima di qualsiasi utilizzo, esonerando il fornitore da ogni responsabilità per eventuali danni, esclusioni o mancati guadagni."

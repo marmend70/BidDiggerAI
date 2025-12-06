@@ -1,8 +1,9 @@
 import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload as UploadIcon, File, X, Loader2 } from 'lucide-react';
+import { Upload as UploadIcon, File, X, Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 
 interface UploadProps {
@@ -38,6 +39,13 @@ export function Upload({ onUpload, isUploading }: UploadProps) {
         <div className="max-w-2xl mx-auto mt-10">
             <Card>
                 <CardContent className="p-6">
+                    <Alert variant="warning" className="mb-6 bg-amber-50 border-amber-200">
+                        <AlertTriangle className="h-4 w-4 text-amber-600" />
+                        <AlertDescription className="text-amber-800 text-xs">
+                            Questo software utilizza modelli di Intelligenza Artificiale sperimentali che possono generare imprecisioni, errori o "allucinazioni". L'analisi fornita è intesa esclusivamente come supporto operativo e non sostituisce la verifica umana: l'utente è tenuto a validare sempre i dati estratti confrontandoli con gli atti originali prima dell'uso.
+                        </AlertDescription>
+                    </Alert>
+
                     <div
                         {...getRootProps()}
                         className={cn(

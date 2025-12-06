@@ -9,3 +9,7 @@ Linka i due Termini e Condizioni del Servizio e la Privacy Policy. ai rispettivi
 
 3. Checkbox: Limiti dell'AI
 "Sono consapevole e accetto che il servizio è basato su sistemi di Intelligenza Artificiale sperimentali. Comprendo che le analisi generate possono contenere errori, omissioni o imprecisioni ('allucinazioni') e mi impegno a verificare personalmente la correttezza di ogni dato sui documenti originali prima di qualsiasi utilizzo, esonerando il fornitore da ogni responsabilità per eventuali danni, esclusioni o mancati guadagni."
+
+I tre consensi devono essere registrati nelle istanze db degli utenti
+
+Inoltre metti questa nota di attenzione sulla pagina del Caricamento documenti: Questo software utilizza modelli di Intelligenza Artificiale sperimentali che possono generare imprecisioni, errori o "allucinazioni". L'analisi fornita è intesa esclusivamente come supporto operativo e non sostituisce la verifica umana: l'utente è tenuto a validare sempre i dati estratti confrontandoli con gli atti originali prima dell'uso.

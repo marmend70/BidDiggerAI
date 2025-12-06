@@ -39,14 +39,14 @@ interface SidebarContentProps {
 function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis }: SidebarContentProps) {
     return (
         <div className="flex flex-col h-full text-white">
-            <div className="p-6">
+            <div className="p-6 bg-slate-950 shadow-sm z-10">
                 <h1 className="text-2xl font-bold tracking-tight text-amber-500 flex items-center gap-2">
                     <img src="/logo.png" alt="Bid Digger Logo" className="h-8 w-8 object-contain" />
                     Bid Digger AI
                 </h1>
                 <p className="text-xs text-slate-400 mt-1">AI Tender Analysis</p>
             </div>
-            <nav className="px-4 pb-6 space-y-1 flex-1 overflow-y-auto">
+            <nav className="px-4 pb-6 space-y-1 flex-1 overflow-y-auto bg-slate-900 pt-4">
                 {MENU_ORDER.map((sectionId, index) => {
                     const section = SECTIONS_MAP[sectionId];
                     if (!section) return null;
@@ -110,7 +110,7 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                 })}
             </nav>
 
-            <div className="p-4 border-t border-slate-800 space-y-2">
+            <div className="p-4 border-t border-slate-800 space-y-2 bg-slate-950 z-10">
                 <button
                     onClick={() => !isAnalyzing && onSectionClick?.('configurazioni')}
                     disabled={isAnalyzing}

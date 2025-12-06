@@ -1,10 +1,10 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType } from "docx";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType, TableOfContents } from "docx";
 import { saveAs } from "file-saver";
 import type { AnalysisResult } from "@/types";
 
 // Helper to safely extract text from either a string or an object property
 function getText(item: any, propName?: string): string {
-    if (item === undefined || item === null) return "-";
+    if (item === undefined || item === null) return "Non rilevato";
     if (typeof item === 'string') return item;
     if (typeof item === 'number') return item.toString();
     if (typeof item === 'object') {
@@ -22,13 +22,13 @@ function getText(item: any, propName?: string): string {
         const values = Object.values(item).filter(v => typeof v === 'string' || typeof v === 'number');
         if (values.length > 0 && values.length <= 3) return values.join(" - ");
 
-        return "-";
+        return "Non rilevato";
     }
     return String(item);
 }
 
 function safeText(text: any): string {
-    if (text === undefined || text === null) return "-";
+    if (text === undefined || text === null) return "Non rilevato";
     if (typeof text === 'object') return JSON.stringify(text);
     return String(text);
 }
@@ -77,7 +77,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                     id: "Normal",
                     name: "Normal",
                     run: {
-                        font: "Calibri",
+                        font: "Times New Roman",
                         size: 22, // 11pt
                     },
                     paragraph: {
@@ -99,6 +99,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         run: {
                             color: "2E74B5",
                             bold: true,
+                            font: "Times New Roman",
                         }
                     }),
                     new Paragraph({
@@ -108,6 +109,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         spacing: { after: 800 },
                         run: {
                             color: "555555",
+                            font: "Times New Roman",
                         }
                     }),
                     new Paragraph({
@@ -119,6 +121,22 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                     createKeyValueLine("CIG", safeText(data['3_sintesi']?.codici?.cig), true),
                     createKeyValueLine("CUP", safeText(data['3_sintesi']?.codici?.cup), true),
 
+                    new Paragraph({
+                        text: "",
+                        pageBreakBefore: true,
+                    }),
+
+                    // Table of Contents
+                    new Paragraph({
+                        text: "Sommario",
+                        heading: HeadingLevel.HEADING_1,
+                        alignment: AlignmentType.CENTER,
+                        spacing: { after: 400 },
+                    }),
+                    new TableOfContents("Sommario", {
+                        hyperlink: true,
+                        headingStyleRange: "1-3",
+                    }),
                     new Paragraph({
                         text: "",
                         pageBreakBefore: true,
@@ -448,64 +466,49 @@ function renderGenericListSection(data: any, nestedKey: string, textProp: string
 }
 
 function renderSlaPenaliSection(data: any): any[] {
+    // The data structure is expected to be an array where the first item contains the 'sla' and 'penali' arrays.
+    // data['16_sla_penali'][0].sla = [{ indicatore, soglia }, ...]
+    // data['16_sla_penali'][0].penali = [{ descrizione, calcolo }, ...]
+
     const list = getList(data);
     if (list.length === 0) return [createNoDataParagraph()];
 
     const renderContent = (item: any) => {
-        // Explicitly extract SLA list
-        let slaList: any[] = [];
-        const slaRaw = item.sla;
-        if (Array.isArray(slaRaw)) {
-            slaList = slaRaw;
-        } else if (slaRaw && typeof slaRaw === 'object') {
-            if (Array.isArray(slaRaw.elenco)) {
-                slaList = slaRaw.elenco;
-            } else {
-                // If it's a single object that looks like data, wrap it. 
-                // If it's just a container with no data, ignore it.
-                if (slaRaw.indicatore || typeof slaRaw === 'string') {
-                    slaList = [slaRaw];
-                }
-            }
-        }
-
-        // Explicitly extract Penali list
-        let penaliList: any[] = [];
-        const penaliRaw = item.penali;
-        if (Array.isArray(penaliRaw)) {
-            penaliList = penaliRaw;
-        } else if (penaliRaw && typeof penaliRaw === 'object') {
-            if (Array.isArray(penaliRaw.elenco)) {
-                penaliList = penaliRaw.elenco;
-            } else {
-                if (penaliRaw.descrizione || typeof penaliRaw === 'string') {
-                    penaliList = [penaliRaw];
-                }
-            }
-        }
-
-        // Check if lists contain strings or objects to decide how to render
-        const isSlaSimple = slaList.length > 0 && typeof slaList[0] === 'string';
-        const isPenaliSimple = penaliList.length > 0 && typeof penaliList[0] === 'string';
+        const slaList = Array.isArray(item.sla) ? item.sla : [];
+        const penaliList = Array.isArray(item.penali) ? item.penali : [];
 
         return [
-            createSubHeading("SLA"),
+            createSubHeading("Service Level Agreement (SLA)"),
             ...(slaList.length > 0
-                ? createList(slaList, isSlaSimple ? undefined : 'indicatore')
-                : [createBullet("Nessun SLA rilevato")]),
+                ? slaList.flatMap((s: any) => [
+                    createBullet(`Indicatore: ${getText(s, 'indicatore')}`),
+                    new Paragraph({
+                        text: `   Soglia: ${getText(s, 'soglia')}`,
+                        spacing: { after: 100 }
+                    })
+                ])
+                : [createBullet("Nessun SLA specifico rilevato")]),
 
-            createSubHeading("Penali"),
+            createSubHeading("Penali Applicabili"),
             ...(penaliList.length > 0
-                ? createList(penaliList, isPenaliSimple ? undefined : 'descrizione')
-                : [createBullet("Nessuna penale rilevata")]),
+                ? penaliList.flatMap((p: any) => [
+                    createBullet(`Descrizione: ${getText(p, 'descrizione')}`),
+                    new Paragraph({
+                        text: `   Calcolo: ${getText(p, 'calcolo')}`,
+                        spacing: { after: 100 }
+                    })
+                ])
+                : [createBullet("Nessuna penale specifica rilevata")]),
 
+            createSubHeading("Clausole Cumulative"),
             new Paragraph({
-                text: `Clausole Cumulative: ${safeText(item.clausole_cumulative)}`,
-                spacing: { before: 200 }
+                text: safeText(item.clausole_cumulative),
+                spacing: { before: 100, after: 200 }
             })
         ];
     };
 
+    // Keep multi-lot support just in case, though the UI seems to treat it as single block mostly.
     if (isMultiLot(list)) {
         return list.flatMap(lot => [
             createLotHeader(lot.lotto),
@@ -520,7 +523,7 @@ function renderSlaPenaliSection(data: any): any[] {
 
 function createNoDataParagraph() {
     return new Paragraph({
-        text: "Dati non presenti nel risultato dell'analisi.",
+        text: "Non rilevato",
         run: { color: "999999", italics: true }
     });
 }

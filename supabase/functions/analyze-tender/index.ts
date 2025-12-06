@@ -42,6 +42,32 @@ LINEE GUIDA OPERATIVE:
    - SLA: Lista di oggetti { indicatore, soglia, penale_associata }.
    - PENALI: Lista di oggetti { descrizione, calcolo, sla_associato }.
 
+ISTRUZIONI APPROFONDITE PER LA SEZIONE "17_ambiguita_punti_da_chiarire":
+Agisci come un Senior Bid Manager e Legale esperto in Appalti Pubblici (D.lgs. 36/2023). Esegui questi 4 CHECK FONDAMENTALI:
+1. COERENZA DOCUMENTALE: Discrepanze tra Bando/Disciplinare/Capitolato e riferimenti normativi (es. D.lgs 50/2016 abrogato).
+2. ECONOMICO E ONERI:
+   - Manodopera: Verificare se scorporata dalla base d'asta o "non soggetta a ribasso" (art. 41 D.lgs 36/2023).
+   - Revisione Prezzi: È presente e chiara?
+   - Base d'asta: È congrua o sottostimata? Oneri sicurezza a zero?
+3. OPERATIVO E PENALI:
+   - Penali: C'è un tetto massimo (capping 10%)? Sono accumulabili?
+   - SLA: Sono realistici o vaghi?
+   - Risoluzione: Clausole sbilanciate?
+4. REQUISITI E LOCK-IN:
+   - Requisiti "Sartoriali" (es. software proprietari)?
+   - Limiti al Subappalto/Avvalimento non motivati?
+
+MAPPATURA OUTPUT (MATRICE RISCHI -> JSON):
+Invece di una tabella Markdown, popola il JSON così:
+- "ambiguita": Ogni oggetto rappresenta una riga della matrice rischi.
+  - "tipo": [LIVELLO RISCHIO: 🔴/🟡/🟢] + [CATEGORIA: Economico/Tecnico/Amm.vo/Legale]. Esempio: "🔴 Economico".
+  - "descrizione": Descrizione dettagliata del rischio/ambiguità.
+  - "riferimento_documento": Fonte esatta (Documento, Pagina, Articolo).
+- "punti_da_chiarire": Inserisci qui i suggerimenti operativi o quesiti.
+  - "quesito_suggerito": L'azione concreta o il quesito da porre alla SA.
+  - "contesto": Breve richiamo al rischio associato (es. "Rif. mancato scorporo manodopera").
+  - "motivazione": Perché è critico chiarire questo punto.
+
 STRUTTURA JSON RICHIESTA (RISPETTALA RIGOROSAMENTE):
 {
   "_ragionamento": "Spiega brevemente quali documenti hai analizzato e come hai gestito i lotti.",
@@ -394,7 +420,7 @@ Deno.serve(async (req) => {
                   const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s for fallback
 
                   // FIX: Use standard version alias
-                  const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+                  const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-002:generateContent?key=${geminiKey}`;
                   const fallbackRes = await fetch(fallbackUrl, {
                      method: 'POST',
                      headers: { 'Content-Type': 'application/json' },
@@ -418,8 +444,7 @@ Deno.serve(async (req) => {
                   // CRITICAL FIX: Do NOT return null to trigger local fallback if file is large.
                   // Local fallback crashes the Edge Function (CPU limit).
                   // Better to throw error and fail this file than crash the whole process.
-                  // throw new Error("Gemini Extraction Failed (All Models). Local fallback disabled to prevent crash.");
-                  throw new Error("Gemini Extraction Failed (All Models).");
+                  throw new Error("Gemini Extraction Failed (All Models). Local fallback disabled to prevent crash.");
                }
             }
 
@@ -435,9 +460,9 @@ Deno.serve(async (req) => {
          } catch (e: any) {
             console.error("[GeminiExtract] Failed:", e);
             // IMPORTANT: If we explicitly threw an error to avoid local fallback, re-throw it!
-            // if (e.message && e.message.includes("Local fallback disabled")) {
-            //    throw e;
-            // }
+            if (e.message && e.message.includes("Gemini Extraction Failed")) {
+               throw e;
+            }
             return null;
          }
       };
@@ -481,11 +506,23 @@ Deno.serve(async (req) => {
                   } else {
                      // 2. Fallback to Gemini (CPU efficient) - NOW PRIMARY
                      console.log("[Extract] Using Gemini extraction (Primary) for " + filePath);
-                     const geminiText = await extractWithGemini(fileData, filePath.split('/').pop() || 'doc.pdf');
 
-                     if (geminiText) {
-                        extractedText = geminiText;
-                     } else {
+                     try {
+                        const geminiText = await extractWithGemini(fileData, filePath.split('/').pop() || 'doc.pdf');
+                        if (geminiText) {
+                           extractedText = geminiText;
+                        }
+                     } catch (geminiError: any) {
+                        console.error("[Extract] Gemini extraction failed hard:", geminiError);
+                        // If Gemini failed hard, DON'T try standard extraction for PDFs, it will crash.
+                        if (filePath.toLowerCase().endsWith('.pdf')) {
+                           extractedText = "[ERRORE ESTRAZIONE TESTO: Impossibile leggere il PDF. Riprovare tra poco.]";
+                        } else {
+                           // For other files, let it fall through to standard extraction (if implemented differently) or just set null
+                        }
+                     }
+
+                     if (!extractedText && !extractedText.includes("ERRORE")) {
                         // 3. Last Resort: Standard extraction (High CPU)
                         console.log("[Extract] Fallback to standard extraction (Last Resort) for " + filePath);
                         const fileBuffer = await fileData.arrayBuffer();

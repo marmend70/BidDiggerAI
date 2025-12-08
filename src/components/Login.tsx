@@ -169,6 +169,10 @@ export function Login() {
             <div className="w-full lg:w-1/2 bg-slate-50 flex items-center justify-center p-8">
                 <Card className="w-full max-w-md border-none shadow-xl bg-white/80 backdrop-blur-sm">
                     <CardHeader className="space-y-1">
+                        <div className="flex lg:hidden items-center justify-center gap-2 mb-6">
+                            <img src="/logo.png" alt="Bid Digger Logo" className="h-10 w-10 object-contain" />
+                            <span className="text-2xl font-bold tracking-tight text-slate-900">Bid Digger AI</span>
+                        </div>
                         <CardTitle className="text-2xl font-bold text-center text-slate-900">Benvenuto</CardTitle>
                         <CardDescription className="text-center">
                             Accedi alla tua dashboard per gestire le gare

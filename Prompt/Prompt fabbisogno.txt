@@ -1,0 +1,39 @@
+Modifica Richiesta: Dobbiamo ridefinire rigorosamente il campo "Fabbisogno stimato" nella sezione "Dettagli servizi" per estrarre SOLO dati quantitativi legati allo sforzo lavorativo (Effort).
+
+Nuove Istruzioni per l'AI (System Prompt Update):
+
+Per il campo "Fabbisogno Stimato", applica rigorosamente queste regole:
+
+COSA CERCARE (Target): Cerca esclusivamente la quantificazione del personale o dello sforzo richiesto. Estrai numeri, tabelle o stime riferite a:
+
+Ore Lavoro (es. "Monte ore stimato: 10.000").
+
+Giorni/Uomo o Giornate/Uomo (es. "Fabbisogno: 500 gg/uomo").
+
+FTE (Full Time Equivalent).
+
+Mesi/Uomo.
+
+Composizione del Gruppo di Lavoro minimo richiesto (es. "1 Project Manager per 12 mesi, 2 Analisti senior").
+
+COSA IGNORARE (Negative Constraint):
+
+NON riportare gli obiettivi strategici del progetto (es. "Migliorare l'efficienza", "Digitalizzazione").
+
+NON riportare la descrizione generale del servizio (es. "Servizi di manutenzione software").
+
+Se il bando descrive perché serve il servizio, ignoralo. Concentrati su quanto servizio serve.
+
+FORMATO OUTPUT:
+
+Se presenti tabelle di stima ore/costi manodopera, riporta i dati essenziali.
+
+Fallback: Se nel documento NON sono presenti stime quantitative di ore/giorni (spesso accade negli appalti a canone o a risultato), scrivi esplicitamente: "Nessuna quantificazione oraria/giornate uomo esplicitata nel documento. Verificare in fase di lettura diretta se l'appalto è a corpo/canone."
+
+Esempio di estrazione corretta:
+
+Input: "L'appalto prevede un monte ore presunto di 5.000 ore per profili Senior e 2.000 per Junior."
+
+Output Fabbisogno Stimato: "Monte ore totale: 7.000 (5.000 Senior, 2.000 Junior)."
+
+Azione: Aggiorna il prompt di estrazione o lo schema Zod/JSON per riflettere questa definizione restrittiva.

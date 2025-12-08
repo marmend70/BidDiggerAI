@@ -23,6 +23,7 @@ interface LayoutProps {
     isAnalyzing?: boolean;
     loadingBatches?: string[];
     onNewAnalysis?: () => void;
+    onOpenContact?: () => void;
 }
 
 interface SidebarContentProps {
@@ -172,7 +173,7 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
 }
 
 export function Layout(props: LayoutProps) {
-    const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [] } = props;
+    const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onOpenContact } = props;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
     const handleExport = async () => {
@@ -259,7 +260,7 @@ export function Layout(props: LayoutProps) {
                 <div className="flex-1 p-4 md:p-6">
                     {children}
                 </div>
-                <Footer />
+                <Footer onOpenContact={onOpenContact} />
             </main>
         </div>
     );

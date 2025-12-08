@@ -35,7 +35,9 @@ REGOLE DI OUTPUT:
 - Non aggiungere chiavi non previste. Non inserire testo fuori dal JSON.
 
 LINEE GUIDA OPERATIVE:
-1. "SERVIZI": Se non espliciti, sintetizza le attività da svolgere.
+1. "SERVIZI":
+   - "fabbisogno" (RIGOROSO): Cerca ESCLUSIVAMENTE quantificazioni di sforzo: Ore Lavoro, Giorni/Uomo, FTE, Mesi/Uomo, Composizione Gruppo Minimo. IGNORA obiettivi strategici ("Migliorare efficienza") o descrizioni di servizio. Se non trovi stime numeriche, SCRIVI: "Nessuna quantificazione oraria/giornate uomo esplicitata nel documento. Verificare in fase di lettura diretta se l'appalto è a corpo/canone."
+   - "attivita": Sintetizza le attività operative richieste.
 2. "AMBIGUITÀ": Riporta contraddizioni o punti poco chiari.
 3. "REQUISITI": Distingui tra generali, speciali, idoneità, capacità.
 4. "SLA E PENALI":

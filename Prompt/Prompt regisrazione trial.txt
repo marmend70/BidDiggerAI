@@ -1,0 +1,41 @@
+Facciamo una modifica: 
+
+Specifiche Tecniche & Regole di Business:
+
+Flusso di Registrazione (Onboarding):
+
+Quando un nuovo utente si registra (Sign Up), deve essere automaticamente assegnato a un piano tier: 'trial'.
+
+Non richiedere carta di credito all'iscrizione. Accesso immediato alla dashboard.
+
+Limiti del Piano Trial (Logic Enforcement):
+
+Max Progetti (Analisi): L'utente Trial può creare al massimo 2 progetti (o "Gare").
+
+Logic: Controlla il count dei progetti creati dall'utente. Se project_count >= 2, disabilita il tasto "Nuova Analisi" e mostra un modale/paywall per l'upgrade al piano Mensile.
+
+Max Documenti per Progetto: L'utente Trial può caricare al massimo 3 file per ogni singolo progetto.
+
+Logic: Nel form di upload, se files_in_project >= 3, blocca ulteriori upload.
+
+Frontend & UX (Educare l'utente):
+
+Contatore Visibile: Nella dashboard, mostra chiaramente "Analisi rimanenti: X/2".
+
+Avviso Upload (Strategico): Nell'area di upload (dropzone), se l'utente è in Trial, mostra questo messaggio specifico (tooltip o testo di aiuto):
+
+"Versione Trial limitata a 3 documenti. Per un'analisi ottimale, carica: 1. Disciplinare, 2. Capitolato Tecnico, 3. Bando/Schema Contratto."
+
+Blocco Upgrade: Quando l'utente raggiunge il limite di 2 analisi, l'azione successiva deve reindirizzare alla pagina di Pricing/Stripe.
+
+Database Schema (Suggerimento):
+
+Assicurati che nella tabella users o subscriptions ci siano i campi per tracciare:
+
+plan_type: 'trial' | 'pro'
+
+trial_projects_used: integer (default 0)
+
+Oppure deriva il conteggio direttamente dalla tabella projects associata allo user_id.
+
+Istruzioni di Implementazione: Genera il codice (o modifica i file esistenti di Auth e Database) per riflettere queste regole. Assicurati che i controlli siano lato Backend (per sicurezza) e che la UI rifletta lo stato in tempo reale.

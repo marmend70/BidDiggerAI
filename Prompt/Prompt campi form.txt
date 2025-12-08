@@ -1,0 +1,33 @@
+Aggiungo questi campi non obbligatori al form di registrazione (anche come menu a tendina/dropdown per non annoiare l'utente), spiegati dal punto di vista del business:
+
+1. "Ruolo / Funzione" (Dropdown)
+
+Opzioni:
+
+Bid / Proposal Manager
+Responsabile Ufficio Gare
+Imprenditore / CEO
+Area Commerciale / Sales
+Tecnico / Progettista
+Consulente Gare / Libero Professionista
+Addetto Ufficio Gare
+Avvocato /Legal
+Altro
+
+1. "Settore Principale di Gara" (Dropdown)
+
+Opzioni:
+
+ICT & Software (Servizi Digitali)
+Facility Management (Pulizie, Vigilanza, Manutenzione, altro)
+Sarvizi attinenti alla Sanità
+Servizi Socio-Sanitari, Sociale e di Assistenza alla persona
+Consulenza e formazione
+Altra tipologia di servizi
+
+2. "Volume Annuo di Gare gestite" (Dropdown)
+
+Meno di 5 all'anno
+1-2 al mese
+3-10 al mese
+Oltre 10 al mese

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Mail } from 'lucide-react';
 import { TERMS_AND_CONDITIONS, PRIVACY_POLICY, COOKIE_POLICY } from '@/constants/legalText';
-import { LegalModal } from './LegalModal'; // Assuming LegalModal is in the same directory
+import { LegalModal } from './LegalModal';
 
-export function Footer() {
+export function Footer({ onOpenContact }: { onOpenContact?: () => void }) {
     const [modalOpen, setModalOpen] = useState<'APP_TERMS' | 'PRIVACY' | 'COOKIE' | null>(null);
 
     const openModal = (type: 'APP_TERMS' | 'PRIVACY' | 'COOKIE') => {
@@ -59,6 +59,12 @@ export function Footer() {
                             className="hover:text-blue-600 hover:underline transition-colors"
                         >
                             Cookie Policy
+                        </button>
+                        <button
+                            onClick={() => onOpenContact?.()}
+                            className="hover:text-blue-600 hover:underline transition-colors"
+                        >
+                            Contatti
                         </button>
                     </div>
 

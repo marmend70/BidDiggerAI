@@ -6,6 +6,8 @@ import { Login } from '@/components/Login';
 import { ArchivePage } from '@/components/ArchivePage';
 import { TimeoutModal } from '@/components/TimeoutModal';
 import { ModelSelectionModal } from '@/components/ModelSelectionModal';
+import { UpgradeModal } from '@/components/UpgradeModal';
+import { ContactModal } from '@/components/ContactModal';
 import { AVAILABLE_MODELS } from '@/constants';
 import { supabase } from '@/lib/supabase';
 import type { AnalysisResult, UserPreferences } from '@/types';
@@ -88,11 +90,18 @@ function App() {
   const [isAsking, setIsAsking] = useState(false);
   const [userPreferences, setUserPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
 
+  // Trial & Logic State
+  const [userPlan, setUserPlan] = useState<'trial' | 'pro'>('trial');
+  const [tenderCount, setTenderCount] = useState(0);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const MAX_TRIAL_TENDERS = 2;
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
-        fetchUserPreferences(session.user.id);
+        fetchUserData(session.user.id);
       }
     });
 
@@ -101,48 +110,58 @@ function App() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session?.user) {
-        fetchUserPreferences(session.user.id);
+        fetchUserData(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserPreferences = async (userId: string) => {
+  const fetchUserData = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      // 1. Fetch Preferences & Plan
+      const { data: profile } = await supabase
         .from('profiles')
-        .select('preferences')
+        .select('preferences, plan_type')
         .eq('id', userId)
         .single();
 
-      if (error) {
-        console.error('Error fetching preferences:', error);
-        return;
+      if (profile) {
+        if (profile.plan_type) setUserPlan(profile.plan_type as 'trial' | 'pro');
+
+        if (profile.preferences) {
+          setUserPreferences({
+            ...DEFAULT_PREFERENCES,
+            ...profile.preferences,
+            export_sections: {
+              ...DEFAULT_PREFERENCES.export_sections,
+              ...(profile.preferences.export_sections || {}),
+              'faq': true
+            },
+            analysis_sections: {
+              ...DEFAULT_PREFERENCES.analysis_sections,
+              ...(profile.preferences.analysis_sections || {})
+            },
+            semantic_analysis_sections: {
+              ...DEFAULT_PREFERENCES.semantic_analysis_sections,
+              ...(profile.preferences.semantic_analysis_sections || {})
+            }
+          });
+        }
       }
 
-      if (data?.preferences) {
-        // Merge with default to ensure all keys exist (in case of new features)
-        setUserPreferences({
-          ...DEFAULT_PREFERENCES,
-          ...data.preferences,
-          export_sections: {
-            ...DEFAULT_PREFERENCES.export_sections,
-            ...(data.preferences.export_sections || {}),
-            'faq': true
-          },
-          analysis_sections: {
-            ...DEFAULT_PREFERENCES.analysis_sections,
-            ...(data.preferences.analysis_sections || {})
-          },
-          semantic_analysis_sections: {
-            ...DEFAULT_PREFERENCES.semantic_analysis_sections,
-            ...(data.preferences.semantic_analysis_sections || {})
-          }
-        });
+      // 2. Fetch Tender Count
+      const { count, error: countError } = await supabase
+        .from('tenders')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+      if (!countError && count !== null) {
+        setTenderCount(count);
       }
+
     } catch (err) {
-      console.error('Error fetching preferences:', err);
+      console.error('Error fetching user data:', err);
     }
   };
 
@@ -233,6 +252,12 @@ function App() {
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   const handleFileSelection = (files: File[]) => {
+    // 1. Check Limits before showing model modal
+    if (userPlan === 'trial' && tenderCount >= MAX_TRIAL_TENDERS) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     setPendingFiles(files);
     // Use default model from preferences if available
     if (userPreferences.structured_model) setSelectedStructuredModel(userPreferences.structured_model);
@@ -717,7 +742,17 @@ function App() {
       isAnalyzing={isUploading}
       loadingBatches={loadingBatches}
       onNewAnalysis={handleNewAnalysis}
+      onOpenContact={() => setContactModalOpen(true)}
     >
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        onOpenContact={() => { setShowUpgradeModal(false); setContactModalOpen(true); }}
+      />
+      <ContactModal
+        isOpen={contactModalOpen}
+        onClose={() => setContactModalOpen(false)}
+      />
       <TimeoutModal
         isOpen={showTimeoutModal}
         onContinue={() => handleTimeoutDecision('continue')}
@@ -732,14 +767,23 @@ function App() {
       />
       {!analysisData && activeSection !== 'configurazioni' && activeSection !== 'archivio' ? (
         <div className="flex flex-col items-center justify-center h-full">
-          <div className="text-center mb-8">
+          <div className="text-center mb-8 relative">
+            {userPlan === 'trial' && (
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-semibold border border-slate-200">
+                Analisi Rimanenti: {Math.max(0, MAX_TRIAL_TENDERS - tenderCount)}/{MAX_TRIAL_TENDERS}
+              </div>
+            )}
             <h1 className="text-4xl font-bold text-slate-900 mb-4">Benvenuto in Bid Digger</h1>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
               Carica i documenti di gara (PDF) e lascia che la nostra AI li analizzi per te.
               Estrai requisiti, scadenze e criteri di valutazione in pochi secondi.
             </p>
           </div>
-          <Upload onUpload={async (files) => handleFileSelection(files)} isUploading={isUploading} />
+          <Upload
+            onUpload={async (files) => handleFileSelection(files)}
+            isUploading={isUploading}
+            userTier={userPlan}
+          />
 
           <div className="mt-8 max-w-3xl mx-auto grid gap-4 md:grid-cols-3 text-left">
             <div className="p-4 bg-white rounded-lg border border-slate-200 shadow-sm">

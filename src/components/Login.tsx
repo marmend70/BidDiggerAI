@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, UploadCloud, Sliders, FileText, MessageSquare, AlertTriangle } from 'lucide-react';
+import { Loader2, UploadCloud, Sliders, FileText, MessageSquare, AlertTriangle, Sparkles } from 'lucide-react';
 import { TERMS_AND_CONDITIONS, PRIVACY_POLICY } from '@/constants/legalText';
 import { LegalModal } from './LegalModal';
 
@@ -13,6 +13,9 @@ export function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [role, setRole] = useState('');
+    const [sector, setSector] = useState('');
+    const [tenderVolume, setTenderVolume] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [showConfirmation, setShowConfirmation] = useState(false);
 
@@ -63,7 +66,10 @@ export function Login() {
                         accepted_terms: acceptedTerms,
                         accepted_public_nature: acceptedPublicNature,
                         accepted_ai_limits: acceptedAiLimits,
-                        consents_timestamp: new Date().toISOString()
+                        consents_timestamp: new Date().toISOString(),
+                        role,
+                        sector,
+                        tender_volume: tenderVolume
                     }
                 },
             });
@@ -136,6 +142,19 @@ export function Login() {
                             <div>
                                 <h3 className="font-bold text-xl text-white mb-1">Interroga i documenti</h3>
                                 <p className="text-slate-300 text-base leading-relaxed">Hai bisogno di più dettagli? Aggiungi domande specifiche all'AI e approfondisci qualsiasi punto del bando.</p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-5 items-start">
+                            <div className="h-12 w-12 rounded-xl bg-slate-800/80 flex items-center justify-center border border-slate-700 flex-shrink-0 shadow-lg backdrop-blur-sm">
+                                <Sparkles className="h-6 w-6 text-yellow-400" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-xl text-white mb-1">Prova Gratuita</h3>
+                                <p className="text-slate-300 text-base leading-relaxed">
+                                    Registrazione libera con <strong>2 Analisi Complete</strong> in omaggio. <br />
+                                    Nessuna carta di credito richiesta per iniziare.
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -219,6 +238,15 @@ export function Login() {
 
                                     <TabsContent value="register">
                                         <form onSubmit={handleSignUp} className="space-y-4">
+                                            {/* Trial Info Banner */}
+                                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-3 mb-4">
+                                                <Sparkles className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                                                <div className="text-sm text-amber-900">
+                                                    <span className="font-semibold block text-amber-950">Prova Gratuita Attiva</span>
+                                                    Registrati ora per ottenere <strong>2 Analisi Complete</strong> in omaggio. Nessun pagamento richiesto.
+                                                </div>
+                                            </div>
+
                                             <div className="space-y-2">
                                                 <Input
                                                     type="email"
@@ -239,6 +267,58 @@ export function Login() {
                                                     className="bg-white"
                                                 />
                                             </div>
+
+                                            <div className="space-y-4 pt-2">
+                                                <div className="space-y-2">
+                                                    <select
+                                                        value={role}
+                                                        onChange={(e) => setRole(e.target.value)}
+                                                        className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-slate-600"
+                                                    >
+                                                        <option value="">Seleziona Ruolo / Funzione (Opzionale)</option>
+                                                        <option value="Bid / Proposal Manager">Bid / Proposal Manager</option>
+                                                        <option value="Responsabile Ufficio Gare">Responsabile Ufficio Gare</option>
+                                                        <option value="Imprenditore / CEO">Imprenditore / CEO</option>
+                                                        <option value="Area Commerciale / Sales">Area Commerciale / Sales</option>
+                                                        <option value="Tecnico / Progettista">Tecnico / Progettista</option>
+                                                        <option value="Consulente Gare / Libero Professionista">Consulente Gare / Libero Professionista</option>
+                                                        <option value="Addetto Ufficio Gare">Addetto Ufficio Gare</option>
+                                                        <option value="Avvocato / Legal">Avvocato / Legal</option>
+                                                        <option value="Altro">Altro</option>
+                                                    </select>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <select
+                                                        value={sector}
+                                                        onChange={(e) => setSector(e.target.value)}
+                                                        className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-slate-600"
+                                                    >
+                                                        <option value="">Settore / Ambito Principale (Opzionale)</option>
+                                                        <option value="ICT & Software">ICT & Software (Servizi Digitali)</option>
+                                                        <option value="Facility Management">Facility Management (Pulizie, Vigilanza, Manutenzione)</option>
+                                                        <option value="Sanità">Servizi attinenti alla Sanità</option>
+                                                        <option value="Socio-Sanitario">Servizi Socio-Sanitari e Assistenza</option>
+                                                        <option value="Consulenza e formazione">Consulenza e formazione</option>
+                                                        <option value="Altro">Altra tipologia di servizi</option>
+                                                    </select>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <select
+                                                        value={tenderVolume}
+                                                        onChange={(e) => setTenderVolume(e.target.value)}
+                                                        className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-slate-600"
+                                                    >
+                                                        <option value="">Volume Annuo Gare gestite (Opzionale)</option>
+                                                        <option value="Meno di 10 all'anno">Meno di 10 all'anno</option>
+                                                        <option value="1-2 al mese">1-2 al mese</option>
+                                                        <option value="3-10 al mese">3-10 al mese</option>
+                                                        <option value="Oltre 10 al mese">Oltre 10 al mese</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
                                             <div className="space-y-4 mt-6">
                                                 <div className="flex items-start space-x-3">
                                                     <Checkbox

@@ -1,4 +1,4 @@
-Aggiungo questi campi non obbligatori al form di registrazione (anche come menu a tendina/dropdown per non annoiare l'utente), spiegati dal punto di vista del business:
+Aggiungi questi campi non obbligatori al form di registrazione (anche come menu a tendina/dropdown per non annoiare l'utente), spiegati dal punto di vista del business:
 
 1. "Ruolo / Funzione" (Dropdown)
 
@@ -14,7 +14,7 @@ Addetto Ufficio Gare
 Avvocato /Legal
 Altro
 
-1. "Settore Principale di Gara" (Dropdown)
+1. "Settore /Ambito Principale" (Dropdown)
 
 Opzioni:
 
@@ -27,7 +27,9 @@ Altra tipologia di servizi
 
 2. "Volume Annuo di Gare gestite" (Dropdown)
 
-Meno di 5 all'anno
+Meno di 10 all'anno
 1-2 al mese
 3-10 al mese
 Oltre 10 al mese
+
+Salva queste informazioni nella profilazione utente.

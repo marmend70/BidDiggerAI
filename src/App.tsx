@@ -769,7 +769,7 @@ function App() {
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-center mb-8 relative">
             {userPlan === 'trial' && (
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-semibold border border-slate-200">
+              <div className="inline-block mb-4 bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-semibold border border-slate-200">
                 Analisi Rimanenti: {Math.max(0, MAX_TRIAL_TENDERS - tenderCount)}/{MAX_TRIAL_TENDERS}
               </div>
             )}

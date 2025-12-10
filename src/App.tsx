@@ -8,6 +8,7 @@ import { TimeoutModal } from '@/components/TimeoutModal';
 import { ModelSelectionModal } from '@/components/ModelSelectionModal';
 import { UpgradeModal } from '@/components/UpgradeModal';
 import { ContactModal } from '@/components/ContactModal';
+import { PricingModal } from '@/components/PricingModal';
 import { AVAILABLE_MODELS } from '@/constants';
 import { supabase } from '@/lib/supabase';
 import type { AnalysisResult, UserPreferences } from '@/types';
@@ -92,8 +93,10 @@ function App() {
 
   // Trial & Logic State
   const [userPlan, setUserPlan] = useState<'trial' | 'pro'>('trial');
+  const [userCredits, setUserCredits] = useState<number>(0); // Credits state
   const [tenderCount, setTenderCount] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showPricingModal, setShowPricingModal] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const MAX_TRIAL_TENDERS = 2;
 
@@ -122,12 +125,13 @@ function App() {
       // 1. Fetch Preferences & Plan
       const { data: profile } = await supabase
         .from('profiles')
-        .select('preferences, plan_type')
+        .select('preferences, plan_type, credits')
         .eq('id', userId)
         .single();
 
       if (profile) {
         if (profile.plan_type) setUserPlan(profile.plan_type as 'trial' | 'pro');
+        if (typeof profile.credits === 'number') setUserCredits(profile.credits);
 
         if (profile.preferences) {
           setUserPreferences({
@@ -252,9 +256,9 @@ function App() {
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   const handleFileSelection = (files: File[]) => {
-    // 1. Check Limits before showing model modal
-    if (userPlan === 'trial' && tenderCount >= MAX_TRIAL_TENDERS) {
-      setShowUpgradeModal(true);
+    // 1. Check Credits
+    if (userCredits < 1) {
+      setShowPricingModal(true);
       return;
     }
 
@@ -753,6 +757,11 @@ function App() {
         isOpen={contactModalOpen}
         onClose={() => setContactModalOpen(false)}
       />
+      <PricingModal
+        isOpen={showPricingModal}
+        onClose={() => setShowPricingModal(false)}
+        userId={session?.user?.id}
+      />
       <TimeoutModal
         isOpen={showTimeoutModal}
         onContinue={() => handleTimeoutDecision('continue')}
@@ -765,14 +774,15 @@ function App() {
         defaultStructuredModelId={userPreferences.structured_model}
         defaultSemanticModelId={userPreferences.semantic_model}
       />
-      {!analysisData && activeSection !== 'configurazioni' && activeSection !== 'archivio' ? (
+      {activeSection !== 'configurazioni' && activeSection !== 'archivio' ? (
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-center mb-8 relative">
-            {userPlan === 'trial' && (
-              <div className="inline-block mb-4 bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-semibold border border-slate-200">
-                Analisi Rimanenti: {Math.max(0, MAX_TRIAL_TENDERS - tenderCount)}/{MAX_TRIAL_TENDERS}
-              </div>
-            )}
+            <div className="inline-block mb-4 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-full text-sm font-semibold border border-indigo-100 flex items-center gap-2">
+              <span>Crediti disponibili: {userCredits}</span>
+              <button onClick={() => setShowPricingModal(true)} className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700">
+                Ricarica
+              </button>
+            </div>
             <h1 className="text-4xl font-bold text-slate-900 mb-4">Benvenuto in Bid Digger</h1>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
               Carica i documenti di gara (PDF) e lascia che la nostra AI li analizzi per te.

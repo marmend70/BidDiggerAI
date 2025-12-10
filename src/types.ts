@@ -192,5 +192,6 @@ export interface UserProfile {
     id: string;
     company_name?: string;
     full_name?: string;
+    credits: number; // Added for credit system
     preferences?: UserPreferences;
 }

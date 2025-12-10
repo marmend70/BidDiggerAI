@@ -162,3 +162,9 @@ export const AVAILABLE_MODELS = [
         type: 'semantic'
     }
 ];
+
+export const LEMON_SQUEEZY_URLS = {
+    STARTER: "https://bigdigger.lemonsqueezy.com/buy/35ed83e3-8cf3-4f30-b532-9b9f270647a6",
+    PRO: "https://bigdigger.lemonsqueezy.com/buy/93698d97-8778-4a25-87c1-c9c98a1557a5",
+    AGENCY: "https://bigdigger.lemonsqueezy.com/buy/69aa6cca-70fb-406c-b1d5-f8c633e4e719"
+};

@@ -586,6 +586,52 @@ Deno.serve(async (req) => {
       // --- ACTION: EXTRACT AND STORE ---
       if (action === 'extract_and_store') {
          console.log("[Extract] Starting extraction and storage...");
+
+         // 1. Credit Check & Deduction
+         const { data: tenderData, error: tenderError } = await supabaseClient
+            .from('tenders')
+            .select('user_id')
+            .eq('id', tenderId)
+            .single();
+
+         if (tenderError || !tenderData) {
+            console.error("Failed to fetch tender owner:", tenderError);
+            throw new Error("Impossibile verificare i crediti: gara non trovata.");
+         }
+
+         const userId = tenderData.user_id;
+
+         const { data: profileData, error: profileError } = await supabaseClient
+            .from('profiles')
+            .select('credits')
+            .eq('id', userId)
+            .single();
+
+         if (profileError || !profileData) {
+            console.error("Failed to fetch user profile:", profileError);
+            throw new Error("Impossibile verificare i crediti: profilo non trovato.");
+         }
+
+         const userCredits = profileData.credits || 0;
+         console.log(`[Credits] User ${userId} has ${userCredits} credits.`);
+
+         if (userCredits < 1) {
+            throw new Error("Crediti insufficienti per avviare una nuova analisi. Ricarica il tuo portafoglio.");
+         }
+
+         // Deduct credit
+         const { error: deductError } = await supabaseClient
+            .from('profiles')
+            .update({ credits: userCredits - 1 })
+            .eq('id', userId);
+
+         if (deductError) {
+            console.error("Failed to deduct credit:", deductError);
+            throw new Error("Errore durante l'aggiornamento dei crediti. Riprova.");
+         }
+
+         console.log(`[Credits] Deducted 1 credit. New balance: ${userCredits - 1}`);
+
          let text = await extractTextFromFiles();
 
          console.log("[Extract] Total text length: " + text.length);

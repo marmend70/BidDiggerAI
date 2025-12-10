@@ -8,11 +8,13 @@ import { TimeoutModal } from '@/components/TimeoutModal';
 import { ModelSelectionModal } from '@/components/ModelSelectionModal';
 import { UpgradeModal } from '@/components/UpgradeModal';
 import { ContactModal } from '@/components/ContactModal';
+import { ScanRetryModal } from '@/components/ScanRetryModal';
 import { PricingModal } from '@/components/PricingModal';
 import { AVAILABLE_MODELS } from '@/constants';
 import { supabase } from '@/lib/supabase';
 import type { AnalysisResult, UserPreferences } from '@/types';
 import type { Session } from '@supabase/supabase-js';
+
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   structured_model: 'gemini-2.5-flash',
@@ -83,6 +85,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   }
 };
 
+
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [activeSection, setActiveSection] = useState('3_sintesi');
@@ -99,6 +102,8 @@ function App() {
   const [showPricingModal, setShowPricingModal] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const MAX_TRIAL_TENDERS = 2;
+  const [showScanRetryModal, setShowScanRetryModal] = useState(false);
+  const [pendingRetryParams, setPendingRetryParams] = useState<{ sectionId: string, question: string } | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -666,9 +671,10 @@ function App() {
     }
   };
 
-  const handleAskQuestion = async (sectionId: string, question: string) => {
+  const handleAskQuestion = async (sectionId: string, question: string, forceVisualMode = false) => {
     if (!analysisData || !session?.user) return;
     setIsAsking(true);
+    console.log("Asking question with forceVisualMode:", forceVisualMode);
 
     try {
       // Fetch file paths from tender_documents
@@ -691,11 +697,65 @@ function App() {
           section: sectionId,
           question: question,
           filePaths: filePaths,
-          model: selectedSemanticModel // Use semantic model for questions
+          model: selectedSemanticModel, // Use semantic model for questions
+          forceVisualMode: forceVisualMode
         }
       });
 
       if (error) throw error;
+      console.log("Backend response debug mode:", data._debug_mode);
+      console.log("Full backend response:", data);
+
+      // SMART RETRY LOGIC (Frontend Detection)
+      if (!forceVisualMode && data && data.answer) {
+        const lowerAnswer = data.answer.toLowerCase();
+        // Keywords suggesting failed OCR / empty text
+        const failureKeywords = [
+          "[[scan_detected]]", // Strict tag from backend
+          "non riesco a leggere",
+          "non riesco a trovare il testo",
+          "testo estratto è vuoto",
+          "documento sembra vuoto",
+          "impossibile leggere",
+          "non vedo il testo",
+          "nei documenti forniti non",
+          "non contengono testo",
+          "scansione",
+          "immagine",
+          "errore estrazione testo",
+          "non è stato possibile leggere",
+          "non è disponibile nei documenti",
+          "non posso rispondere sulla base dei documenti",
+          "non posso rispondere basandomi",
+          "non è possibile rispondere",
+          "non trovo informazioni",
+          "non riesco a rispondere",
+          "non sono in grado di rispondere",
+          "purtroppo non",
+          "mi dispiace ma",
+          "basandomi esclusivamente sui documenti forniti non"
+        ];
+
+        // If answer is short (< 1000 chars) AND contains failure keyword
+        // (Short check prevents false positives in long explanations)
+        console.log("Checking for failure. Length:", data.answer.length);
+        const detectedKeyword = failureKeywords.find(k => lowerAnswer.includes(k));
+        if (detectedKeyword) console.log("Detected keyword:", detectedKeyword);
+
+        // CONDITIONAL LOGIC:
+        // 1. If strict tag [[scan_detected]] is found -> ALWAYS trigger (ignore length)
+        // 2. If other weak keywords found -> trigger ONLY if answer is short (< 1000 chars)
+        const isStrictTag = detectedKeyword === "[[scan_detected]]";
+        const isShortEnough = data.answer.length < 1000;
+
+        if ((isStrictTag || (detectedKeyword && isShortEnough))) {
+          console.log("Detected potential OCR failure. Suggesting Visual Mode retry.");
+          setPendingRetryParams({ sectionId, question });
+          setShowScanRetryModal(true);
+          setIsAsking(false); // Stop loading
+          return; // Halt process, don't show the failed answer yet
+        }
+      }
 
       // Update local state with the new answer
       if (data && data.answer) {
@@ -757,6 +817,20 @@ function App() {
         isOpen={contactModalOpen}
         onClose={() => setContactModalOpen(false)}
       />
+      <ScanRetryModal
+        isOpen={showScanRetryModal}
+        onClose={() => {
+          setShowScanRetryModal(false);
+          setPendingRetryParams(null);
+        }}
+        onConfirm={() => {
+          if (pendingRetryParams) {
+            handleAskQuestion(pendingRetryParams.sectionId, pendingRetryParams.question, true);
+            setShowScanRetryModal(false);
+            setPendingRetryParams(null);
+          }
+        }}
+      />
       <PricingModal
         isOpen={showPricingModal}
         onClose={() => setShowPricingModal(false)}
@@ -774,7 +848,7 @@ function App() {
         defaultStructuredModelId={userPreferences.structured_model}
         defaultSemanticModelId={userPreferences.semantic_model}
       />
-      {activeSection !== 'configurazioni' && activeSection !== 'archivio' ? (
+      {!analysisData && activeSection !== 'configurazioni' && activeSection !== 'archivio' ? (
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-center mb-8 relative">
             <div className="inline-block mb-4 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-full text-sm font-semibold border border-indigo-100 flex items-center gap-2">

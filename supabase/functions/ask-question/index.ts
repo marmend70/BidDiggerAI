@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import OpenAI from 'https://esm.sh/openai@4.28.0'
+import { GoogleGenerativeAI } from "npm:@google/generative-ai";
+import { GoogleAIFileManager } from "npm:@google/generative-ai/server";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -9,8 +11,210 @@ const corsHeaders = {
 
 serve(async (req) => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+
+    const flowLogs: string[] = [];
+    const log = (msg: string) => {
+        console.log(msg);
+        flowLogs.push(`${new Date().toISOString().split('T')[1].slice(0, 8)}: ${msg}`);
+    };
+
+    // --- HELPER: Gemini Raw Extraction (Parity with analyze-tender) ---
+    const extractWithGeminiRaw = async (fileBlob: Blob, fileName: string): Promise<string | null> => {
+        const geminiKey = Deno.env.get('GEMINI_API_KEY');
+        if (!geminiKey) {
+            log("[GeminiRaw] No API Key found.");
+            return null;
+        }
+
+        try {
+            // 1. Init Upload
+            log(`[GeminiRaw] Initializing upload for ${fileName}...`);
+            const initRes = await fetch(`https://generativelanguage.googleapis.com/upload/v1beta/files?key=${geminiKey}`, {
+                method: 'POST',
+                headers: {
+                    'X-Goog-Upload-Protocol': 'resumable',
+                    'X-Goog-Upload-Command': 'start',
+                    'X-Goog-Upload-Header-Content-Length': fileBlob.size.toString(),
+                    'X-Goog-Upload-Header-Content-Type': 'application/pdf',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ file: { display_name: fileName } })
+            });
+
+            if (!initRes.ok) throw new Error(`Init upload failed: ${initRes.status}`);
+            const uploadUrl = initRes.headers.get('x-goog-upload-url');
+            if (!uploadUrl) throw new Error("No upload URL returned");
+
+            // 2. Upload Bytes
+            log(`[GeminiRaw] Uploading bytes...`);
+            const uploadRes = await fetch(uploadUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Length': fileBlob.size.toString(),
+                    'X-Goog-Upload-Offset': '0',
+                    'X-Goog-Upload-Command': 'upload, finalize'
+                },
+                body: fileBlob
+            });
+            if (!uploadRes.ok) throw new Error(`Byte upload failed: ${uploadRes.status}`);
+
+            const fileInfo = await uploadRes.json();
+            const fileUri = fileInfo.file.uri;
+            log(`[GeminiRaw] File uploaded. URI: ${fileUri}`);
+
+            // 3. Wait for Active
+            let state = fileInfo.file.state;
+            let checks = 0;
+            while (state === 'PROCESSING' && checks < 30) {
+                await new Promise(r => setTimeout(r, 1000));
+                const stateRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/files/${fileInfo.file.name}?key=${geminiKey}`);
+                const stateData = await stateRes.json();
+                state = stateData.state;
+                if (state === 'FAILED') throw new Error("Gemini File Processing Failed");
+                checks++;
+            }
+            if (state === 'PROCESSING') throw new Error("Gemini File Processing Timeout");
+
+            // 4. Generate
+            log("[GeminiRaw] Generating content (Primary: 2.5-flash)...");
+
+            // Try Primary (matches analyze-tender)
+            try {
+                const genUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+                const genRes = await fetch(genUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { file_data: { mime_type: 'application/pdf', file_uri: fileUri } },
+                                { text: "Estrai tutto il testo contenuto in questo documento. Restituisci SOLO il testo estratto." }
+                            ]
+                        }]
+                    })
+                });
+                if (genRes.ok) {
+                    const result = await genRes.json();
+                    return result.candidates?.[0]?.content?.parts?.[0]?.text || null;
+                }
+                log(`[GeminiRaw] Primary failed (${genRes.status}), trying fallback...`);
+            } catch (e) {
+                log(`[GeminiRaw] Primary except: ${e}`);
+            }
+
+            // Fallback (matches analyze-tender: 1.5-flash-002)
+            log("[GeminiRaw] Generating content (Fallback: 1.5-flash-002)...");
+            const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-002:generateContent?key=${geminiKey}`;
+            const fallbackRes = await fetch(fallbackUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { file_data: { mime_type: 'application/pdf', file_uri: fileUri } },
+                            { text: "Estrai tutto il testo contenuto in questo documento. Restituisci SOLO il testo estratto." }
+                        ]
+                    }]
+                })
+            });
+
+            if (!fallbackRes.ok) throw new Error(`Fallback failed: ${fallbackRes.status}`);
+            const result = await fallbackRes.json();
+            return result.candidates?.[0]?.content?.parts?.[0]?.text || null;
+
+        } catch (e: any) {
+            log(`[GeminiRaw] Error: ${e.message}`);
+            return null;
+        }
+    };
+
+    // --- HELPER: LlamaParse Extraction ---
+    const extractWithLlamaParse = async (fileBlob: Blob, fileName: string): Promise<string | null> => {
+        const llamaKey = Deno.env.get('LLAMA_CLOUD_API_KEY')?.trim();
+        if (!llamaKey) {
+            log("[LlamaParse] No API Key found, skipping.");
+            return null;
+        }
+        log("[LlamaParse] Key configured: " + llamaKey.substring(0, 5) + "...");
+
+        try {
+            log("[LlamaParse] Uploading " + fileName + "...");
+            const formData = new FormData();
+            formData.append('file', fileBlob, fileName);
+            formData.append('premium_mode', 'true');
+            formData.append('language', 'it');
+
+            const endpoints = [
+                'https://api.cloud.llamaindex.ai/api/parsing',
+                'https://api.cloud.eu.llamaindex.ai/api/parsing'
+            ];
+
+            let uploadRes;
+            let usedEndpoint = '';
+
+            for (const endpoint of endpoints) {
+                log("[LlamaParse] Trying endpoint: " + endpoint + " ");
+                uploadRes = await fetch(endpoint + "/upload", {
+                    method: 'POST',
+                    headers: { 'Authorization': "Bearer " + llamaKey },
+                    body: formData
+                });
+
+                if (uploadRes.ok) {
+                    usedEndpoint = endpoint;
+                    break;
+                } else {
+                    const err = await uploadRes.text();
+                    log("[LlamaParse] Failed on " + endpoint + ": " + err);
+                    // Only fail fast on explicit credit exhaustion. 
+                    // Region errors (Invalid Key for this region) should continue to next endpoint.
+                    if (err.includes("credits")) {
+                        log("[LlamaParse] Out of credits, skipping.");
+                        return null;
+                    }
+                }
+            }
+
+            if (!uploadRes || !uploadRes.ok) return null;
+
+            const { id: jobId } = await uploadRes.json();
+            log("[LlamaParse] Job started: " + jobId);
+
+            let attempts = 0;
+            while (attempts < 60) {
+                await new Promise(r => setTimeout(r, 2000));
+                const statusRes = await fetch(usedEndpoint + "/job/" + jobId, {
+                    headers: { 'Authorization': "Bearer " + llamaKey }
+                });
+                if (!statusRes.ok) break;
+
+                const statusData = await statusRes.json();
+                if (statusData.status === 'SUCCESS') {
+                    log("[LlamaParse] Success.");
+                    const resultRes = await fetch(usedEndpoint + "/job/" + jobId + "/result/markdown", {
+                        headers: { 'Authorization': "Bearer " + llamaKey }
+                    });
+                    if (!resultRes.ok) return null;
+                    const resultData = await resultRes.json();
+                    return resultData.markdown;
+                } else if (statusData.status === 'FAILED') {
+                    log("[LlamaParse] Job FAILED.");
+                    return null;
+                }
+                attempts++;
+            }
+            log("[LlamaParse] Timeout.");
+            return null;
+        } catch (e: any) {
+            log("[LlamaParse] Error: " + e.message);
+            return null;
+        }
+    };
+
     try {
-        const { tenderId, section, question, filePaths, model } = await req.json()
+        const { tenderId, section, question, filePaths, model, forceVisualMode } = await req.json()
+
+        console.log(`[AskQuestion] Request received. forceVisualMode: ${forceVisualMode} (type: ${typeof forceVisualMode})`);
 
         if (!tenderId || !question || !filePaths) {
             throw new Error("Missing required fields");
@@ -30,6 +234,232 @@ serve(async (req) => {
         const openai = new OpenAI({ apiKey: apiKey });
 
         console.log(`[AskQuestion] Processing question for tenderId: ${tenderId}, section: ${section}`);
+
+        // --- VISUAL MODE (MULTIMODAL) ---
+        if (forceVisualMode === true || forceVisualMode === 'true') {
+            // --- STRATEGY: Try LlamaParse First -> Fallback to Gemini Raw (Parity with analyze-tender) ---
+            let combinedTextContext = "";
+
+            log("[VisualMode] Starting extraction via LlamaParse / Gemini Raw...");
+
+            for (const path of filePaths) {
+                if (!path.toLowerCase().endsWith('.pdf')) {
+                    log(`[VisualMode] Skipping non-pdf: ${path}`);
+                    continue;
+                }
+
+                // Download file to memory
+                const { data: fileData, error: downloadError } = await supabaseClient.storage.from('tenders').download(path);
+                if (downloadError) {
+                    log(`[VisualMode] Download error for ${path}: ` + JSON.stringify(downloadError));
+                    continue;
+                }
+                const fileBlob = new Blob([fileData], { type: 'application/pdf' });
+                const fileName = path.split('/').pop() || 'document.pdf';
+
+                // 1. Try LlamaParse
+                let text = await extractWithLlamaParse(fileBlob, fileName);
+
+                // 2. Fallback directly to Gemini Raw if LlamaParse fails
+                if (!text || text.length < 50) {
+                    log(`[VisualMode] LlamaParse failed/empty for ${fileName}. Trying Gemini Raw...`);
+                    text = await extractWithGeminiRaw(fileBlob, fileName);
+                }
+
+                if (text && text.length > 50) {
+                    log(`[VisualMode] SUCCESS for ${fileName} (${text.length} chars).`);
+                    combinedTextContext += `\n\n--- DOCUMENTO: ${fileName} ---\n${text}`;
+                } else {
+                    log(`[VisualMode] ALL methods failed for ${fileName}.`);
+                }
+            }
+
+            // IF WE HAVE TEXT (from LlamaParse OR Gemini), use Standard Text Model
+            if (combinedTextContext.length > 200) {
+                log("[VisualMode] Extraction complete. Switching to TEXT-BASED inference.");
+
+                const completion = await openai.chat.completions.create({
+                    model: "gpt-4o",
+                    messages: [
+                        {
+                            role: "system",
+                            content: `SEI UN ESPERTO BID MANAGER. RISPONDI ALLA DOMANDA BASANDOTI SUL TESTO ESTRATTO (OCR).
+                   SEZIONE: ${section} 
+                   DOMANDA: ${question}`
+                        },
+                        {
+                            role: "user",
+                            content: `TESTO DOCUMENTI ESTRATTO:\n${combinedTextContext}`
+                        }
+                    ]
+                });
+
+                const answer = completion.choices[0].message.content;
+
+                // Save QA
+                const { data: currentAnalysis } = await supabaseClient.from('analyses').select('result_json').eq('tender_id', tenderId).single();
+                if (currentAnalysis) {
+                    const resultJson = currentAnalysis.result_json;
+                    if (!resultJson.deep_dives) resultJson.deep_dives = {};
+                    if (!resultJson.deep_dives[section]) resultJson.deep_dives[section] = [];
+                    resultJson.deep_dives[section].push({
+                        question,
+                        answer,
+                        timestamp: new Date().toISOString(),
+                        mode: 'visual_hybrid_v2'
+                    });
+                    await supabaseClient.from('analyses').update({ result_json: resultJson }).eq('tender_id', tenderId);
+                }
+
+                return new Response(JSON.stringify({
+                    answer,
+                    _debug_mode: 'visual_hybrid_v2',
+                    _debug_source: 'Hybrid Extraction + GPT-4o',
+                    _debug_flow: flowLogs
+                }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+            }
+
+            log("[VisualMode] Extraction produced insufficient text. Abort.");
+            return new Response(JSON.stringify({
+                answer: "⚠️ Impossibile leggere il documento. Tutti i metodi di estrazione (LlamaParse e Gemini) hanno fallito.",
+                _debug_mode: 'failed',
+                _debug_flow: flowLogs
+            }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+            // --- END VISUAL MODE BLOCK --- (The old Gemini logic is unreachable/removed)
+
+            // --- END LLAMAPARSE BLOCK ---
+
+            // Existing Gemini Code follows below...
+            const geminiKey = Deno.env.get('GEMINI_API_KEY');
+            if (!geminiKey) throw new Error("GEMINI_API_KEY is missing");
+
+            const genAI = new GoogleGenerativeAI(geminiKey);
+            const fileManager = new GoogleAIFileManager(geminiKey);
+
+            // USE BEST VISION MODEL: Map user's "2.5" requests or default "Pro" to real 1.5-pro
+            // ERROR RECOVERY: 'gemini-1.5-pro' is returning 404. LlamaParse is out of credits.
+            // We force 'gemini-1.5-flash-002' which is proven to work in analyze-tender.
+            let visualModelName = 'gemini-1.5-flash-002';
+
+            if (model && model.includes('flash')) {
+                visualModelName = 'gemini-1.5-flash'; // Fallback if they explicitly wanted fast/cheap
+            }
+
+            console.log(`[AskQuestion] Using visual model: ${visualModelName} (Mapped from user preference or default)`);
+
+            const geminiModel = genAI.getGenerativeModel({ model: visualModelName });
+
+            const uploadedFiles = [];
+            const tempFilesToDelete: string[] = [];
+
+            try {
+                // ... (upload logic remains same) ...
+
+                // 1. Upload PDFs
+                for (const path of filePaths) {
+                    if (!path.toLowerCase().endsWith('.pdf')) continue; // Visual mode mainly for PDFs
+
+                    console.log(`[VisualMode] Downloading and uploading: ${path}`);
+                    const { data: fileData, error: downloadError } = await supabaseClient.storage.from('tenders').download(path);
+                    if (downloadError) {
+                        console.error(`[VisualMode] Download error for ${path}:`, downloadError);
+                        continue;
+                    }
+
+                    const tempFilePath = `/tmp/${path.split('/').pop()}`;
+                    await Deno.writeFile(tempFilePath, new Uint8Array(await fileData.arrayBuffer()));
+                    tempFilesToDelete.push(tempFilePath);
+
+                    const uploadResponse = await fileManager.uploadFile(tempFilePath, {
+                        mimeType: "application/pdf",
+                        displayName: path.split('/').pop(),
+                    });
+
+                    console.log(`[VisualMode] Uploaded ${path} as ${uploadResponse.file.name}`);
+                    uploadedFiles.push(uploadResponse.file);
+                }
+
+                if (uploadedFiles.length === 0) {
+                    throw new Error("Nessun PDF valido trovato per la modalità visiva.");
+                }
+
+                // 2. Wait for processing
+                console.log("[VisualMode] Waiting for files...");
+                for (const file of uploadedFiles) {
+                    let fileState = file.state;
+                    while (fileState === "PROCESSING") {
+                        await new Promise((resolve) => setTimeout(resolve, 2000));
+                        const fileStatus = await fileManager.getFile(file.name);
+                        fileState = fileStatus.state;
+                        if (fileState === "FAILED") throw new Error(`File processing failed: ${file.name}`);
+                    }
+                }
+
+                // 3. Generate Answer
+                console.log("[VisualMode] Generating answer with model:", visualModelName);
+                const prompt = `SEI UN ESPERTO BID MANAGER. RISPONDI ALLA DOMANDA DELL'UTENTE BASANDOTI SUI DOCUMENTI FORNITI (VISIONE DIRETTA PIXEL-PER-PIXEL).
+                   
+                   SEZIONE DI RIFERIMENTO: ${section}
+                   
+                   ISTRUZIONI:
+                   1. Analizza visivamente ogni pagina. Il testo potrebbe essere SCANSIONATO o MANOSCRITTO.
+                   2. Sii preciso e diretto.
+                   3. Cita i documenti o le pagine se possibile.
+                   4. Rispondi in italiano.
+                   5. IMPORTANTISSIMO: Fai del tuo meglio per decifrare il testo anche se di bassa qualità. NON arrenderti dicendo "non riesco a leggere" se c'è anche una minima possibilità di interpretare i caratteri.
+                   
+                   DOMANDA: ${question}`;
+
+                const result = await geminiModel.generateContent([
+                    { text: prompt },
+                    ...uploadedFiles.map(f => ({ fileData: { mimeType: f.mimeType, fileUri: f.uri } }))
+                ]);
+
+                const answer = result.response.text();
+
+                // 4. Save QA (Shared Logic)
+                const { data: currentAnalysis } = await supabaseClient
+                    .from('analyses')
+                    .select('result_json')
+                    .eq('tender_id', tenderId)
+                    .single();
+
+                if (currentAnalysis) {
+                    const resultJson = currentAnalysis.result_json;
+                    if (!resultJson.deep_dives) resultJson.deep_dives = {};
+                    if (!resultJson.deep_dives[section]) resultJson.deep_dives[section] = [];
+
+                    resultJson.deep_dives[section].push({
+                        question,
+                        answer,
+                        timestamp: new Date().toISOString(),
+                        mode: 'visual' // Track that this was visual
+                    });
+
+                    await supabaseClient
+                        .from('analyses')
+                        .update({ result_json: resultJson })
+                        .eq('tender_id', tenderId);
+                }
+
+                // 5. Return
+                return new Response(JSON.stringify({ answer, _debug_mode: 'visual' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+            } catch (e: any) {
+                console.error("[VisualMode] Error:", e);
+                // Fallback or Error? If visual mode requested explicitly, we should error out if it fails.
+                throw new Error(`Visual Mode Failed: ${e.message}`);
+            } finally {
+                // Cleanup
+                for (const f of uploadedFiles) {
+                    try { await fileManager.deleteFile(f.name); } catch (e) { console.error("Cleanup remote failed", e); }
+                }
+                for (const p of tempFilesToDelete) {
+                    try { await Deno.remove(p); } catch (e) { console.error("Cleanup local failed", e); }
+                }
+            }
+        }
 
         // --- HELPER: Gemini Extraction (Robust File API REST) ---
         const extractWithGemini = async (fileBlob: Blob, fileName: string): Promise<string | null> => {
@@ -305,6 +735,7 @@ serve(async (req) => {
                    2. Cita i documenti o le pagine se possibile (es. "come indicato nel Disciplinare...").
                    3. Se l'informazione non è presente nei documenti, dillo chiaramente.
                    4. Rispondi in italiano.
+                   5. IMPORTANTISSIMO: Se il testo dei documenti ("DOCUMENTI") qui sotto appare VUOTO, illeggibile, contiene solo "[TESTO VUOTO]" o sembra composto da caratteri strani (es. OCR fallito), OPPURE se non riesci a trovare ALCUNA informazione utile a causa della scarsa qualità del testo, INIZIA LA TUA RISPOSTA CON LA STRINGA ESATTA: "[[SCAN_DETECTED]]".
                    
                    DOMANDA: ${question}
                    
@@ -329,7 +760,8 @@ serve(async (req) => {
                    1. Sii preciso e diretto.
                    2. Cita i documenti o le pagine se possibile (es. "come indicato nel Disciplinare...").
                    3. Se l'informazione non è presente nei documenti, dillo chiaramente.
-                   4. Rispondi in italiano.`
+                   4. Rispondi in italiano.
+                   5. IMPORTANTISSIMO: Se il testo dei documenti che ti fornirà l'utente appare VUOTO, illeggibile, contiene solo "[TESTO VUOTO]" o sembra composto da caratteri strani (es. OCR fallito), OPPURE se non riesci a trovare ALCUNA informazione utile a causa della scarsa qualità del testo, INIZIA LA TUA RISPOSTA CON LA STRINGA ESATTA: "[[SCAN_DETECTED]]".`
                         },
                         {
                             role: "user",
@@ -370,7 +802,7 @@ serve(async (req) => {
                     .eq('tender_id', tenderId);
             }
 
-            return new Response(JSON.stringify({ answer }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+            return new Response(JSON.stringify({ answer, _debug_mode: 'standard', _debug_param: forceVisualMode }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
         } catch (e: any) {
             console.error("[AskQuestion] OpenAI Error Full Object:", JSON.stringify(e, null, 2));
@@ -378,8 +810,15 @@ serve(async (req) => {
             throw new Error(`OpenAI API Error (${e.status || 'Unknown Status'}): ${e.message || e}`);
         }
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Function Error:", error);
-        return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        return new Response(JSON.stringify({
+            answer: `⚠️ ERRORE BACKEND CRITICO: ${error.message}`,
+            _debug_error: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+            _debug_flow: flowLogs
+        }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
     }
 })

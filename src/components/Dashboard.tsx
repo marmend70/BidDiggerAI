@@ -767,6 +767,39 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </Card>
                         </div>
 
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Dettaglio Criteri Tecnici</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-6">
+                                    {data['10_punteggi'][0]?.criteri_tecnici?.map((criterio, i) => (
+                                        <div key={i} className="border-b last:border-0 pb-4 last:pb-0">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <h4 className="font-semibold text-slate-900">{criterio.criterio}</h4>
+                                                <Badge>{criterio.punti_max} pt</Badge>
+                                            </div>
+                                            <p className="text-sm text-slate-600 mb-3">{criterio.descrizione}</p>
+                                            {criterio.subcriteri && criterio.subcriteri.length > 0 && (
+                                                <div className="bg-slate-50 p-3 rounded-md">
+                                                    <p className="text-xs font-semibold text-slate-500 mb-2 uppercase">Sub-criteri</p>
+                                                    <ul className="space-y-1">
+                                                        {criterio.subcriteri.map((sub, j) => (
+                                                            <li key={j} className="text-sm flex justify-between">
+                                                                <span>{sub.descrizione}</span>
+                                                                <span className="font-mono text-slate-500">{sub.punti_max} pt</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+
                         <Card className="border-l-4 border-l-blue-500">
                             <CardHeader>
                                 <CardTitle className="text-blue-700">Formula Economica</CardTitle>
@@ -807,38 +840,6 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardHeader>
                             <CardContent>
                                 <p className="text-slate-700">{data['10_punteggi'][0]?.note_economiche}</p>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Dettaglio Criteri Tecnici</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-6">
-                                    {data['10_punteggi'][0]?.criteri_tecnici?.map((criterio, i) => (
-                                        <div key={i} className="border-b last:border-0 pb-4 last:pb-0">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <h4 className="font-semibold text-slate-900">{criterio.criterio}</h4>
-                                                <Badge>{criterio.punti_max} pt</Badge>
-                                            </div>
-                                            <p className="text-sm text-slate-600 mb-3">{criterio.descrizione}</p>
-                                            {criterio.subcriteri && criterio.subcriteri.length > 0 && (
-                                                <div className="bg-slate-50 p-3 rounded-md">
-                                                    <p className="text-xs font-semibold text-slate-500 mb-2 uppercase">Sub-criteri</p>
-                                                    <ul className="space-y-1">
-                                                        {criterio.subcriteri.map((sub, j) => (
-                                                            <li key={j} className="text-sm flex justify-between">
-                                                                <span>{sub.descrizione}</span>
-                                                                <span className="font-mono text-slate-500">{sub.punti_max} pt</span>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data.semantic_analysis_data?.['10_punteggi']} />

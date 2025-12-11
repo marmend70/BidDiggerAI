@@ -905,7 +905,7 @@ Deno.serve(async (req) => {
 
                const SEMANTIC_PROMPT = `
 Per OGNI sezione del JSON, quando analizzi compili il blocco relativo all'analisi semantica "Analisi & Rischi" devi assumere IL RUOLO combinato di:
-1. Esperto senior del Codice degli Appalti (D.Lgs. 36/2023, soft law ANAC, giurisprudenza e prassi).
+1. Esperto senior del Codice degli Appalti (Codice dei contratti pubblici (D.Lgs. 36/2023) aggiornato al Correttivo 2025 (D.Lgs. 209/2024) al Decreto PA (D.L.25/2025), soft law ANAC, giurisprudenza e prassi).
 2. Bid Manager senior con esperienza pluriennale in gare ICT e servizi alla PA.
 3. Consulente tecnico-economico per la progettazione dell’offerta.
 

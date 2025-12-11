@@ -46,12 +46,15 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, use
                     {/* Starter */}
                     <div className="border border-slate-200 rounded-lg p-6 hover:shadow-lg transition-shadow bg-slate-50 flex flex-col">
                         <h3 className="text-lg font-bold text-slate-800 mb-2">Starter</h3>
-                        <div className="text-3xl font-bold text-indigo-600 mb-4">5 Crediti</div>
+                        <div className="text-2xl font-bold text-indigo-600">5 Analisi complete</div>
+                        <div className="text-sm text-slate-500 font-medium mt-1">€ 2,60 / gara</div>
+                        <div className="text-sm text-slate-500 mb-4 font-medium mt-2">€ 12,99 / totale</div>
                         <div className="flex-grow">
                             <ul className="space-y-3 mb-8 text-sm text-slate-600">
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Fino a 3 documenti/gara</li>
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Analisi completa (tutti i lotti)</li>
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> 10 Deep Dive inclusi</li>
+                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Fino a 3 documenti per analisi</li>
+                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Tutte le funzioni attive</li>
+                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Fino a 10 "Deep dive" per analisi</li>
+                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Massima flessibilità</li>
                             </ul>
                         </div>
                         <button
@@ -65,12 +68,18 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, use
                     {/* Pro */}
                     <div className="border-2 border-indigo-600 rounded-lg p-6 shadow-md relative bg-white transform md:-translate-y-2 flex flex-col">
                         <div className="absolute top-0 right-0 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-sm">POPOLARE</div>
-                        <h3 className="text-lg font-bold text-slate-800 mb-2">Pro</h3>
-                        <div className="text-3xl font-bold text-indigo-600 mb-4">10 Crediti</div>
+                        <div className="absolute top-0 left-0 bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-br-lg rounded-tl-lg border-b border-r border-green-200">
+                            RISPARMIA 12%
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-800 mb-2 mt-2">Pro</h3>
+                        <div className="text-2xl font-bold text-indigo-600">10 Analisi complete</div>
+                        <div className="text-sm text-slate-500 font-medium mt-1">€ 2,30 / gara</div>
+                        <div className="text-sm text-slate-500 mb-4 font-medium mt-2">€ 22,99 / totale</div>
                         <div className="flex-grow">
                             <ul className="space-y-3 mb-8 text-sm text-slate-600">
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Tutti i vantaggi Starter</li>
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Supporto Prioritario</li>
+                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Fino a 3 documenti per analisi</li>
+                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Tutte le funzioni attive</li>
+                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Fino a 20 "Deep dive" per analisi</li>
                                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Ideale per professionisti</li>
                             </ul>
                         </div>
@@ -83,14 +92,20 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, use
                     </div>
 
                     {/* Agency */}
-                    <div className="border border-slate-200 rounded-lg p-6 hover:shadow-lg transition-shadow bg-slate-50 flex flex-col">
-                        <h3 className="text-lg font-bold text-slate-800 mb-2">Agency</h3>
-                        <div className="text-3xl font-bold text-indigo-600 mb-4">20 Crediti</div>
+                    <div className="border border-slate-200 rounded-lg p-6 hover:shadow-lg transition-shadow bg-slate-50 flex flex-col relative">
+                        <div className="absolute top-0 left-0 bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-br-lg rounded-tl-lg border-b border-r border-green-200">
+                            RISPARMIA 23%
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-800 mb-2 mt-2">Agency</h3>
+                        <div className="text-2xl font-bold text-indigo-600">25 Analisi complete</div>
+                        <div className="text-sm text-slate-500 font-medium mt-1">€ 2,00 / gara</div>
+                        <div className="text-sm text-slate-500 mb-4 font-medium mt-2">€ 49,99 / totale</div>
                         <div className="flex-grow">
                             <ul className="space-y-3 mb-8 text-sm text-slate-600">
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Max valore per credito</li>
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Per team e aziende</li>
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Archivio illimitato</li>
+                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Fino a 3 documenti per analisi</li>
+                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Tutte le funzioni attive</li>
+                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Fino a 50 "Deep dive" per analisi</li>
+                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Per team e alto volume</li>
                             </ul>
                         </div>
                         <button

@@ -14,6 +14,7 @@ import { AVAILABLE_MODELS } from '@/constants';
 import { supabase } from '@/lib/supabase';
 import type { AnalysisResult, UserPreferences } from '@/types';
 import type { Session } from '@supabase/supabase-js';
+import { countPdfPages } from '@/lib/fileUtils';
 
 
 const DEFAULT_PREFERENCES: UserPreferences = {
@@ -260,10 +261,32 @@ function App() {
   const [selectedSemanticModel, setSelectedSemanticModel] = useState<string>('gpt-5-mini');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
-  const handleFileSelection = (files: File[]) => {
+
+
+  const handleFileSelection = async (files: File[]) => {
     // 1. Check Credits
     if (userCredits < 1) {
       setShowPricingModal(true);
+      return;
+    }
+
+    // 2. CHECK FILE LIMIT
+    if (files.length > 3) {
+      alert("Puoi caricare un massimo di 3 documenti per analisi.");
+      return;
+    }
+
+    // 3. CHECK PAGE LIMIT (New Requirement: Max 300 pages total)
+    let totalPages = 0;
+    for (const file of files) {
+      if (file.type === 'application/pdf') {
+        const pages = await countPdfPages(file);
+        totalPages += pages;
+      }
+    }
+
+    if (totalPages > 300) {
+      alert(`Hai superato il limite di 300 pagine totali (Attuali: ${totalPages}). \n\nPer favore riduci il numero di documenti o dividili per procedere con l'analisi.`);
       return;
     }
 

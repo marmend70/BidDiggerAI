@@ -1,0 +1,4 @@
+Tier,Prezzo Mensile,Volume (Gare),Costo Unitario (a Gara),Risparmio vs Starter,Deep Dives (x Gara)
+Starter,"€ 12,99",5,"€ 2,60",-,10
+Pro,"€ 22,99",10,"€ 2,30",- 12%,20
+Agency,"€ 49,99",25,"€ 2,00",50

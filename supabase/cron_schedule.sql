@@ -16,7 +16,7 @@ select
           -- Headers: Qui devi inserire la tua SERVICE_ROLE_KEY
           -- ATTENZIONE: Sostituisci <INSERISCI_QUI_LA_TUA_SERVICE_ROLE_KEY> con la chiave reale
           -- La trovi in: Project Settings -> API -> service_role (secret)
-          headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVveWhkdW1rZXlwdG9odW1paXpqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDMyMzU0MiwiZXhwIjoyMDc5ODk5NTQyfQ.DEejpZXvfOjsi59vP1f7VAGON3l29yU7rawrgqDKyDg"}'::jsonb
+          headers:='{"Content-Type": "application/json", "Authorization": "Bearer <INSERISCI_QUI_LA_TUA_SERVICE_ROLE_KEY>"}'::jsonb
       ) as request_id;
     $$
   );

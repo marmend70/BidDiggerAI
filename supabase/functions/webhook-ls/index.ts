@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
 
         if (productName.includes('Starter')) creditsToAdd = 5;
         else if (productName.includes('Pro')) creditsToAdd = 10;
-        else if (productName.includes('Agency')) creditsToAdd = 20;
+        else if (productName.includes('Agency')) creditsToAdd = 25;
 
         if (creditsToAdd > 0) {
             const supabase = createClient(

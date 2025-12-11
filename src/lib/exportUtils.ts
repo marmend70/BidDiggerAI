@@ -305,7 +305,13 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                                 ...createList(c.subcriteri, 'descrizione')
                             ]),
                             createSubHeading("Formula Economica"),
-                            new Paragraph({ text: safeText(lotData.formula_economica) }),
+                            ...(lotData.formula_economica_dettaglio ? [
+                                createKeyValueLine("Formula", lotData.formula_economica_dettaglio.formula),
+                                createKeyValueLine("Parametri", lotData.formula_economica_dettaglio.parametri_legenda),
+                                createKeyValueLine("Calcolo", lotData.formula_economica_dettaglio.modalita_calcolo)
+                            ] : [
+                                new Paragraph({ text: safeText(lotData.formula_economica) })
+                            ]),
                         ]),
                         ...createDeepDiveSection(data.deep_dives?.['10_punteggi']),
                     ] : []),

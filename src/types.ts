@@ -96,6 +96,11 @@ export interface AnalysisResult {
             }>;
         }>;
         formula_economica: string;
+        formula_economica_dettaglio?: {
+            formula: string;
+            parametri_legenda: string;
+            modalita_calcolo: string;
+        };
         note_economiche: string;
         ref: string;
     }>;

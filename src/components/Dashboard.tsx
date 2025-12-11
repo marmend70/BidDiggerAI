@@ -767,6 +767,49 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </Card>
                         </div>
 
+                        <Card className="border-l-4 border-l-blue-500">
+                            <CardHeader>
+                                <CardTitle className="text-blue-700">Formula Economica</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {data['10_punteggi'][0]?.formula_economica_dettaglio ? (
+                                    <>
+                                        <div>
+                                            <h4 className="font-semibold text-slate-900 mb-1">Formula</h4>
+                                            <code className="block bg-slate-100 p-3 rounded text-sm text-slate-800 font-mono">
+                                                {data['10_punteggi'][0].formula_economica_dettaglio.formula}
+                                            </code>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold text-slate-900 mb-1">Parametri</h4>
+                                            <p className="text-sm text-slate-700 whitespace-pre-line">
+                                                {data['10_punteggi'][0].formula_economica_dettaglio.parametri_legenda}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold text-slate-900 mb-1">Modalità di Calcolo</h4>
+                                            <p className="text-sm text-slate-700">
+                                                {data['10_punteggi'][0].formula_economica_dettaglio.modalita_calcolo}
+                                            </p>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <p className="text-slate-700 italic">
+                                        {data['10_punteggi'][0]?.formula_economica || "Dettaglio formula non disponibile."}
+                                    </p>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Note Economiche</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-slate-700">{data['10_punteggi'][0]?.note_economiche}</p>
+                            </CardContent>
+                        </Card>
+
                         <Card>
                             <CardHeader>
                                 <CardTitle>Dettaglio Criteri Tecnici</CardTitle>

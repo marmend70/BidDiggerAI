@@ -148,7 +148,13 @@ STRUTTURA JSON RICHIESTA (RISPETTALA RIGOROSAMENTE):
          "modalita": "...",
          "subcriteri": [{ "descrizione": "...", "punti_max": 0 }]
       }],
-      "formula_economica": "...", "note_economiche": "...", "ref": "..."
+      "formula_economica": "...", 
+      "formula_economica_dettaglio": {
+        "formula": "Riporta la formula matematica esatta (es. P = (Ci/Cmax)*30)",
+        "parametri_legenda": "Spiega il significato di ogni variabile (es. Ci = coefficiente offerta, Cmax = coefficiente massimo)",
+        "modalita_calcolo": "Descrivi come viene applicata (es. interpolazione lineare, bilineare, aggregatrice compensatrice)"
+      },
+      "note_economiche": "...", "ref": "..."
     }
   ],
   "11_pena_esclusione": [
@@ -865,8 +871,22 @@ Deno.serve(async (req) => {
          };
 
          const parseResponse = (responseText: string) => {
-            const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || responseText.match(/```([\s\S]*?)```/);
-            const jsonString = jsonMatch ? jsonMatch[1] : responseText;
+            // 1. Try to extract from Markdown blocks with flexible regex
+            const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+            let jsonString = jsonMatch ? jsonMatch[1] : responseText;
+
+            // 2. Fallback: If no markdown block, search for outer brackets
+            if (!jsonMatch) {
+               const start = jsonString.indexOf('{');
+               const end = jsonString.lastIndexOf('}');
+               if (start !== -1 && end !== -1 && end > start) {
+                  jsonString = jsonString.substring(start, end + 1);
+               }
+            }
+
+            // 3. Clean common issues
+            jsonString = jsonString.trim();
+
             try {
                // Try standard JSON first for speed
                return JSON.parse(jsonString);
@@ -884,6 +904,7 @@ Deno.serve(async (req) => {
                      return JSON.parse(repaired);
                   } catch (e3) {
                      console.error("All parsing attempts failed.");
+                     console.error("Raw response text was:", responseText); // Log raw for debugging
                      return { error: "JSON Parse Error", raw: responseText };
                   }
                }

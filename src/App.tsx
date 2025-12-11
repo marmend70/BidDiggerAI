@@ -890,6 +890,7 @@ function App() {
             onUpload={async (files) => handleFileSelection(files)}
             isUploading={isUploading}
             userTier={userPlan}
+            userCredits={userCredits}
           />
 
           <div className="mt-8 max-w-3xl mx-auto grid gap-4 md:grid-cols-3 text-left">

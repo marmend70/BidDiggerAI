@@ -11,14 +11,19 @@ interface UploadProps {
     onUpload: (files: File[]) => Promise<void>;
     isUploading: boolean;
     userTier?: 'trial' | 'pro';
+    userCredits?: number;
 }
 
-export function Upload({ onUpload, isUploading, userTier = 'trial' }: UploadProps) {
+export function Upload({ onUpload, isUploading, userTier = 'trial', userCredits = 0 }: UploadProps) {
     const [files, setFiles] = React.useState<File[]>([]);
 
     // Limits logic
-    const MAX_FILES = userTier === 'trial' ? 3 : 10;
-    const IS_TRIAL = userTier === 'trial';
+    // If user has credits OR is pro, they are not limited by trial restrictions
+    const hasCredits = userCredits > 0;
+    const isPro = userTier === 'pro';
+    const IS_TRIAL = !isPro && !hasCredits;
+
+    const MAX_FILES = IS_TRIAL ? 3 : 10;
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
         setFiles(prev => {

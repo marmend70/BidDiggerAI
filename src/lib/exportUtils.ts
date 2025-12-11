@@ -60,7 +60,15 @@ function getList(data: any, nestedKey?: string): any[] {
 
 // Helper to check if data is likely a multi-lot structure
 function isMultiLot(data: any): boolean {
-    if (Array.isArray(data) && data.length > 0 && data[0].lotto) return true;
+    if (Array.isArray(data) && data.length > 0 && data[0].lotto) {
+        // If there is only one lot, check if it's a "default" name that should be hidden
+        if (data.length === 1) {
+            const name = String(data[0].lotto).trim().toLowerCase();
+            const skippedNames = ['1', '01', 'lotto 1', 'lotto 01', 'unico', 'generale', 'unico / generale'];
+            if (skippedNames.includes(name)) return false;
+        }
+        return true;
+    }
     return false;
 }
 

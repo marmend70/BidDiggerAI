@@ -23,13 +23,13 @@ export function Upload({ onUpload, isUploading, userTier = 'trial', userCredits 
     const isPro = userTier === 'pro';
     const IS_TRIAL = !isPro && !hasCredits;
 
-    const MAX_FILES = IS_TRIAL ? 3 : 10;
+    const MAX_FILES = 3;
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
         setFiles(prev => {
             const newFiles = [...prev, ...acceptedFiles];
             if (newFiles.length > MAX_FILES) {
-                alert(`Hai raggiunto il limite di ${MAX_FILES} file per progetto nel piano ${IS_TRIAL ? 'Trial' : 'Pro'}.`);
+                alert(`Hai raggiunto il limite di ${MAX_FILES} file per progetto.`);
                 // Cut to max files
                 return newFiles.slice(0, MAX_FILES);
             }

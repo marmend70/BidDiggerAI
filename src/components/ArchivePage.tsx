@@ -59,9 +59,31 @@ export function ArchivePage({ userId, onLoadAnalysis }: ArchivePageProps) {
 
     const handleDelete = async (e: React.MouseEvent, tenderId: string) => {
         e.stopPropagation();
-        if (!confirm('Sei sicuro di voler eliminare questa analisi? Questa azione è irreversibile.')) return;
+        if (!confirm('Sei sicuro di voler eliminare questa analisi? I file e i dati verranno rimossi permanentemente.')) return;
 
         try {
+            // 1. Get files associated with this tender
+            const { data: files } = await supabase
+                .from('tender_documents')
+                .select('file_path')
+                .eq('tender_id', tenderId);
+
+            if (files && files.length > 0) {
+                const searchPaths = files.map(f => f.file_path);
+                // 2. Delete files from Storage
+                const { error: storageError } = await supabase
+                    .storage
+                    .from('tenders')
+                    .remove(searchPaths);
+
+                if (storageError) {
+                    console.error('Storage deletion error:', storageError);
+                    // We continue to delete the DB record even if storage fails, 
+                    // to ensure UI consistency, but valid concern for orphan files.
+                }
+            }
+
+            // 3. Delete DB record
             const { error } = await supabase
                 .from('tenders')
                 .delete()

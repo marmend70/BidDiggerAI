@@ -53,13 +53,13 @@ Il trattamento dei dati personali si fonda su: esecuzione di un contratto o di m
 **Modalità del trattamento**
 I dati sono trattati con strumenti elettronici e con misure di sicurezza adeguate.
 
-L’App utilizza fornitori esterni: Netlify, per l’hosting; Supabase, per la gestione di autenticazione e database; OpenAI, per l’analisi dei contenuti dei documenti. Tutti i fornitori sono nominati Responsabili esterni del trattamento ai sensi dell’art. 28 GDPR.
+L’App utilizza fornitori esterni: Netlify, per l’hosting; Supabase, per la gestione di autenticazione e database; OpenAI e Google (Gemini), per l’analisi dei contenuti dei documenti. Tutti i fornitori sono nominati Responsabili esterni del trattamento ai sensi dell’art. 28 GDPR.
 
 **Trasferimenti extra-UE**
 Alcuni fornitori hanno sede fuori dallo Spazio Economico Europeo (ad es. Stati Uniti). I trasferimenti avvengono sulla base di Standard Contractual Clauses (SCC) adottate dalla Commissione Europea.
 
 **Tempi di conservazione**
-Dati account: fino alla richiesta di cancellazione da parte dell’utente. Documenti caricati: non vengono conservati oltre la durata della sessione di utilizzo. Log tecnici: conservati per periodi limitati, secondo necessità di sicurezza.
+Dati account: fino alla richiesta di cancellazione da parte dell’utente. Documenti caricati: vengono conservati per un massimo di 30 giorni per consentire la consultazione delle analisi, dopodiché vengono cancellati automaticamente. L'utente può comunque cancellarli manualmente in qualsiasi momento. Log tecnici: conservati per periodi limitati, secondo necessità di sicurezza.
 
 **Diritti dell’interessato**
 L’utente può esercitare i diritti previsti dal GDPR (artt. 15-22), tra cui: accesso, rettifica, cancellazione, limitazione, portabilità e opposizione. Le richieste vanno inviate a mm.infoapps@gmail.com.

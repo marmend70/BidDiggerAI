@@ -35,7 +35,7 @@ serve(async (req) => {
 
         // Get the model
         // Preferred: gemini-1.5-pro or flash. Using 2.0-flash-exp if available could be faster, but let's stick to stable.
-        const modelName = model || 'gemini-1.5-pro';
+        const modelName = model || 'gemini-2.5-flash';
 
         // Check if the last message triggers internet search
         const lastMsg = messages[messages.length - 1];

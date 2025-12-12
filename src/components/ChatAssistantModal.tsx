@@ -53,7 +53,7 @@ export function ChatAssistantModal({ isOpen, onClose, tenderId, tenderTitle }: C
                 body: {
                     tenderId,
                     messages: conversationHistory,
-                    model: 'gemini-1.5-pro' // Hardcoded preference or passed from props
+                    model: 'gemini-2.5-flash' // Hardcoded preference or passed from props
                 }
             });
 

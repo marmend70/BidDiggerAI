@@ -339,11 +339,11 @@ serve(async (req) => {
 
             // USE BEST VISION MODEL: Map user's "2.5" requests or default "Pro" to real 1.5-pro
             // ERROR RECOVERY: 'gemini-1.5-pro' is returning 404. LlamaParse is out of credits.
-            // We force 'gemini-1.5-flash-002' which is proven to work in analyze-tender.
-            let visualModelName = 'gemini-1.5-flash-002';
+            // We force 'gemini-2.5-flash' which is proven to work in analyze-tender.
+            let visualModelName = 'gemini-2.5-flash';
 
             if (model && model.includes('flash')) {
-                visualModelName = 'gemini-1.5-flash'; // Fallback if they explicitly wanted fast/cheap
+                visualModelName = 'gemini-2.5-flash'; // Fallback if they explicitly wanted fast/cheap
             }
 
             console.log(`[AskQuestion] Using visual model: ${visualModelName} (Mapped from user preference or default)`);
@@ -747,29 +747,51 @@ serve(async (req) => {
 
             } else {
                 // --- OPENAI LOGIC ---
-                const completion = await openai.chat.completions.create({
-                    model: model || "gpt-5-mini",
-                    messages: [
-                        {
-                            role: "system",
-                            content: `SEI UN ESPERTO BID MANAGER. RISPONDI ALLA DOMANDA DELL'UTENTE BASANDOTI ESCLUSIVAMENTE SUI DOCUMENTI FORNITI.
-                   
-                   SEZIONE DI RIFERIMENTO: ${section}
-                   
-                   ISTRUZIONI:
-                   1. Sii preciso e diretto.
-                   2. Cita i documenti o le pagine se possibile (es. "come indicato nel Disciplinare...").
-                   3. Se l'informazione non è presente nei documenti, dillo chiaramente.
-                   4. Rispondi in italiano.
-                   5. IMPORTANTISSIMO: Se il testo dei documenti che ti fornirà l'utente appare VUOTO, illeggibile, contiene solo "[TESTO VUOTO]" o sembra composto da caratteri strani (es. OCR fallito), OPPURE se non riesci a trovare ALCUNA informazione utile a causa della scarsa qualità del testo, INIZIA LA TUA RISPOSTA CON LA STRINGA ESATTA: "[[SCAN_DETECTED]]".`
-                        },
-                        {
-                            role: "user",
-                            content: `DOMANDA: ${question}\n\nDOCUMENTI:\n${fullPdfText}`
-                        }
-                    ]
-                });
-                answer = completion.choices[0].message.content;
+                try {
+                    const completion = await openai.chat.completions.create({
+                        model: model || "gpt-5-mini",
+                        messages: [
+                            {
+                                role: "system",
+                                content: `SEI UN ESPERTO BID MANAGER. RISPONDI ALLA DOMANDA DELL'UTENTE BASANDOTI ESCLUSIVAMENTE SUI DOCUMENTI FORNITI.
+                       
+                       SEZIONE DI RIFERIMENTO: ${section}
+                       
+                       ISTRUZIONI:
+                       1. Sii preciso e diretto.
+                       2. Cita i documenti o le pagine se possibile (es. "come indicato nel Disciplinare...").
+                       3. Se l'informazione non è presente nei documenti, dillo chiaramente.
+                       4. Rispondi in italiano.
+                       5. IMPORTANTISSIMO: Se il testo dei documenti che ti fornirà l'utente appare VUOTO, illeggibile, contiene solo "[TESTO VUOTO]" o sembra composto da caratteri strani (es. OCR fallito), OPPURE se non riesci a trovare ALCUNA informazione utile a causa della scarsa qualità del testo, INIZIA LA TUA RISPOSTA CON LA STRINGA ESATTA: "[[SCAN_DETECTED]]".`
+                            },
+                            {
+                                role: "user",
+                                content: `DOMANDA: ${question}\n\nDOCUMENTI:\n${fullPdfText}`
+                            }
+                        ]
+                    });
+                    answer = completion.choices[0].message.content;
+                } catch (openaiError) {
+                    console.error("[AskQuestion] OpenAI failed:", openaiError);
+                    console.log("[AskQuestion] Falling back to Gemini 2.5 Flash...");
+
+                    // FALLBACK TO GEMINI
+                    const geminiKey = Deno.env.get('GEMINI_API_KEY');
+                    if (!geminiKey) throw new Error("GEMINI_API_KEY is missing (and OpenAI also failed)");
+                    const { GoogleGenerativeAI } = await import("npm:@google/generative-ai");
+                    const genAI = new GoogleGenerativeAI(geminiKey);
+                    const geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+                    const prompt = `SEI UN ESPERTO BID MANAGER. RISPONDI ALLA DOMANDA DELL'UTENTE BASANDOTI SUI DOCUMENTI FORNITI.
+                     SEZIONE: ${section}
+                     DOMANDA: ${question}
+                     DOCUMENTI: ${fullPdfText}
+                     
+                     ISTRUZIONI: Rispondi in italiano. Se il testo è illeggibile, rispondi "[[SCAN_DETECTED]]".`;
+
+                    const result = await geminiModel.generateContent(prompt);
+                    answer = result.response.text();
+                }
             }
 
             // Save the Q&A to the database (update the analysis record)

@@ -112,12 +112,11 @@ export const SECTION_BATCH_MAP: Record<string, string> = {
 
 export const AVAILABLE_MODELS = [
     // ESTRAZIONE STRUTTURATA (Structured)
+    // ESTRAZIONE STRUTTURATA (Structured)
     {
         id: 'gemini-2.5-flash',
         name: 'Gemini 2.5 Flash',
-        description: 'Rapidissimo, economico, ottimo per parsing e tabelle. Meno preciso nelle estrazioni complesse.',
-        cost: 'Molto Basso',
-        speed: 'Rapidissimo',
+        description: 'Rapidissimo, ideale per parsing di grandi volumi di dati e tabelle.',
         recommendedFor: 'Parsing veloce, tabelle',
         type: 'structured',
         isRecommended: true
@@ -125,41 +124,47 @@ export const AVAILABLE_MODELS = [
     {
         id: 'gemini-2.5-pro',
         name: 'Gemini 2.5 Pro',
-        description: 'Più accurato e stabile, ottima estrazione strutturata. Più lento e costoso di Flash.',
-        cost: 'Medio',
-        speed: 'Veloce',
+        description: 'Massima accuratezza e stabilità per estrazioni strutturate complesse.',
         recommendedFor: 'Estrazione accurata',
+        type: 'structured'
+    },
+    {
+        id: 'gemini-1.5-flash',
+        name: 'Gemini 1.5 Flash',
+        description: 'Versione precedente, stabile e leggera.',
+        recommendedFor: 'Legacy, stabilità',
+        type: 'structured'
+    },
+    {
+        id: 'gemini-1.5-pro',
+        name: 'Gemini 1.5 Pro',
+        description: 'Versione Pro precedente, ottima context window.',
+        recommendedFor: 'Legacy, Analisi lunghe',
         type: 'structured'
     },
 
     // ANALISI SEMANTICA (Semantic)
     {
-        id: 'gpt-5',
-        name: 'GPT-5',
-        description: 'Massima precisione semantica, eccellente su gare complesse, rischi, ambiguità.',
-        cost: 'Alto',
-        speed: 'Lento',
+        id: 'gpt-5.2',
+        name: 'GPT-5.2',
+        description: 'Il modello più avanzato. Massima precisione semantica e ragionamento complesso.',
         recommendedFor: 'Analisi profonda, rischi',
         type: 'semantic'
     },
     {
-        id: 'gpt-4.1',
-        name: 'GPT-4.1',
-        description: 'Ottimo compromesso qualità/prezzo, reasoning solido. Leggermente meno accurato di GPT-5.',
-        cost: 'Medio',
-        speed: 'Medio',
+        id: 'gpt-4o',
+        name: 'GPT-4o',
+        description: 'Bilanciato e affidabile, lo standard precedente.',
         recommendedFor: 'Standard',
-        type: 'semantic',
-        isRecommended: true
+        type: 'semantic'
     },
     {
         id: 'gpt-5-mini',
         name: 'GPT-5 Mini',
-        description: 'Veloce, economico, buono per analisi leggere o preliminari. Meno affidabile per semantica profonda.',
-        cost: 'Basso',
-        speed: 'Veloce',
+        description: 'Alta velocità di risposta, ideale per analisi preliminari e sintesi rapide.',
         recommendedFor: 'Analisi preliminare',
-        type: 'semantic'
+        type: 'semantic',
+        isRecommended: true
     }
 ];
 

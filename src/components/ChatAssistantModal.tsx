@@ -53,7 +53,7 @@ export function ChatAssistantModal({ isOpen, onClose, tenderId, tenderTitle }: C
                 body: {
                     tenderId,
                     messages: conversationHistory,
-                    model: 'gemini-2.5-flash' // Hardcoded preference or passed from props
+                    model: 'gpt-5-mini' // Default to GPT-5 Mini
                 }
             });
 

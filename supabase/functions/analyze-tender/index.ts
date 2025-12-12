@@ -399,6 +399,7 @@ Deno.serve(async (req) => {
                const controller = new AbortController();
                const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
+
                const genUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
                const genRes = await fetch(genUrl, {
                   method: 'POST',
@@ -420,7 +421,7 @@ Deno.serve(async (req) => {
                text = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
             } catch (primaryError) {
-               console.warn("[GeminiExtract] Primary model failed or timed out, trying fallback (1.5-flash)...", primaryError);
+               console.warn("[GeminiExtract] Primary model failed or timed out, trying fallback (2.5-flash)...", primaryError);
 
                try {
                   // Fallback to Stable Model (1.5) with remaining time (short timeout)
@@ -428,7 +429,7 @@ Deno.serve(async (req) => {
                   const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s for fallback
 
                   // FIX: Use standard version alias
-                  const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-002:generateContent?key=${geminiKey}`;
+                  const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
                   const fallbackRes = await fetch(fallbackUrl, {
                      method: 'POST',
                      headers: { 'Content-Type': 'application/json' },
@@ -730,6 +731,9 @@ Deno.serve(async (req) => {
 
             console.log(`[Analysis] Sending request to ${targetModel}...`);
 
+            // AUTOMATIC REMAP: Fix 404s for deprecated/unavailable models
+            // (Removals: Gemini 1.5 is now supported natively. GPT-4.1 is removed.)
+
             // --- STAGE 1: DIRECT PDF UPLOAD (GEMINI ONLY) ---
             if (allowDirectUpload && targetModel && targetModel.startsWith('gemini')) {
                console.log("[Analysis] Stage 1: Attempting Direct PDF Upload...");
@@ -840,7 +844,7 @@ Deno.serve(async (req) => {
                } catch (e) {
                   console.warn(`[Stage 2] Primary model ${targetModel} failed. Falling back to gemini-1.5-flash. Error:`, e);
                   try {
-                     const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+                     const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
                      const prompt = `${FINAL_PROMPT}\n\nAnalizza il seguente corpus documentale:\n\n${fullPdfText}`;
                      const result = await fallbackModel.generateContent(prompt);
                      return parseResponse(result.response.text());
@@ -865,7 +869,24 @@ Deno.serve(async (req) => {
                   return JSON.parse(completion.choices[0].message.content);
                } catch (e: any) {
                   console.error("[Analysis] OpenAI Error:", e);
-                  throw new Error(`OpenAI API Error: ${e.message}`);
+                  console.warn("[Analysis] Falling back to Gemini 2.5 Flash for Semantic Analysis...");
+
+                  // FALLBACK TO GEMINI
+                  try {
+                     const geminiKey = Deno.env.get('GEMINI_API_KEY');
+                     if (!geminiKey) throw new Error("GEMINI_API_KEY missing for fallback");
+
+                     const { GoogleGenerativeAI } = await import("npm:@google/generative-ai");
+                     const genAI = new GoogleGenerativeAI(geminiKey);
+                     const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+                     const prompt = `${FINAL_PROMPT}\n\nAnalizza il seguente corpus documentale:\n\n${fullPdfText}`;
+                     const result = await fallbackModel.generateContent(prompt);
+                     return parseResponse(result.response.text());
+                  } catch (geminiError) {
+                     console.error("[Analysis] Fallback Gemini failed:", geminiError);
+                     throw new Error(`Dual Model Failure: OpenAI (${e.message}) AND Gemini Fallback failed.`);
+                  }
                }
             }
          };

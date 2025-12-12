@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { GoogleGenerativeAI } from "npm:@google/generative-ai";
+import OpenAI from 'https://esm.sh/openai@4.28.0'
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -26,28 +27,9 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
-        // Initialize Gemini
-        const geminiKey = Deno.env.get('GEMINI_API_KEY');
-        if (!geminiKey) {
-            throw new Error("GEMINI_API_KEY is missing");
-        }
-        const genAI = new GoogleGenerativeAI(geminiKey);
-
         // Get the model
-        // Preferred: gemini-1.5-pro or flash. Using 2.0-flash-exp if available could be faster, but let's stick to stable.
-        const modelName = model || 'gemini-2.5-flash';
-
-        // Check if the last message triggers internet search
-        const lastMsg = messages[messages.length - 1];
-        const isSearchRequest = lastMsg.content.toLowerCase().startsWith("cerca su internet:");
-
-        let tools = [];
-        if (isSearchRequest) {
-            console.log("Search trigger detected.");
-            tools.push({ googleSearch: {} });
-        }
-
-
+        const modelName = model || 'gpt-5-mini';
+        console.log(`[ChatAssistant] Using model: ${modelName}`);
 
         // 1. Fetch Context (Extracted Text)
         // Optimization: Try to minimize context loading if conversation is long, but for now we simple-load context.
@@ -81,7 +63,7 @@ SEI INTEGRATO NEL SOFTWARE "BID DIGGER AI".
 IL TUO RUOLO:
 1.  Assistere l'utente (Bid Manager, Proposal Engineer) nell'analisi della gara.
 2.  Rispondere a domande tecniche, amministrative e legali basandoti SUI DOCUMENTI FORNITI e sulla tua conoscenza del Codice Appalti (D.Lgs. 36/2023).
-3.  Se l'utente scrive "Cerca su internet:", utilizza lo strumento di ricerca per trovare informazioni aggiornate (es. scadenze, notizie sulle stazioni appaltanti, competitor).
+3.  Se l'utente scrive "Cerca su internet:", utilizza lo strumento di ricerca (se disponibile) o indica che non puoi accedere a internet se il modello non lo supporta.
 
 REGOLE DI COMPORTAMENTO:
 -   Sii professionale, preciso e sintetico.
@@ -93,59 +75,103 @@ CONTESTO DOCUMENTI GARA (RAG):
 ${fullPdfText}
 `;
 
-        const generativeModel = genAI.getGenerativeModel({
-            model: modelName,
-            tools: tools,
-            systemInstruction: {
-                parts: [{ text: systemInstructionText }],
-                role: "system"
-            }
-        });
+        let responseText = "";
 
-        // 3. Prepare History for Gemini
-        // Gemini expects specific format: Alternating User/Model, starting with User.
+        // --- BRANCH: OPENAI (GPT-*) ---
+        if (modelName.toLowerCase().startsWith('gpt')) {
+            console.log("[ChatAssistant] Using OpenAI Provider");
 
-        let chatHistory = messages.map((m: any) => ({
-            role: m.role === 'user' ? 'user' : 'model',
-            parts: [{ text: m.content }]
-        }));
+            const apiKey = Deno.env.get('OPENAI_API_KEY');
+            if (!apiKey) throw new Error("OPENAI_API_KEY is missing");
+            const openai = new OpenAI({ apiKey: apiKey });
 
-        // Remove the very last message from history because sendMessage(msg) takes the new message as arg
-        // But first, safety check
-        let newMsgContent = "";
-        if (chatHistory.length > 0) {
-            const lastMsg = chatHistory.pop();
-            newMsgContent = lastMsg.parts[0].text;
-        }
+            // Normalize model name for API if needed (e.g. gpt-5.2 might need specific ID if not public yet)
+            let apiModel = modelName;
 
-        // SANITIZATION: Remove leading 'model' messages.
-        while (chatHistory.length > 0 && chatHistory[0].role !== 'user') {
-            console.log("Sanitizing: Removed leading model message.");
-            chatHistory.shift();
-        }
+            // Prepare messages
+            const openAiMessages = [
+                { role: "system", content: systemInstructionText },
+                ...messages.map((m: any) => ({
+                    role: m.role === 'model' ? 'assistant' : 'user',
+                    content: m.content
+                }))
+            ];
 
-        const chat = generativeModel.startChat({
-            history: chatHistory,
-        });
-
-        // 4. Generate Response
-        console.log(`[ChatAssistant] Sending message to model ${modelName}. User msg length: ${newMsgContent.length}`);
-
-        try {
-            const result = await chat.sendMessage(newMsgContent);
-            const responseText = result.response.text();
-            console.log(`[ChatAssistant] Success.`);
-
-            return new Response(JSON.stringify({
-                answer: responseText,
-                _debug_model: modelName
-            }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            const completion = await openai.chat.completions.create({
+                model: apiModel,
+                messages: openAiMessages as any,
             });
-        } catch (genError: any) {
-            console.error("[ChatAssistant] Gemini Generation Error:", genError);
-            throw new Error(`Gemini Error: ${genError.message}`);
+
+            responseText = completion.choices[0]?.message?.content || "";
+
         }
+        // --- BRANCH: GEMINI (gemini-*) ---
+        else {
+            console.log("[ChatAssistant] Using Gemini Provider");
+
+            const geminiKey = Deno.env.get('GEMINI_API_KEY');
+            if (!geminiKey) throw new Error("GEMINI_API_KEY is missing");
+            const genAI = new GoogleGenerativeAI(geminiKey);
+
+            // Check if the last message triggers internet search
+            const lastMsg = messages[messages.length - 1];
+            const isSearchRequest = lastMsg.content.toLowerCase().startsWith("cerca su internet:");
+
+            let tools = [];
+            if (isSearchRequest) {
+                console.log("Search trigger detected.");
+                tools.push({ googleSearch: {} });
+            }
+
+            const generativeModel = genAI.getGenerativeModel({
+                model: modelName,
+                tools: tools,
+                systemInstruction: {
+                    parts: [{ text: systemInstructionText }],
+                    role: "system"
+                }
+            });
+
+            // 3. Prepare History for Gemini
+            // Gemini expects specific format: Alternating User/Model, starting with User.
+
+            let chatHistory = messages.map((m: any) => ({
+                role: m.role === 'user' ? 'user' : 'model',
+                parts: [{ text: m.content }]
+            }));
+
+            // Remove the very last message from history because sendMessage(msg) takes the new message as arg
+            // But first, safety check
+            let newMsgContent = "";
+            if (chatHistory.length > 0) {
+                const lastMsg = chatHistory.pop();
+                newMsgContent = lastMsg.parts[0].text;
+            }
+
+            // SANITIZATION: Remove leading 'model' messages.
+            while (chatHistory.length > 0 && chatHistory[0].role !== 'user') {
+                console.log("Sanitizing: Removed leading model message.");
+                chatHistory.shift();
+            }
+
+            const chat = generativeModel.startChat({
+                history: chatHistory,
+            });
+
+            // 4. Generate Response
+            console.log(`[ChatAssistant] Sending message to model ${modelName}. User msg length: ${newMsgContent.length}`);
+
+            const result = await chat.sendMessage(newMsgContent);
+            responseText = result.response.text();
+            console.log(`[ChatAssistant] Success.`);
+        }
+
+        return new Response(JSON.stringify({
+            answer: responseText,
+            _debug_model: modelName
+        }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
 
     } catch (error: any) {
         console.error("[ChatAssistant] Critical Error:", error);

@@ -74,14 +74,7 @@ export function ModelSelectionModal({ isOpen, onClose, onConfirm, defaultStructu
                                         )}
                                     </div>
                                     <p className="text-xs text-slate-500 mb-2 min-h-[32px]">{model.description}</p>
-                                    <div className="flex gap-2 text-[10px]">
-                                        <Badge variant="secondary" className="bg-slate-100 text-slate-700">
-                                            {model.speed}
-                                        </Badge>
-                                        <Badge variant="secondary" className="bg-slate-100 text-slate-700">
-                                            {model.cost}
-                                        </Badge>
-                                    </div>
+                                    {/* Badges removed */}
                                 </div>
                             ))}
                         </div>
@@ -117,14 +110,7 @@ export function ModelSelectionModal({ isOpen, onClose, onConfirm, defaultStructu
                                         )}
                                     </div>
                                     <p className="text-xs text-slate-500 mb-2 min-h-[32px]">{model.description}</p>
-                                    <div className="flex gap-2 text-[10px]">
-                                        <Badge variant="secondary" className="bg-slate-100 text-slate-700">
-                                            {model.speed}
-                                        </Badge>
-                                        <Badge variant="secondary" className="bg-slate-100 text-slate-700">
-                                            {model.cost}
-                                        </Badge>
-                                    </div>
+                                    {/* Badges removed */}
                                 </div>
                             ))}
                         </div>

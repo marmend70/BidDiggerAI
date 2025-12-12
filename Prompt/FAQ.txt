@@ -1,6 +1,0 @@
-Nel campo Tax ID - Numero di indentificazione fiscale, inserisci la Partita IVA per la fatturazione aziendale o il Codice Fiscale se acquisti come privato.
-
-Riceverai una regolare fattura da Lemon Squeezy (nostro rivenditore autorizzato). Essendo un fornitore internazionale, la fattura è disponibile in PDF e valida per la contabilità come acquisto di servizi esteri.
-
-Per scaricare la fattura/ricevuta, si può cliccare sul link "Generate an invoice" nella mail di conferma dell'ordine.
-

@@ -1,2 +1,0 @@
-Aggiungi al piano la possibilità di selezionare o deselezionare per ogni elemento dell'area "Configurazione sezioni" nella sezione "Configurazioni" l'"Analisi e spunti di riflessione": se selezionata, per quella specifica sezione è svolta la parte di analisi semantica. Se è deselezionata, non è svolta la parte di analisi semantica.
-L'opzione "Analisi e spunti di riflessione" è attivata per la selezione/deselezione, se e solo se è attivata l'opzione di analisi per la specifica sezione (che è già ompostata). Altrimenti è deselezionata di default.

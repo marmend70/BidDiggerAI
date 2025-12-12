@@ -9,7 +9,8 @@ import {
     CheckCircle2,
     FilePlus,
     Menu,
-    X
+    X,
+    Bot
 } from 'lucide-react';
 import { Footer } from './Footer';
 import { SECTIONS_MAP, MENU_ORDER, SECTION_BATCH_MAP } from '@/constants';
@@ -24,6 +25,7 @@ interface LayoutProps {
     loadingBatches?: string[];
     onNewAnalysis?: () => void;
     onOpenContact?: () => void;
+    onOpenChatAssistant?: () => void;
 }
 
 interface SidebarContentProps {
@@ -35,9 +37,10 @@ interface SidebarContentProps {
     loadingBatches?: string[];
     onExport: () => void;
     onNewAnalysis?: () => void;
+    onOpenChatAssistant?: () => void;
 }
 
-function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis }: SidebarContentProps) {
+function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant }: SidebarContentProps) {
     return (
         <div className="flex flex-col h-full text-white">
             <div className="p-6 bg-slate-950 shadow-sm z-10">
@@ -141,6 +144,15 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                 </button>
 
                 <button
+                    onClick={onOpenChatAssistant}
+                    disabled={!data || isAnalyzing}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-amber-500 rounded-md hover:bg-slate-800 hover:text-amber-400 disabled:opacity-50 disabled:cursor-not-allowed border border-amber-500/20 bg-amber-500/5"
+                >
+                    <Bot className="h-4 w-4" />
+                    Bid Digger Assistant
+                </button>
+
+                <button
                     onClick={onExport}
                     disabled={!data}
                     className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300 rounded-md hover:bg-slate-800 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed border border-transparent"
@@ -173,7 +185,7 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
 }
 
 export function Layout(props: LayoutProps) {
-    const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onOpenContact } = props;
+    const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onOpenContact, onOpenChatAssistant } = props;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
     const handleExport = async () => {
@@ -199,6 +211,7 @@ export function Layout(props: LayoutProps) {
                     loadingBatches={loadingBatches}
                     onExport={handleExport}
                     onNewAnalysis={props.onNewAnalysis}
+                    onOpenChatAssistant={onOpenChatAssistant}
                 />
             </aside>
 
@@ -248,6 +261,10 @@ export function Layout(props: LayoutProps) {
                             onExport={handleExport}
                             onNewAnalysis={() => {
                                 props.onNewAnalysis?.();
+                                setIsMobileMenuOpen(false);
+                            }}
+                            onOpenChatAssistant={() => {
+                                onOpenChatAssistant?.();
                                 setIsMobileMenuOpen(false);
                             }}
                         />

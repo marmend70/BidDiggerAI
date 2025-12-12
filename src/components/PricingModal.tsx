@@ -31,93 +31,31 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, use
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between p-6 border-b border-slate-100">
-                    <div>
-                        <h2 className="text-xl font-bold text-slate-900">Ricarica Crediti</h2>
-                        <p className="text-sm text-slate-500">Un credito = Un'analisi completa</p>
-                    </div>
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div className="flex items-center justify-between p-4 border-b border-slate-100">
+                    <h2 className="text-lg font-bold text-slate-900">Ricarica Crediti</h2>
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
                         <X className="w-5 h-5 text-slate-500" />
                     </button>
                 </div>
 
-                <div className="p-8 grid md:grid-cols-3 gap-6">
-                    {/* Starter */}
-                    <div className="border border-slate-200 rounded-lg p-6 hover:shadow-lg transition-shadow bg-slate-50 flex flex-col">
-                        <h3 className="text-lg font-bold text-slate-800 mb-2">Starter</h3>
-                        <div className="text-2xl font-bold text-indigo-600">5 Analisi complete</div>
-                        <div className="text-sm text-slate-500 font-medium mt-1">€ 2,60 / gara</div>
-                        <div className="text-sm text-slate-500 mb-4 font-medium mt-2">€ 12,99 / totale</div>
-                        <div className="flex-grow">
-                            <ul className="space-y-3 mb-8 text-sm text-slate-600">
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Fino a 3 documenti per analisi</li>
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Tutte le funzioni attive</li>
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Fino a 10 "Deep dive" per analisi</li>
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Massima flessibilità</li>
-                            </ul>
-                        </div>
-                        <button
-                            onClick={() => handleBuy(LEMON_SQUEEZY_URLS.STARTER)}
-                            className="w-full py-2 px-4 bg-white border-2 border-indigo-600 text-indigo-600 font-semibold rounded-lg hover:bg-indigo-50 transition-colors"
-                        >
-                            Acquista Starter
-                        </button>
+                <div className="p-8 flex flex-col items-center text-center">
+                    <div className="h-16 w-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mb-6">
+                        <Check className="w-8 h-8" />
                     </div>
 
-                    {/* Pro */}
-                    <div className="border-2 border-indigo-600 rounded-lg p-6 shadow-md relative bg-white transform md:-translate-y-2 flex flex-col">
-                        <div className="absolute top-0 right-0 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-sm">POPOLARE</div>
-                        <div className="absolute top-0 left-0 bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-br-lg rounded-tl-lg border-b border-r border-green-200">
-                            RISPARMIA 12%
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-800 mb-2 mt-2">Pro</h3>
-                        <div className="text-2xl font-bold text-indigo-600">10 Analisi complete</div>
-                        <div className="text-sm text-slate-500 font-medium mt-1">€ 2,30 / gara</div>
-                        <div className="text-sm text-slate-500 mb-4 font-medium mt-2">€ 22,99 / totale</div>
-                        <div className="flex-grow">
-                            <ul className="space-y-3 mb-8 text-sm text-slate-600">
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Fino a 3 documenti per analisi</li>
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Tutte le funzioni attive</li>
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Fino a 20 "Deep dive" per analisi</li>
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Ideale per professionisti</li>
-                            </ul>
-                        </div>
-                        <button
-                            onClick={() => handleBuy(LEMON_SQUEEZY_URLS.PRO)}
-                            className="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors shadow-lg"
-                        >
-                            Acquista Pro
-                        </button>
-                    </div>
+                    <h3 className="text-xl font-bold text-slate-900 mb-2">Bid Digger è in Beta</h3>
+                    <p className="text-slate-600 mb-6 leading-relaxed">
+                        L'applicazione è ancora in fase di sviluppo attivo.
+                        A breve sarà attivata la possibilità di acquistare nuovi crediti direttamente dalla piattaforma.
+                    </p>
 
-                    {/* Agency */}
-                    <div className="border border-slate-200 rounded-lg p-6 hover:shadow-lg transition-shadow bg-slate-50 flex flex-col relative">
-                        <div className="absolute top-0 left-0 bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-br-lg rounded-tl-lg border-b border-r border-green-200">
-                            RISPARMIA 23%
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-800 mb-2 mt-2">Agency</h3>
-                        <div className="text-2xl font-bold text-indigo-600">25 Analisi complete</div>
-                        <div className="text-sm text-slate-500 font-medium mt-1">€ 2,00 / gara</div>
-                        <div className="text-sm text-slate-500 mb-4 font-medium mt-2">€ 49,99 / totale</div>
-                        <div className="flex-grow">
-                            <ul className="space-y-3 mb-8 text-sm text-slate-600">
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Fino a 3 documenti per analisi</li>
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Tutte le funzioni attive</li>
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Fino a 50 "Deep dive" per analisi</li>
-                                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Per team e alto volume</li>
-                            </ul>
-                        </div>
-                        <button
-                            onClick={() => handleBuy(LEMON_SQUEEZY_URLS.AGENCY)}
-                            className="w-full py-2 px-4 bg-white border-2 border-indigo-600 text-indigo-600 font-semibold rounded-lg hover:bg-indigo-50 transition-colors"
-                        >
-                            Acquista Agency
-                        </button>
-                    </div>
-                </div>
-                <div className="p-6 text-center text-sm text-slate-500 border-t border-slate-100 bg-slate-50 rounded-b-xl">
-                    Acquisto sicuro (SSL). I crediti vengono aggiunti immediatamente al tuo account.
+                    <button
+                        onClick={onClose}
+                        className="w-full py-2.5 px-4 bg-slate-900 text-white font-semibold rounded-lg hover:bg-slate-800 transition-colors shadow-lg"
+                    >
+                        Ho capito
+                    </button>
                 </div>
             </div>
         </div>

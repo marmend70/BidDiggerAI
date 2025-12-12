@@ -1,0 +1,161 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { GoogleGenerativeAI } from "npm:@google/generative-ai";
+
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders })
+    }
+
+    try {
+        const { tenderId, messages, model } = await req.json()
+
+        if (!tenderId || !messages) {
+            throw new Error("Missing required fields: tenderId or messages");
+        }
+
+        // Initialize Supabase Client
+        const supabaseClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        )
+
+        // Initialize Gemini
+        const geminiKey = Deno.env.get('GEMINI_API_KEY');
+        if (!geminiKey) {
+            throw new Error("GEMINI_API_KEY is missing");
+        }
+        const genAI = new GoogleGenerativeAI(geminiKey);
+
+        // Get the model
+        // Preferred: gemini-1.5-pro or flash. Using 2.0-flash-exp if available could be faster, but let's stick to stable.
+        const modelName = model || 'gemini-1.5-pro';
+
+        // Check if the last message triggers internet search
+        const lastMsg = messages[messages.length - 1];
+        const isSearchRequest = lastMsg.content.toLowerCase().startsWith("cerca su internet:");
+
+        let tools = [];
+        if (isSearchRequest) {
+            console.log("Search trigger detected.");
+            tools.push({ googleSearch: {} });
+        }
+
+
+
+        // 1. Fetch Context (Extracted Text)
+        // Optimization: Try to minimize context loading if conversation is long, but for now we simple-load context.
+        // We reuse the logic from ask-question: look for pre-extracted text.
+        let fullPdfText = "";
+        try {
+            const storagePath = `${tenderId}/extracted_text.txt`;
+            const { data, error } = await supabaseClient.storage.from('tenders').download(storagePath);
+            if (!error && data) {
+                fullPdfText = await data.text();
+            }
+        } catch (e) {
+            console.error("Failed to load context:", e);
+        }
+
+        if (!fullPdfText) {
+            fullPdfText = "[NESSUN DOCUMENTO DISPONIBILE O ERRORE NEL CARICAMENTO]";
+        }
+
+        // Truncate context if too massive (Gemini 1.5 has huge context but let's be safe/fast)
+        const MAX_CONTEXT_CHARS = 500000;
+        if (fullPdfText.length > MAX_CONTEXT_CHARS) {
+            fullPdfText = fullPdfText.substring(0, MAX_CONTEXT_CHARS) + "\n...[TRUNCATED]";
+        }
+
+        // 2. Construct System Instruction
+        const systemInstructionText = `
+SEI "BID DIGGER ASSISTANT", UN'INTELLIGENZA ARTIFICIALE ESPERTA IN GARE D'APPALTO E CODICE DEGLI APPALTI ITALIANO.
+SEI INTEGRATO NEL SOFTWARE "BID DIGGER AI".
+
+IL TUO RUOLO:
+1.  Assistere l'utente (Bid Manager, Proposal Engineer) nell'analisi della gara.
+2.  Rispondere a domande tecniche, amministrative e legali basandoti SUI DOCUMENTI FORNITI e sulla tua conoscenza del Codice Appalti (D.Lgs. 36/2023).
+3.  Se l'utente scrive "Cerca su internet:", utilizza lo strumento di ricerca per trovare informazioni aggiornate (es. scadenze, notizie sulle stazioni appaltanti, competitor).
+
+REGOLE DI COMPORTAMENTO:
+-   Sii professionale, preciso e sintetico.
+-   Cita sempre i documenti ("come indicato a pag. X del Disciplinare...") quando rispondi basandoti su di essi.
+-   Se non sai una risposta o non è nei documenti, dillo chiaramente.
+-   Mantieni la formattazione Markdown per rendere il testo leggibile (grassetti, elenchi puntati).
+
+CONTESTO DOCUMENTI GARA (RAG):
+${fullPdfText}
+`;
+
+        const generativeModel = genAI.getGenerativeModel({
+            model: modelName,
+            tools: tools,
+            systemInstruction: {
+                parts: [{ text: systemInstructionText }],
+                role: "system"
+            }
+        });
+
+        // 3. Prepare History for Gemini
+        // Gemini expects specific format: Alternating User/Model, starting with User.
+
+        let chatHistory = messages.map((m: any) => ({
+            role: m.role === 'user' ? 'user' : 'model',
+            parts: [{ text: m.content }]
+        }));
+
+        // Remove the very last message from history because sendMessage(msg) takes the new message as arg
+        // But first, safety check
+        let newMsgContent = "";
+        if (chatHistory.length > 0) {
+            const lastMsg = chatHistory.pop();
+            newMsgContent = lastMsg.parts[0].text;
+        }
+
+        // SANITIZATION: Remove leading 'model' messages.
+        while (chatHistory.length > 0 && chatHistory[0].role !== 'user') {
+            console.log("Sanitizing: Removed leading model message.");
+            chatHistory.shift();
+        }
+
+        const chat = generativeModel.startChat({
+            history: chatHistory,
+        });
+
+        // 4. Generate Response
+        console.log(`[ChatAssistant] Sending message to model ${modelName}. User msg length: ${newMsgContent.length}`);
+
+        try {
+            const result = await chat.sendMessage(newMsgContent);
+            const responseText = result.response.text();
+            console.log(`[ChatAssistant] Success.`);
+
+            return new Response(JSON.stringify({
+                answer: responseText,
+                _debug_model: modelName
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        } catch (genError: any) {
+            console.error("[ChatAssistant] Gemini Generation Error:", genError);
+            throw new Error(`Gemini Error: ${genError.message}`);
+        }
+
+    } catch (error: any) {
+        console.error("[ChatAssistant] Critical Error:", error);
+        // Return 200 with error field so frontend reads it instead of throwing "non-2xx"
+        return new Response(JSON.stringify({
+            error: error.message,
+            stack: error.stack
+        }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+    }
+})

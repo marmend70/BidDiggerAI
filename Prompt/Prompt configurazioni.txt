@@ -1,1 +1,0 @@
-Aggiungi un'altra sezione, differenziata visivamente dalle altre, chiamata "Configurazioni"

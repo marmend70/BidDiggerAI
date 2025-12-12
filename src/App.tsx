@@ -10,6 +10,7 @@ import { UpgradeModal } from '@/components/UpgradeModal';
 import { ContactModal } from '@/components/ContactModal';
 import { ScanRetryModal } from '@/components/ScanRetryModal';
 import { PricingModal } from '@/components/PricingModal';
+import { ChatAssistantModal } from '@/components/ChatAssistantModal';
 import { AVAILABLE_MODELS } from '@/constants';
 import { supabase } from '@/lib/supabase';
 import type { AnalysisResult, UserPreferences } from '@/types';
@@ -105,6 +106,7 @@ function App() {
   const MAX_TRIAL_TENDERS = 2;
   const [showScanRetryModal, setShowScanRetryModal] = useState(false);
   const [pendingRetryParams, setPendingRetryParams] = useState<{ sectionId: string, question: string } | null>(null);
+  const [showChatAssistant, setShowChatAssistant] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -830,6 +832,7 @@ function App() {
       loadingBatches={loadingBatches}
       onNewAnalysis={handleNewAnalysis}
       onOpenContact={() => setContactModalOpen(true)}
+      onOpenChatAssistant={() => setShowChatAssistant(true)}
     >
       <UpgradeModal
         isOpen={showUpgradeModal}
@@ -858,6 +861,12 @@ function App() {
         isOpen={showPricingModal}
         onClose={() => setShowPricingModal(false)}
         userId={session?.user?.id}
+      />
+      <ChatAssistantModal
+        isOpen={showChatAssistant}
+        onClose={() => setShowChatAssistant(false)}
+        tenderId={(analysisData as any)?.tender_id || (analysisData as any)?.id}
+        tenderTitle={(analysisData as any)?.title || 'Analisi Gara'}
       />
       <TimeoutModal
         isOpen={showTimeoutModal}

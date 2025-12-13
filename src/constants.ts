@@ -97,14 +97,15 @@ export const SECTION_BATCH_MAP: Record<string, string> = {
 
     "4_servizi": "batch_2",
     "7_durata": "batch_2",
-    "9_oneri": "batch_2",
-    "15_remunerazione": "batch_2",
-    "16_sla_penali": "batch_2",
+    "9_oneri": "batch_2b",
+    "15_remunerazione": "batch_2b",
+    "16_sla_penali": "batch_2b",
 
     "12_offerta_tecnica": "batch_3",
-    "13_offerta_economica": "batch_3",
-    "10_punteggi": "batch_3",
-    "11_pena_esclusione": "batch_3",
+
+    "13_offerta_economica": "batch_3b",
+    "10_punteggi": "batch_3b",
+    "11_pena_esclusione": "batch_3b",
 
     "14_note_importanti": "batch_4",
     "17_ambiguita_punti_da_chiarire": "batch_4"

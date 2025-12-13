@@ -395,10 +395,9 @@ Deno.serve(async (req) => {
             const TIMEOUT_MS = 20000; // 20 seconds hard timeout to prevent Edge Function kill
 
             try {
-               // Try User's Preferred Model (2.5)
+               // 1. PRIMARY: Gemini 2.5 Flash (Fastest)
                const controller = new AbortController();
-               const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
+               const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s
 
                const genUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
                const genRes = await fetch(genUrl, {
@@ -421,14 +420,13 @@ Deno.serve(async (req) => {
                text = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
             } catch (primaryError) {
-               console.warn("[GeminiExtract] Primary model failed or timed out, trying fallback (2.5-flash)...", primaryError);
+               console.warn("[GeminiExtract] Primary (2.5-flash) failed, trying Fallback 1 (1.5-flash)...", primaryError);
 
                try {
-                  // Fallback to Stable Model (1.5) with remaining time (short timeout)
+                  // 2. FALLBACK 1: Gemini 1.5 Flash (Stable, 30s timeout)
                   const controller = new AbortController();
-                  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s for fallback
+                  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s increased
 
-                  // FIX: Use standard version alias
                   const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
                   const fallbackRes = await fetch(fallbackUrl, {
                      method: 'POST',
@@ -445,15 +443,42 @@ Deno.serve(async (req) => {
                   });
                   clearTimeout(timeoutId);
 
-                  if (!fallbackRes.ok) throw new Error(`Fallback model failed: ${fallbackRes.status} ${await fallbackRes.text()}`);
+                  if (!fallbackRes.ok) throw new Error(`Fallback 1 failed: ${fallbackRes.status} ${await fallbackRes.text()}`);
                   const result = await fallbackRes.json();
                   text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-               } catch (fallbackError) {
-                  console.error("[GeminiExtract] ALL Gemini models failed/timed out.", fallbackError);
-                  // CRITICAL FIX: Do NOT return null to trigger local fallback if file is large.
-                  // Local fallback crashes the Edge Function (CPU limit).
-                  // Better to throw error and fail this file than crash the whole process.
-                  throw new Error("Gemini Extraction Failed (All Models). Local fallback disabled to prevent crash.");
+
+               } catch (fallback1Error) {
+                  console.warn("[GeminiExtract] Fallback 1 (1.5-flash) failed, trying Fallback 2 (1.5-pro)...", fallback1Error);
+
+                  try {
+                     // 3. FALLBACK 2: Gemini 1.5 Pro (Powerful, 45s timeout)
+                     const controller = new AbortController();
+                     const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s generous
+
+                     const fallback2Url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiKey}`;
+                     const fallback2Res = await fetch(fallback2Url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                           contents: [{
+                              parts: [
+                                 { file_data: { mime_type: 'application/pdf', file_uri: fileUri } },
+                                 { text: "Estrai tutto il testo contenuto in questo documento. Restituisci SOLO il testo estratto, senza commenti o formattazione markdown aggiuntiva." }
+                              ]
+                           }]
+                        }),
+                        signal: controller.signal
+                     });
+                     clearTimeout(timeoutId);
+
+                     if (!fallback2Res.ok) throw new Error(`Fallback 2 failed: ${fallback2Res.status} ${await fallback2Res.text()}`);
+                     const result = await fallback2Res.json();
+                     text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                  } catch (fallback2Error) {
+                     console.error("[GeminiExtract] ALL Gemini models (2.5-flash, 1.5-flash, 1.5-pro) failed.", fallback2Error);
+                     throw new Error("Gemini Extraction Failed (All Models). Local fallback disabled to prevent crash.");
+                  }
                }
             }
 
@@ -476,11 +501,11 @@ Deno.serve(async (req) => {
          }
       };
 
-      // --- HELPER: Extract Text ---
+      // --- HELPER: Extract Text (Sequential - Reverted for Stability) ---
       const extractTextFromFiles = async () => {
          let fullPdfText = "";
 
-         // Dynamic truncation strategy
+         // Dynamic truncation strategy (Per file)
          const MAX_TOTAL_CHARS = 350000;
          const fileCount = filePaths.length;
          let perFileLimit = Math.floor(MAX_TOTAL_CHARS / fileCount);
@@ -506,7 +531,6 @@ Deno.serve(async (req) => {
                   let extractedText = "";
 
                   // 1. Try LlamaParse first (DISABLED BY USER REQUEST)
-                  // const llamaMarkdown = await extractWithLlamaParse(fileData, filePath.split('/').pop() || 'doc');
                   const llamaMarkdown = null;
 
                   if (llamaMarkdown) {
@@ -523,16 +547,11 @@ Deno.serve(async (req) => {
                         }
                      } catch (geminiError: any) {
                         console.error("[Extract] Gemini extraction failed hard:", geminiError);
-                        // If Gemini failed hard, DON'T try standard extraction for PDFs, it will crash.
-                        if (filePath.toLowerCase().endsWith('.pdf')) {
-                           extractedText = "[ERRORE ESTRAZIONE TESTO: Impossibile leggere il PDF. Riprovare tra poco.]";
-                        } else {
-                           // For other files, let it fall through to standard extraction (if implemented differently) or just set null
-                        }
+                        // Do NOT set extractedText here, so fallback logic can run!
                      }
 
-                     if (!extractedText && !extractedText.includes("ERRORE")) {
-                        // 3. Last Resort: Standard extraction (High CPU)
+                     if (!extractedText || (typeof extractedText === 'string' && extractedText.includes("ERRORE"))) {
+                        // 3. Last Resort: Standard extraction (Re-enabled for fallback)
                         console.log("[Extract] Fallback to standard extraction (Last Resort) for " + filePath);
                         const fileBuffer = await fileData.arrayBuffer();
 
@@ -545,9 +564,8 @@ Deno.serve(async (req) => {
                            const { extractText } = await import('npm:unpdf');
                            const parsePromise = extractText(new Uint8Array(fileBuffer));
                            try {
-                              // Optimize: Use a shorter timeout for PDF parsing fallback
                               const pdfTimeoutPromise = new Promise((_, reject) =>
-                                 setTimeout(() => reject(new Error("PDF parsing timeout")), 10000) // Reduced to 10s
+                                 setTimeout(() => reject(new Error("PDF parsing timeout")), 15000)
                               );
                               const { text } = await Promise.race([parsePromise, pdfTimeoutPromise]) as any;
                               extractedText = Array.isArray(text) ? text.join("\n") : text;
@@ -559,20 +577,18 @@ Deno.serve(async (req) => {
                      }
                   }
 
-                  console.log("[Extract] Text length before cleanup: " + extractedText.length);
-                  // Optimize cleanup: simple trim first, then reduce multiple spaces
+                  console.log(`[Extract] ${filePath} raw text length: ${extractedText.length}`);
                   extractedText = extractedText.trim();
-                  // extractedText = extractedText.replace(/\s+/g, ' '); // Potential crash point?
 
                   if (!extractedText) extractedText = "[TESTO VUOTO]";
 
                   if (extractedText.length > perFileLimit) {
-                     console.log("[Extract] Truncating text from " + extractedText.length + " to " + perFileLimit);
+                     console.log(`[Extract] Truncating ${filePath} from ${extractedText.length} to ${perFileLimit}`);
                      extractedText = extractedText.substring(0, perFileLimit) + "\n...[TRONCATO]...";
                   }
 
                   fileResult = "\n=== INIZIO FILE: " + filePath + " ===\n" + extractedText + "\n=== FINE FILE: " + filePath + " ===\n";
-                  console.log("[Extract] File processed. Result length: " + fileResult.length);
+                  console.log(`[Extract] Finished ${filePath}. Result length: ${fileResult.length}`);
                }
             } catch (e: any) {
                console.error(`[Extract] Error processing ${filePath}:`, e);
@@ -582,7 +598,7 @@ Deno.serve(async (req) => {
          }
 
          if (fullPdfText.length > 400000) {
-            console.log(`[Extract] Text truncated to 400k chars (Original: ${fullPdfText.length})`);
+            console.log(`[Extract] Total Text truncated to 400k chars (Original: ${fullPdfText.length})`);
             fullPdfText = fullPdfText.substring(0, 400000) + "\n...[TRONCATO]...";
          }
 
@@ -708,21 +724,56 @@ Deno.serve(async (req) => {
          return new Response(JSON.stringify({ success: true, id: insertData.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
+      // --- ACTION: EXTRACT TEXT ONLY ---
+      if (action === 'extract_text') {
+         console.log("[Extract] Starting dedicated text extraction...");
+         const extractedText = await extractTextFromFiles();
+
+         if (!textStoragePath) {
+            throw new Error("textStoragePath is required for extract_text action");
+         }
+
+         // Save to Storage
+         const { error: uploadError } = await supabaseClient.storage
+            .from('tenders')
+            .upload(textStoragePath, extractedText, {
+               contentType: 'text/plain; charset=utf-8',
+               upsert: true
+            });
+
+         if (uploadError) {
+            console.error("[Extract] Save Error:", uploadError);
+            throw new Error("Failed to save extracted text");
+         }
+
+         return new Response(JSON.stringify({ success: true, message: "Text extracted and saved" }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
       // --- ACTION: ANALYZE ---
       if (action === 'analyze') {
          console.log("[Analysis] Starting analysis...");
 
          let fullPdfText = providedText;
          if (!fullPdfText && textStoragePath) {
+            console.log(`[Analysis] Loading cached text from ${textStoragePath}`);
             const { data, error } = await supabaseClient.storage.from('tenders').download(textStoragePath);
-            if (error) throw new Error("Failed to download text for analysis");
-            fullPdfText = await data.text();
+            if (!error) {
+               fullPdfText = await data.text();
+            } else {
+               console.warn("[Analysis] Failed to download cached text:", error);
+               // Fallback will trigger extraction below
+            }
          }
 
          if (!fullPdfText) {
-            // Fallback if no text provided or stored (should not happen in new flow)
-            fullPdfText = await extractTextFromFiles();
+            // Fallback: Extract if no text found (legacy behavior)
+            // fullPdfText = await extractTextFromFiles();
+            // Actually, for consistency, if we are here and allowDirectUpload is false, we MUST extract.
+            if (!allowDirectUpload) {
+               fullPdfText = await extractTextFromFiles();
+            }
          }
+
          const performAnalysis = async (targetModel: string, systemPrompt: string, allowDirectUpload: boolean = true) => {
             let FINAL_PROMPT = systemPrompt;
             if (analysisPreferences) {
@@ -735,7 +786,8 @@ Deno.serve(async (req) => {
             // (Removals: Gemini 1.5 is now supported natively. GPT-4.1 is removed.)
 
             // --- STAGE 1: DIRECT PDF UPLOAD (GEMINI ONLY) ---
-            if (allowDirectUpload && targetModel && targetModel.startsWith('gemini')) {
+            // Only use Direct Upload if we DON'T have full text already (or explicit override)
+            if (allowDirectUpload && !fullPdfText && targetModel && targetModel.startsWith('gemini')) {
                console.log("[Analysis] Stage 1: Attempting Direct PDF Upload...");
                try {
                   const geminiKey = Deno.env.get('GEMINI_API_KEY');
@@ -1034,6 +1086,13 @@ OUTPUT ATTESO (JSON):
                structuredResult._batch_name = batchName;
             }
 
+            // JOIN DEBUG INFO (DIAGNOSTIC)
+            if (typeof structuredResult === 'object' && structuredResult !== null) {
+               structuredResult._model_used = sModel;
+               structuredResult._debug_text_length = fullPdfText ? fullPdfText.length : 0;
+               structuredResult._debug_text_source = textStoragePath ? 'cache' : 'direct_upload_fallback';
+            }
+
             return structuredResult;
          };
 
@@ -1061,6 +1120,19 @@ OUTPUT ATTESO (JSON):
 
                } catch (error: any) {
                   console.error("[Background] Processing Error:", error);
+
+                  // LOG ERROR TO ANALYSES TABLE SO FRONTEND SEES IT
+                  await supabaseClient
+                     .from('analyses')
+                     .insert({
+                        tender_id: tenderId,
+                        result_json: {
+                           error: `Background Error: ${error.message || String(error)}`,
+                           _batch_name: batchName
+                        },
+                        model_used: 'error'
+                     });
+
                   await supabaseClient
                      .from('tenders')
                      .update({ status: 'failed' })

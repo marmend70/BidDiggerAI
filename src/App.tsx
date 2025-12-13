@@ -311,7 +311,7 @@ function App() {
     setIsUploading(true);
     setElapsedTime(0);
     setProgressMessage(`Avvio analisi (Strutturato: ${structuredModelId}, Semantico: ${semanticModelId})...`);
-    setLoadingBatches(['batch_1', 'batch_2', 'batch_3', 'batch_4']);
+    setLoadingBatches(['batch_1', 'batch_2', 'batch_2b', 'batch_3', 'batch_3b', 'batch_4']);
     setAnalysisData(null); // Reset previous data
 
     try {
@@ -324,9 +324,22 @@ function App() {
         const fileName = `${session.user.id}/${Math.random()}.${fileExt}`; // Ensure unique file names per user
         const filePath = `${session.user.id}/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from('tenders')
-          .upload(filePath, file);
+        // Retry logic for upload
+        let uploadError = null;
+        for (let i = 0; i < 3; i++) {
+          try {
+            const { error } = await supabase.storage
+              .from('tenders')
+              .upload(filePath, file);
+            if (error) throw error;
+            uploadError = null;
+            break; // Success
+          } catch (e: any) {
+            console.warn(`Upload attempt ${i + 1} failed for ${file.name}:`, e);
+            uploadError = e;
+            await new Promise(r => setTimeout(r, 1000 * (i + 1))); // Backoff
+          }
+        }
 
         if (uploadError) throw uploadError;
         uploadedPaths.push(filePath);
@@ -364,11 +377,15 @@ function App() {
       setProgressMessage('Estrazione e salvataggio testo...');
 
       // 3. Extract and Store Text (Once)
+      // We use a dedicated file for the entire tender's text
+      const textStoragePath = `${session.user.id}/${tender.id}/extracted_text.txt`;
+
       const { data: extractData, error: extractError } = await supabase.functions.invoke('analyze-tender', {
         body: {
           tenderId: tender.id,
           filePaths: uploadedPaths,
-          action: 'extract_and_store'
+          action: 'extract_text',
+          textStoragePath: textStoragePath
         }
       });
 
@@ -390,7 +407,6 @@ function App() {
         throw new Error("Errore durante l'estrazione del testo: " + errorMessage);
       }
 
-      const textStoragePath = extractData.textStoragePath;
       console.log("Text stored at:", textStoragePath);
 
       setProgressMessage('Attendi ancora qualche secondo...');
@@ -473,7 +489,7 @@ function App() {
           return data;
         };
 
-        const maxRetries = 3;
+        const maxRetries = 1;
         let attempt = 0;
 
         try {
@@ -509,7 +525,8 @@ function App() {
                 structuredModel: structuredModel, // Pass structured model
                 semanticModel: semanticModel,     // Pass semantic model
                 action: 'analyze',
-                batchName: batchName              // PASS BATCH NAME
+                batchName: batchName,             // PASS BATCH NAME
+                allowDirectUpload: false          // DISABLE Direct Upload (Use cached text)
               }
             });
 
@@ -534,7 +551,7 @@ function App() {
             // 2. Poll for Results
             // Polling Loop
             const POLL_INTERVAL = 2000;
-            const MAX_POLL_TIME = 10 * 60 * 1000; // 10 minutes
+            const MAX_POLL_TIME = 5 * 60 * 1000; // 5 minutes
             let elapsed = 0;
 
             while (elapsed < MAX_POLL_TIME) {
@@ -615,14 +632,20 @@ function App() {
 
       const BATCH_2 = {
         '4_servizi': true,
-        '7_durata': true,
+        '7_durata': true
+      };
+
+      const BATCH_2B = {
         '9_oneri': true,
         '15_remunerazione': true,
         '16_sla_penali': true
       };
 
       const BATCH_3 = {
-        '12_offerta_tecnica': true,
+        '12_offerta_tecnica': true
+      };
+
+      const BATCH_3B = {
         '13_offerta_economica': true,
         '10_punteggi': true,
         '11_pena_esclusione': true
@@ -633,20 +656,24 @@ function App() {
         '17_ambiguita_punti_da_chiarire': true
       };
 
-      // Initialize loading state for all batches
-      setLoadingBatches(['batch_1', 'batch_2', 'batch_3', 'batch_4']);
-
-      // Parallel Execution
-      const batches = [
+      // Configuration for Batches
+      const batchConfigs = [
         { name: 'batch_1', prefs: BATCH_1 },
         { name: 'batch_2', prefs: BATCH_2 },
+        { name: 'batch_2b', prefs: BATCH_2B },
         { name: 'batch_3', prefs: BATCH_3 },
+        { name: 'batch_3b', prefs: BATCH_3B },
         { name: 'batch_4', prefs: BATCH_4 }
       ];
 
-      const batchPromises = batches.map(batch =>
-        runBatch(batch.name, getBatchPreferences(batch.prefs), structuredModelId, semanticModelId)
-      );
+      // Staggered Parallel Execution
+      // Launch batches with a delay to prevent request spikes
+      const batchPromises: Promise<any>[] = [];
+
+      for (const batch of batchConfigs) {
+        batchPromises.push(runBatch(batch.name, getBatchPreferences(batch.prefs), structuredModelId, semanticModelId));
+        await new Promise(resolve => setTimeout(resolve, 2000)); // 2s delay
+      }
 
       const rawResults = await Promise.all(batchPromises);
 

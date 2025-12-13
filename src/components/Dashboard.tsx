@@ -27,7 +27,6 @@ interface DashboardProps {
 }
 
 const SemanticAnalysisBlock = ({ data }: { data?: { semantic_analysis: string, rischi_rilevati: string[] } }) => {
-    console.log("SemanticBlock received:", data);
     if (!data) return null;
     const { semantic_analysis, rischi_rilevati } = data;
     if (!semantic_analysis && (!rischi_rilevati || rischi_rilevati.length === 0)) return null;

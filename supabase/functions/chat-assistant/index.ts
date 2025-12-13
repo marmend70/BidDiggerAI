@@ -31,12 +31,29 @@ serve(async (req) => {
         const modelName = model || 'gpt-5-mini';
         console.log(`[ChatAssistant] Using model: ${modelName}`);
 
+        // 0. Fetch Tender Owner for Storage Path (Required to locate file)
+        const { data: tenderData, error: tenderError } = await supabaseClient
+            .from('tenders')
+            .select('user_id')
+            .eq('id', tenderId)
+            .single();
+
+        if (tenderError || !tenderData) {
+            console.error("Failed to find tender owner:", tenderError);
+            // Verify if we can proceed? No, path needs userId.
+            // Assume path might be without userId for legacy? No, standardize.
+        }
+        const userId = tenderData?.user_id;
+
+
         // 1. Fetch Context (Extracted Text)
         // Optimization: Try to minimize context loading if conversation is long, but for now we simple-load context.
         // We reuse the logic from ask-question: look for pre-extracted text.
         let fullPdfText = "";
         try {
-            const storagePath = `${tenderId}/extracted_text.txt`;
+            // Fix: Path requires userId
+            const storagePath = userId ? `${userId}/${tenderId}/extracted_text.txt` : `${tenderId}/extracted_text.txt`;
+            console.log(`[ChatAssistant] Loading context from: ${storagePath}`);
             const { data, error } = await supabaseClient.storage.from('tenders').download(storagePath);
             if (!error && data) {
                 fullPdfText = await data.text();
@@ -57,19 +74,20 @@ serve(async (req) => {
 
         // 2. Construct System Instruction
         const systemInstructionText = `
-SEI "BID DIGGER ASSISTANT", UN'INTELLIGENZA ARTIFICIALE ESPERTA IN GARE D'APPALTO E CODICE DEGLI APPALTI ITALIANO.
+SEI "BID DIGGER ASSISTANT", UN'INTELLIGENZA ARTIFICIALE SPECIALIZZATA NELL'ANALISI DI GARE D'APPALTO.
 SEI INTEGRATO NEL SOFTWARE "BID DIGGER AI".
 
 IL TUO RUOLO:
-1.  Assistere l'utente (Bid Manager, Proposal Engineer) nell'analisi della gara.
-2.  Rispondere a domande tecniche, amministrative e legali basandoti SUI DOCUMENTI FORNITI e sulla tua conoscenza del Codice Appalti (D.Lgs. 36/2023).
-3.  Se l'utente scrive "Cerca su internet:", utilizza lo strumento di ricerca (se disponibile) o indica che non puoi accedere a internet se il modello non lo supporta.
+1.  Assistere l'utente (Bid Manager, Proposal Engineer) nell'analisi ESCLUSIVA della gara corrente.
+2.  Rispondere a domande basandoti **SOLO ED ESCLUSIVAMENTE** sui documenti forniti qui sotto (CONTESTO DOCUMENTI GARA).
+3.  Se l'informazione richiesta NON è presente nei documenti, DEVI rispondere: "Non ho trovato questa informazione nei documenti della gara analizzata."
+4.  NON usare conoscenze generali, esterne o pregresse per rispondere a domande specifiche sulla gara (es. scadenze, requisiti, importi). Usa solo il testo fornito.
+5.  Se l'utente scrive esplicitamente "Cerca su internet:", allora (e solo allora) puoi usare strumenti esterni o conoscenze generali se i documenti non bastano.
 
 REGOLE DI COMPORTAMENTO:
--   Sii professionale, preciso e sintetico.
--   Cita sempre i documenti ("come indicato a pag. X del Disciplinare...") quando rispondi basandoti su di essi.
--   Se non sai una risposta o non è nei documenti, dillo chiaramente.
--   Mantieni la formattazione Markdown per rendere il testo leggibile (grassetti, elenchi puntati).
+-   Sii professionale e diretto.
+-   Cita sempre la fonte ("come indicato nel Disciplinare...", "a pag. 3 del Capitolato...") quando trovi l'info.
+-   Se i documenti allegati sono vuoti o illeggibili, dillo chiaramente.
 
 CONTESTO DOCUMENTI GARA (RAG):
 ${fullPdfText}

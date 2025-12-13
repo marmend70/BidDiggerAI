@@ -30,6 +30,15 @@ export function ChatAssistantModal({ isOpen, onClose, tenderId, tenderTitle }: C
         }
     }, [messages]);
 
+    // RESET CHAT WHEN TENDER CHANGED
+    useEffect(() => {
+        setMessages([
+            { role: 'model', content: "Ciao! Sono il tuo assistente per questa gara. Come posso aiutarti? Posso analizzare i documenti o cercare informazioni aggiornate su internet (scrivi 'Cerca su internet:')." }
+        ]);
+        setInput('');
+        setIsLoading(false);
+    }, [tenderId]);
+
     if (!isOpen) return null;
 
     const handleSendMessage = async () => {

@@ -113,35 +113,42 @@ export const SECTION_BATCH_MAP: Record<string, string> = {
 
 export const AVAILABLE_MODELS = [
     // ESTRAZIONE STRUTTURATA (Structured)
-    // ESTRAZIONE STRUTTURATA (Structured)
     {
         id: 'gemini-2.5-flash',
         name: 'Gemini 2.5 Flash',
         description: 'Rapidissimo, ideale per parsing di grandi volumi di dati e tabelle.',
         recommendedFor: 'Parsing veloce, tabelle',
         type: 'structured',
-        isRecommended: true
+        isRecommended: true,
+        speed: 'Molto Veloce',
+        cost: 'Molto Basso'
     },
     {
         id: 'gemini-2.5-pro',
         name: 'Gemini 2.5 Pro',
         description: 'Massima accuratezza e stabilità per estrazioni strutturate complesse.',
         recommendedFor: 'Estrazione accurata',
-        type: 'structured'
+        type: 'structured',
+        speed: 'Medio',
+        cost: 'Medio'
     },
     {
         id: 'gemini-1.5-flash',
         name: 'Gemini 1.5 Flash',
         description: 'Versione precedente, stabile e leggera.',
         recommendedFor: 'Legacy, stabilità',
-        type: 'structured'
+        type: 'structured',
+        speed: 'Veloce',
+        cost: 'Basso'
     },
     {
         id: 'gemini-1.5-pro',
         name: 'Gemini 1.5 Pro',
         description: 'Versione Pro precedente, ottima context window.',
         recommendedFor: 'Legacy, Analisi lunghe',
-        type: 'structured'
+        type: 'structured',
+        speed: 'Lento',
+        cost: 'Alto'
     },
 
     // ANALISI SEMANTICA (Semantic)
@@ -150,14 +157,18 @@ export const AVAILABLE_MODELS = [
         name: 'GPT-5.2',
         description: 'Il modello più avanzato. Massima precisione semantica e ragionamento complesso.',
         recommendedFor: 'Analisi profonda, rischi',
-        type: 'semantic'
+        type: 'semantic',
+        speed: 'Lento',
+        cost: 'Molto Alto'
     },
     {
         id: 'gpt-4o',
         name: 'GPT-4o',
         description: 'Bilanciato e affidabile, lo standard precedente.',
         recommendedFor: 'Standard',
-        type: 'semantic'
+        type: 'semantic',
+        speed: 'Medio',
+        cost: 'Alto'
     },
     {
         id: 'gpt-5-mini',
@@ -165,7 +176,9 @@ export const AVAILABLE_MODELS = [
         description: 'Alta velocità di risposta, ideale per analisi preliminari e sintesi rapide.',
         recommendedFor: 'Analisi preliminare',
         type: 'semantic',
-        isRecommended: true
+        isRecommended: true,
+        speed: 'Molto Veloce',
+        cost: 'Basso'
     }
 ];
 

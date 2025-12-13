@@ -392,14 +392,14 @@ Deno.serve(async (req) => {
             // 4. Generate Content
             console.log("[GeminiExtract] Generating content...");
             let text = null;
-            const TIMEOUT_MS = 20000; // 20 seconds hard timeout to prevent Edge Function kill
+            const TIMEOUT_MS = 60000; // 60 seconds hard timeout to prevent Edge Function kill (increased for large docs)
 
             try {
-               // 1. PRIMARY: Gemini 2.5 Flash (Fastest)
+               // 1. PRIMARY: Gemini 1.5 Flash Latest (Stable) - Replaces broken 2.5
                const controller = new AbortController();
-               const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s
+               const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s
 
-               const genUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+               const genUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}`;
                const genRes = await fetch(genUrl, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -423,11 +423,11 @@ Deno.serve(async (req) => {
                console.warn("[GeminiExtract] Primary (2.5-flash) failed, trying Fallback 1 (1.5-flash)...", primaryError);
 
                try {
-                  // 2. FALLBACK 1: Gemini 1.5 Flash (Stable, 30s timeout)
+                  // 2. FALLBACK 1: Gemini 1.5 Flash Latest (Stable, 90s timeout)
                   const controller = new AbortController();
-                  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s increased
+                  const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s increased
 
-                  const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+                  const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}`;
                   const fallbackRes = await fetch(fallbackUrl, {
                      method: 'POST',
                      headers: { 'Content-Type': 'application/json' },
@@ -451,11 +451,11 @@ Deno.serve(async (req) => {
                   console.warn("[GeminiExtract] Fallback 1 (1.5-flash) failed, trying Fallback 2 (1.5-pro)...", fallback1Error);
 
                   try {
-                     // 3. FALLBACK 2: Gemini 1.5 Pro (Powerful, 45s timeout)
+                     // 3. FALLBACK 2: Gemini 1.5 Pro Latest (Powerful, 120s timeout)
                      const controller = new AbortController();
-                     const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s generous
+                     const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s generous
 
-                     const fallback2Url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiKey}`;
+                     const fallback2Url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${geminiKey}`;
                      const fallback2Res = await fetch(fallback2Url, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -892,11 +892,19 @@ Deno.serve(async (req) => {
                   const geminiModel = genAI.getGenerativeModel({ model: targetModel });
                   const prompt = `${FINAL_PROMPT}\n\nAnalizza il seguente corpus documentale:\n\n${fullPdfText}`;
                   const result = await geminiModel.generateContent(prompt);
-                  return parseResponse(result.response.text());
+                  const parsed = parseResponse(result.response.text());
+
+                  // FORCE FALLBACK ON JSON ERROR
+                  if (parsed && (parsed.error || parsed.message === "JSON Parse Error")) {
+                     throw new Error(`JSON Parse Error in Primary Model: ${JSON.stringify(parsed)}`);
+                  }
+
+                  return parsed;
                } catch (e) {
                   console.warn(`[Stage 2] Primary model ${targetModel} failed. Falling back to gemini-1.5-flash. Error:`, e);
                   try {
-                     const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+                     // Use specific version to avoid 404
+                     const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
                      const prompt = `${FINAL_PROMPT}\n\nAnalizza il seguente corpus documentale:\n\n${fullPdfText}`;
                      const result = await fallbackModel.generateContent(prompt);
                      return parseResponse(result.response.text());
@@ -921,7 +929,7 @@ Deno.serve(async (req) => {
                   return JSON.parse(completion.choices[0].message.content);
                } catch (e: any) {
                   console.error("[Analysis] OpenAI Error:", e);
-                  console.warn("[Analysis] Falling back to Gemini 2.5 Flash for Semantic Analysis...");
+                  console.warn("[Analysis] Falling back to Gemini 1.5 Flash for Semantic Analysis...");
 
                   // FALLBACK TO GEMINI
                   try {
@@ -930,7 +938,8 @@ Deno.serve(async (req) => {
 
                      const { GoogleGenerativeAI } = await import("npm:@google/generative-ai");
                      const genAI = new GoogleGenerativeAI(geminiKey);
-                     const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+                     // Use specific version to avoid 404
+                     const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
                      const prompt = `${FINAL_PROMPT}\n\nAnalizza il seguente corpus documentale:\n\n${fullPdfText}`;
                      const result = await fallbackModel.generateContent(prompt);
@@ -986,15 +995,28 @@ Deno.serve(async (req) => {
 
          const executeDualModelAnalysis = async () => {
             // 1. Structured Analysis (Primary)
-            const sModel = structuredModel || model || 'gemini-2.5-flash';
+            let sModel = structuredModel || model || 'gemini-2.0-flash';
+
+            // SECURITY REMAP: Force safe model (Strict Mode: Remap ALL 2.5 to 2.0 to avoid hangs)
+            if (sModel.includes('gpt') || sModel.includes('2.5')) {
+               console.warn(`[DualModel] Remapping unstable model ${sModel} to gemini-2.0-flash`);
+               sModel = 'gemini-2.0-flash';
+            }
+
             console.log(`[DualModel] Starting Structured Analysis with ${sModel}`);
             const structuredResult = await performAnalysis(sModel, SYSTEM_PROMPT, true);
 
             // 2. Semantic Analysis (Secondary, Optional)
             const semSections = semanticAnalysisSections ? Object.keys(semanticAnalysisSections).filter(k => semanticAnalysisSections[k]) : [];
+            let semModel = semanticModel || 'gpt-5-mini';
 
             if (semSections.length > 0) {
-               const semModel = semanticModel || 'gpt-5-mini';
+               // SECURITY REMAP FOR SEMANTIC TOO
+               if (semModel.includes('gpt') || (semModel.includes('2.5') && !semModel.includes('flash'))) {
+                  console.warn(`[DualModel] Remapping unstable semantic model ${semModel} to gemini-2.0-flash`);
+                  semModel = 'gemini-2.0-flash';
+               }
+
                console.log(`[DualModel] Starting Semantic Analysis with ${semModel} for sections: ${semSections.join(', ')}`);
 
                const SEMANTIC_PROMPT = `

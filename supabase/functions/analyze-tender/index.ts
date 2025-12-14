@@ -9,7 +9,7 @@ const corsHeaders = {
    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const SYSTEM_PROMPT = `
+const JSON_ANALYSIS_PROMPT = `
 SEI UN ANALISTA ESPERTO DI GARE D'APPALTO (BID MANAGER).
 L’obiettivo è analizzare i documenti di gara attraverso un approccio multi-modello, multi-sezione e a doppio livello di analisi.
 
@@ -26,6 +26,14 @@ REGOLE OBBLIGATORIE:
 - Output ESCLUSIVAMENTE in JSON valido.
 - Normalizza date (YYYY-MM-DD).
 - Non inventare informazioni.
+`;
+
+const TEXT_QA_PROMPT = `
+SEI UN ASSISTENTE ESPERTO DI GARE D'APPALTO.
+Il tuo compito è rispondere alle domande dell'utente basandoti sui documenti forniti.
+Rispondi in modo chiaro, professionale e sintetico.
+Usa formattazione Markdown (grassetti, elenchi puntati) per migliorare la leggibilità.
+IMPORTANTE: NON RESTITUIRE JSON. Rispondi solo con testo discorsivo/strutturato.
 `;
 
 Deno.serve(async (req) => {
@@ -47,14 +55,14 @@ Deno.serve(async (req) => {
 
 
       // --- HELPER: Native Analysis with Fallback ---
-      const performAnalysisNative = async (primaryModelId: string, fallbackModelId: string, userPrompt: string, googleFiles: GoogleFileResult[]) => {
+      const performAnalysisNative = async (primaryModelId: string, fallbackModelId: string, userPrompt: string, googleFiles: GoogleFileResult[], systemPrompt: string) => {
          console.log(`[Analysis] Starting Native with Primary: ${primaryModelId}`);
 
          const callAI = async (modelId: string) => {
             console.log(`[AI] Calling Google Native ${modelId}...`);
             // We append SYSTEM_PROMPT to userPrompt because native API 'systemInstruction' is optional/beta.
             // Concatenating is safer for now.
-            const fullPrompt = SYSTEM_PROMPT + "\n\n" + userPrompt;
+            const fullPrompt = systemPrompt + "\n\n" + userPrompt;
             return await generateContentGoogle(modelId, fullPrompt, googleFiles, geminiKey);
          };
 
@@ -143,8 +151,8 @@ Deno.serve(async (req) => {
          // 2. Generate Prompt
          const activePrompt = prompt || generateAnalysisPrompt(analysisPreferences, batchName || 'default', semanticPreferences);
 
-         // 3. Perform Analysis
-         const responseText = await performAnalysisNative(primaryModel, fallbackModel, activePrompt, googleFiles);
+         // 3. Perform Analysis (PASS JSON SYSTEM PROMPT)
+         const responseText = await performAnalysisNative(primaryModel, fallbackModel, activePrompt, googleFiles, JSON_ANALYSIS_PROMPT);
 
          // Clean Response (Gemini sometimes adds ```json ... ```)
          const cleanText = responseText.replace(/```json/g, '').replace(/```/g, '');
@@ -223,10 +231,61 @@ ${contextString}
             googleFiles = await prepareFilesForGoogle(filePaths);
          }
 
-         // Use the helper, but pass our constructed prompt
-         const responseText = await performAnalysisNative(primaryModel, fallbackModel, fullPrompt, googleFiles);
+         // Use the helper, but pass our TEXT system prompt
+         const responseText = await performAnalysisNative(primaryModel, fallbackModel, fullPrompt, googleFiles, TEXT_QA_PROMPT);
 
-         return new Response(JSON.stringify({ answer: responseText }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+         let finalAnswer = responseText;
+         // CLEANUP: If model stubbornly returns JSON, try to extract the text
+         try {
+            const clean = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+            if (clean.startsWith('{')) {
+               const parsed = JSON.parse(clean);
+               if (parsed.risposta) finalAnswer = parsed.risposta;
+               else if (parsed.answer) finalAnswer = parsed.answer;
+               else if (parsed.content) finalAnswer = parsed.content;
+               else if (parsed.text) finalAnswer = parsed.text;
+            }
+         } catch (e) {
+            console.log("Response was not JSON or failed parse, using raw text.");
+         }
+
+         // PERSISTENCE: Save to DB
+         try {
+            // 1. Get latest analysis
+            const { data: existingAnalysis, error: fetchError } = await supabaseClient
+               .from('analyses')
+               .select('id, result_json')
+               .eq('tender_id', tenderId)
+               .order('created_at', { ascending: false })
+               .limit(1)
+               .single();
+
+            if (existingAnalysis && existingAnalysis.result_json) {
+               const currentJson = existingAnalysis.result_json;
+               if (!currentJson.deep_dives) currentJson.deep_dives = {};
+
+               const sectionKey = section || 'general';
+               if (!currentJson.deep_dives[sectionKey]) currentJson.deep_dives[sectionKey] = [];
+
+               currentJson.deep_dives[sectionKey].push({
+                  question,
+                  answer: finalAnswer,
+                  timestamp: new Date().toISOString()
+               });
+
+               const { error: updateError } = await supabaseClient
+                  .from('analyses')
+                  .update({ result_json: currentJson })
+                  .eq('id', existingAnalysis.id);
+
+               if (updateError) console.error("Failed to persist Deep Dive:", updateError);
+               else console.log("Deep Dive persisted to DB.");
+            }
+         } catch (dbEx) {
+            console.error("Error persisting Deep Dive:", dbEx);
+         }
+
+         return new Response(JSON.stringify({ answer: finalAnswer }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       return new Response(JSON.stringify({ error: 'Invalid action' }), { status: 400, headers: corsHeaders });

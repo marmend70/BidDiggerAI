@@ -27,8 +27,8 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
-        // Get the model
-        const modelName = model || 'gpt-5-mini';
+        // Default to Gemini 2.5 Flash as requested
+        let modelName = model || 'gemini-2.5-flash';
         console.log(`[ChatAssistant] Using model: ${modelName}`);
 
         // 0. Fetch Tender Owner for Storage Path (Required to locate file)
@@ -131,56 +131,73 @@ ${fullPdfText}
             if (!geminiKey) throw new Error("GEMINI_API_KEY is missing");
             const genAI = new GoogleGenerativeAI(geminiKey);
 
-            // Check if the last message triggers internet search
-            const lastMsg = messages[messages.length - 1];
-            const isSearchRequest = lastMsg.content.toLowerCase().startsWith("cerca su internet:");
+            // Re-usable chat execution function
+            const executeChat = async (targetModelId: string) => {
+                console.log(`[ChatAssistant] Attempting generation with ${targetModelId}...`);
 
-            let tools = [];
-            if (isSearchRequest) {
-                console.log("Search trigger detected.");
-                tools.push({ googleSearch: {} });
-            }
+                const lastMsg = messages[messages.length - 1];
+                const isSearchRequest = lastMsg.content.toLowerCase().startsWith("cerca su internet:");
 
-            const generativeModel = genAI.getGenerativeModel({
-                model: modelName,
-                tools: tools,
-                systemInstruction: {
-                    parts: [{ text: systemInstructionText }],
-                    role: "system"
+                let tools = [];
+                if (isSearchRequest) {
+                    console.log("Search trigger detected.");
+                    tools.push({ googleSearch: {} });
                 }
-            });
 
-            // 3. Prepare History for Gemini
-            // Gemini expects specific format: Alternating User/Model, starting with User.
+                const generativeModel = genAI.getGenerativeModel({
+                    model: targetModelId,
+                    tools: tools,
+                    systemInstruction: {
+                        parts: [{ text: systemInstructionText }],
+                        role: "system"
+                    }
+                });
 
-            let chatHistory = messages.map((m: any) => ({
-                role: m.role === 'user' ? 'user' : 'model',
-                parts: [{ text: m.content }]
-            }));
+                // 3. Prepare History for Gemini
+                let chatHistory = messages.map((m: any) => ({
+                    role: m.role === 'user' ? 'user' : 'model',
+                    parts: [{ text: m.content }]
+                }));
 
-            // Remove the very last message from history because sendMessage(msg) takes the new message as arg
-            // But first, safety check
-            let newMsgContent = "";
-            if (chatHistory.length > 0) {
-                const lastMsg = chatHistory.pop();
-                newMsgContent = lastMsg.parts[0].text;
+                // Remove the very last message from history because sendMessage(msg) takes the new message as arg
+                let newMsgContent = "";
+                if (chatHistory.length > 0) {
+                    const lastMsg = chatHistory.pop();
+                    newMsgContent = lastMsg.parts[0].text;
+                }
+
+                // SANITIZATION: Remove leading 'model' messages.
+                while (chatHistory.length > 0 && chatHistory[0].role !== 'user') {
+                    chatHistory.shift();
+                }
+
+                const chat = generativeModel.startChat({
+                    history: chatHistory,
+                });
+
+                // 4. Generate Response
+                const result = await chat.sendMessage(newMsgContent);
+                return result.response.text();
+            };
+
+            try {
+                responseText = await executeChat(modelName); // Try Default (2.5 Flash)
+            } catch (e: any) {
+                console.error(`[ChatAssistant] Primary model ${modelName} failed:`, e);
+
+                // FALLBACK LOGIC: If 2.5 Flash fails, try 3 Pro Preview
+                if (modelName === 'gemini-2.5-flash') {
+                    console.warn("[ChatAssistant] Fallback: Retrying with gemini-3-pro-preview...");
+                    try {
+                        responseText = await executeChat('gemini-3-pro-preview');
+                    } catch (retryErr: any) {
+                        throw new Error(`Chat Failed (Total Failure): ${e.message} -> ${retryErr.message}`);
+                    }
+                } else {
+                    throw e; // Rethrow if not our target model
+                }
             }
 
-            // SANITIZATION: Remove leading 'model' messages.
-            while (chatHistory.length > 0 && chatHistory[0].role !== 'user') {
-                console.log("Sanitizing: Removed leading model message.");
-                chatHistory.shift();
-            }
-
-            const chat = generativeModel.startChat({
-                history: chatHistory,
-            });
-
-            // 4. Generate Response
-            console.log(`[ChatAssistant] Sending message to model ${modelName}. User msg length: ${newMsgContent.length}`);
-
-            const result = await chat.sendMessage(newMsgContent);
-            responseText = result.response.text();
             console.log(`[ChatAssistant] Success.`);
         }
 

@@ -259,8 +259,9 @@ function App() {
 
   // Model Selection State
   const [showModelModal, setShowModelModal] = useState(false);
+  // MODEL SELECTION STATE - Hardcoded to Gemini 2.5 Flash as per User Request (Fallback: Gemini 3)
   const [selectedStructuredModel, setSelectedStructuredModel] = useState<string>('gemini-2.5-flash');
-  const [selectedSemanticModel, setSelectedSemanticModel] = useState<string>('gpt-5-mini');
+  const [selectedSemanticModel, setSelectedSemanticModel] = useState<string>('gemini-2.5-flash');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
 
@@ -292,14 +293,18 @@ function App() {
       return;
     }
 
-    setPendingFiles(files);
-    // Use default model from preferences if available
-    if (userPreferences.structured_model) setSelectedStructuredModel(userPreferences.structured_model);
-    if (userPreferences.semantic_model) setSelectedSemanticModel(userPreferences.semantic_model);
-    setShowModelModal(true);
+    // Use hardcoded models directly as user requested "Elimina scelta modello"
+    const sModel = 'gemini-2.5-flash';
+    const semModel = 'gemini-2.5-flash';
+
+    // Verify User Preference overrides if needed? User said "Metti di default", implies forceful.
+    // But then "Elimina scelta". So I imply Hardcode.
+    // Proceed directly to analysis
+    startAnalysis(files, sModel, semModel);
   };
 
   const handleModelConfirm = (structuredId: string, semanticId: string) => {
+    // Legacy support for modal - unused now
     setSelectedStructuredModel(structuredId);
     setSelectedSemanticModel(semanticId);
     setShowModelModal(false);
@@ -310,7 +315,7 @@ function App() {
     if (!session?.user) return;
     setIsUploading(true);
     setElapsedTime(0);
-    setProgressMessage(`Avvio analisi (Strutturato: ${structuredModelId}, Semantico: ${semanticModelId})...`);
+    setProgressMessage(`Avvio analisi (Standard: ${structuredModelId})...`);
     setLoadingBatches(['batch_1', 'batch_2', 'batch_2b', 'batch_3', 'batch_3b', 'batch_4']);
     setAnalysisData(null); // Reset previous data
 
@@ -384,7 +389,7 @@ function App() {
         body: {
           tenderId: tender.id,
           filePaths: uploadedPaths,
-          action: 'extract_text',
+          action: 'extract_and_store', // FIXED: Use correct action for credits
           textStoragePath: textStoragePath
         }
       });

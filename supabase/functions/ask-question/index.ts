@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import OpenAI from 'https://esm.sh/openai@4.28.0'
 import { GoogleGenerativeAI } from "npm:@google/generative-ai";
-import { GoogleAIFileManager } from "npm:@google/generative-ai/server";
+// GoogleAIFileManager removed (Edge Runtime incompatible)
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -335,7 +335,7 @@ serve(async (req) => {
             if (!geminiKey) throw new Error("GEMINI_API_KEY is missing");
 
             const genAI = new GoogleGenerativeAI(geminiKey);
-            const fileManager = new GoogleAIFileManager(geminiKey);
+            // const fileManager = ... REMOVED
 
             // USE BEST VISION MODEL: Map user's "2.5" requests or default "Pro" to real 1.5-pro
             // ERROR RECOVERY: 'gemini-1.5-pro' is returning 404. LlamaParse is out of credits.
@@ -351,33 +351,56 @@ serve(async (req) => {
             const geminiModel = genAI.getGenerativeModel({ model: visualModelName });
 
             const uploadedFiles = [];
-            const tempFilesToDelete: string[] = [];
+
+            // Helper: Raw Upload
+            const uploadRaw = async (path: string, blob: Blob) => {
+                console.log(`[VisualMode] Raw Uploading ${path}...`);
+                const initRes = await fetch(`https://generativelanguage.googleapis.com/upload/v1beta/files?key=${geminiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Goog-Upload-Protocol': 'resumable',
+                        'X-Goog-Upload-Command': 'start',
+                        'X-Goog-Upload-Header-Content-Length': blob.size.toString(),
+                        'X-Goog-Upload-Header-Content-Type': 'application/pdf',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ file: { display_name: path } })
+                });
+                if (!initRes.ok) throw new Error(`Init failed: ${initRes.status}`);
+                const uploadUrl = initRes.headers.get('x-goog-upload-url');
+                if (!uploadUrl) throw new Error("No upload URL");
+
+                const uploadRes = await fetch(uploadUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Length': blob.size.toString(),
+                        'X-Goog-Upload-Offset': '0',
+                        'X-Goog-Upload-Command': 'upload, finalize'
+                    },
+                    body: blob
+                });
+                if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.status}`);
+                const json = await uploadRes.json();
+                return json.file; // { uri, name, state }
+            };
 
             try {
-                // ... (upload logic remains same) ...
-
                 // 1. Upload PDFs
                 for (const path of filePaths) {
-                    if (!path.toLowerCase().endsWith('.pdf')) continue; // Visual mode mainly for PDFs
+                    if (!path.toLowerCase().endsWith('.pdf')) continue;
 
-                    console.log(`[VisualMode] Downloading and uploading: ${path}`);
+                    console.log(`[VisualMode] Downloading: ${path}`);
                     const { data: fileData, error: downloadError } = await supabaseClient.storage.from('tenders').download(path);
                     if (downloadError) {
                         console.error(`[VisualMode] Download error for ${path}:`, downloadError);
                         continue;
                     }
+                    const blob = new Blob([fileData], { type: 'application/pdf' });
+                    const fileName = path.split('/').pop() || 'doc.pdf';
 
-                    const tempFilePath = `/tmp/${path.split('/').pop()}`;
-                    await Deno.writeFile(tempFilePath, new Uint8Array(await fileData.arrayBuffer()));
-                    tempFilesToDelete.push(tempFilePath);
-
-                    const uploadResponse = await fileManager.uploadFile(tempFilePath, {
-                        mimeType: "application/pdf",
-                        displayName: path.split('/').pop(),
-                    });
-
-                    console.log(`[VisualMode] Uploaded ${path} as ${uploadResponse.file.name}`);
-                    uploadedFiles.push(uploadResponse.file);
+                    const fileInfo = await uploadRaw(fileName, blob);
+                    console.log(`[VisualMode] Uploaded ${fileName} as ${fileInfo.name} (${fileInfo.uri})`);
+                    uploadedFiles.push(fileInfo);
                 }
 
                 if (uploadedFiles.length === 0) {
@@ -390,8 +413,11 @@ serve(async (req) => {
                     let fileState = file.state;
                     while (fileState === "PROCESSING") {
                         await new Promise((resolve) => setTimeout(resolve, 2000));
-                        const fileStatus = await fileManager.getFile(file.name);
-                        fileState = fileStatus.state;
+                        const stateRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/files/${file.name}?key=${geminiKey}`);
+                        const stateData = await stateRes.json();
+                        fileState = stateData.state;
+                        // Update object
+                        file.state = fileState;
                         if (fileState === "FAILED") throw new Error(`File processing failed: ${file.name}`);
                     }
                 }
@@ -434,7 +460,7 @@ serve(async (req) => {
                         question,
                         answer,
                         timestamp: new Date().toISOString(),
-                        mode: 'visual' // Track that this was visual
+                        mode: 'visual'
                     });
 
                     await supabaseClient
@@ -453,10 +479,9 @@ serve(async (req) => {
             } finally {
                 // Cleanup
                 for (const f of uploadedFiles) {
-                    try { await fileManager.deleteFile(f.name); } catch (e) { console.error("Cleanup remote failed", e); }
-                }
-                for (const p of tempFilesToDelete) {
-                    try { await Deno.remove(p); } catch (e) { console.error("Cleanup local failed", e); }
+                    try {
+                        await fetch(`https://generativelanguage.googleapis.com/v1beta/files/${f.name}?key=${geminiKey}`, { method: 'DELETE' });
+                    } catch (e) { console.error("Cleanup remote failed", e); }
                 }
             }
         }
@@ -721,12 +746,13 @@ serve(async (req) => {
                 const { GoogleGenerativeAI } = await import("npm:@google/generative-ai");
                 const genAI = new GoogleGenerativeAI(geminiKey);
 
-                // Use exact model IDs as requested
-                const geminiModelName = model;
+                // Default to 2.5 Flash if missing
+                const geminiModelName = model || 'gemini-2.5-flash';
 
-                const geminiModel = genAI.getGenerativeModel({ model: geminiModelName });
+                const performGeneration = async (targetModel: string) => {
+                    const geminiModel = genAI.getGenerativeModel({ model: targetModel });
 
-                const prompt = `SEI UN ESPERTO BID MANAGER. RISPONDI ALLA DOMANDA DELL'UTENTE BASANDOTI ESCLUSIVAMENTE SUI DOCUMENTI FORNITI.
+                    const prompt = `SEI UN ESPERTO BID MANAGER. RISPONDI ALLA DOMANDA DELL'UTENTE BASANDOTI ESCLUSIVAMENTE SUI DOCUMENTI FORNITI.
                    
                    SEZIONE DI RIFERIMENTO: ${section}
                    
@@ -742,8 +768,27 @@ serve(async (req) => {
                    DOCUMENTI:
                    ${fullPdfText}`;
 
-                const result = await geminiModel.generateContent(prompt);
-                answer = result.response.text();
+                    const result = await geminiModel.generateContent(prompt);
+                    return result.response.text();
+                };
+
+                try {
+                    answer = await performGeneration(geminiModelName);
+                } catch (e: any) {
+                    console.error(`[AskQuestion] Primary Gemini (${geminiModelName}) failed:`, e);
+
+                    // FALLBACK LOGIC
+                    if (geminiModelName === 'gemini-2.5-flash') {
+                        console.warn("[AskQuestion] Fallback triggered: Retrying with gemini-3-pro-preview...");
+                        try {
+                            answer = await performGeneration('gemini-3-pro-preview');
+                        } catch (retryErr: any) {
+                            throw new Error(`Gemini Ask Failed (Primary & Fallback): ${e.message} -> ${retryErr.message}`);
+                        }
+                    } else {
+                        throw e;
+                    }
+                }
 
             } else {
                 // --- OPENAI LOGIC ---

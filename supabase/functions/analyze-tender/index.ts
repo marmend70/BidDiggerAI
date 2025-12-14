@@ -2,6 +2,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import OpenAI from 'https://esm.sh/openai@4.28.0'
 import JSON5 from 'https://esm.sh/json5@2.2.3'
 import { jsonrepair } from 'https://esm.sh/jsonrepair@3.6.0'
+// GoogleGenerativeAI SDK removed to prevent Edge Runtime crash. Using Raw Fetch.
+// GoogleAIFileManager removed to prevent Edge Runtime 500 Error (Node.js compatibility issue)
 
 
 const corsHeaders = {
@@ -214,7 +216,7 @@ Deno.serve(async (req) => {
       return new Response('ok', { headers: corsHeaders })
    }
 
-   try {
+   try { // Start of the new try block
       const body = await req.json();
       const { tenderId, filePaths, action, analysisPreferences, semanticAnalysisSections, background, saveToDb, textStoragePath, structuredModel, semanticModel, providedText, model, batchName } = body;
 
@@ -395,11 +397,11 @@ Deno.serve(async (req) => {
             const TIMEOUT_MS = 60000; // 60 seconds hard timeout to prevent Edge Function kill (increased for large docs)
 
             try {
-               // 1. PRIMARY: Gemini 1.5 Flash Latest (Stable) - Replaces broken 2.5
+               // 1. PRIMARY: Gemini 2.5 Flash (Multimodal, Fast)
                const controller = new AbortController();
                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s
 
-               const genUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}`;
+               const genUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
                const genRes = await fetch(genUrl, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -420,14 +422,14 @@ Deno.serve(async (req) => {
                text = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
             } catch (primaryError) {
-               console.warn("[GeminiExtract] Primary (2.5-flash) failed, trying Fallback 1 (1.5-flash)...", primaryError);
+               console.warn("[GeminiExtract] Primary (2.5-flash) failed, trying Fallback 1 (2.5-pro)...", primaryError);
 
                try {
-                  // 2. FALLBACK 1: Gemini 1.5 Flash Latest (Stable, 90s timeout)
+                  // 2. FALLBACK 1: Gemini 2.5 Pro (Powerful)
                   const controller = new AbortController();
                   const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s increased
 
-                  const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}`;
+                  const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${geminiKey}`;
                   const fallbackRes = await fetch(fallbackUrl, {
                      method: 'POST',
                      headers: { 'Content-Type': 'application/json' },
@@ -448,14 +450,14 @@ Deno.serve(async (req) => {
                   text = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
                } catch (fallback1Error) {
-                  console.warn("[GeminiExtract] Fallback 1 (1.5-flash) failed, trying Fallback 2 (1.5-pro)...", fallback1Error);
+                  console.warn("[GeminiExtract] Fallback 1 failed, trying Fallback 2 (2.0-flash)...", fallback1Error);
 
                   try {
-                     // 3. FALLBACK 2: Gemini 1.5 Pro Latest (Powerful, 120s timeout)
+                     // 3. FALLBACK 2: Gemini 2.0 Flash (Stable Workhorse Last Resort)
                      const controller = new AbortController();
                      const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s generous
 
-                     const fallback2Url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${geminiKey}`;
+                     const fallback2Url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
                      const fallback2Res = await fetch(fallback2Url, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -476,7 +478,7 @@ Deno.serve(async (req) => {
                      text = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
                   } catch (fallback2Error) {
-                     console.error("[GeminiExtract] ALL Gemini models (2.5-flash, 1.5-flash, 1.5-pro) failed.", fallback2Error);
+                     console.error("[GeminiExtract] ALL Gemini models (2.5-flash, 2.5-pro, 2.0-flash) failed.", fallback2Error);
                      throw new Error("Gemini Extraction Failed (All Models). Local fallback disabled to prevent crash.");
                   }
                }
@@ -530,51 +532,65 @@ Deno.serve(async (req) => {
                } else {
                   let extractedText = "";
 
-                  // 1. Try LlamaParse first (DISABLED BY USER REQUEST)
-                  const llamaMarkdown = null;
+                  // 1. PRIMARY: Standard Extraction (Native Text)
+                  // Try to get text cheaply first. This helps distinguish native PDFs from Scans.
+                  try {
+                     const fileBuffer = await fileData.arrayBuffer();
 
-                  if (llamaMarkdown) {
-                     extractedText = llamaMarkdown;
-                     console.log("[Extract] Used LlamaParse for " + filePath);
-                  } else {
-                     // 2. Fallback to Gemini (CPU efficient) - NOW PRIMARY
-                     console.log("[Extract] Using Gemini extraction (Primary) for " + filePath);
-
-                     try {
-                        const geminiText = await extractWithGemini(fileData, filePath.split('/').pop() || 'doc.pdf');
-                        if (geminiText) {
-                           extractedText = geminiText;
-                        }
-                     } catch (geminiError: any) {
-                        console.error("[Extract] Gemini extraction failed hard:", geminiError);
-                        // Do NOT set extractedText here, so fallback logic can run!
-                     }
-
-                     if (!extractedText || (typeof extractedText === 'string' && extractedText.includes("ERRORE"))) {
-                        // 3. Last Resort: Standard extraction (Re-enabled for fallback)
-                        console.log("[Extract] Fallback to standard extraction (Last Resort) for " + filePath);
-                        const fileBuffer = await fileData.arrayBuffer();
-
-                        if (filePath.endsWith('.docx')) {
-                           const mammoth = await import('https://esm.sh/mammoth@1.6.0');
-                           const result = await mammoth.extractRawText({ arrayBuffer: fileBuffer });
-                           extractedText = result.value;
-                        } else {
-                           // PDF extraction
+                     if (filePath.endsWith('.docx')) {
+                        console.log(`[Extract] Importing mammoth for ${filePath}...`);
+                        const mammoth = await import('https://esm.sh/mammoth@1.6.0');
+                        console.log(`[Extract] Mammoth imported.`);
+                        const result = await mammoth.extractRawText({ arrayBuffer: fileBuffer });
+                        extractedText = result.value;
+                     } else {
+                        // PDF extraction (UnPDF)
+                        console.log(`[Extract] Importing unpdf for ${filePath}...`);
+                        try {
                            const { extractText } = await import('npm:unpdf');
+                           console.log(`[Extract] Unpdf imported.`);
+
                            const parsePromise = extractText(new Uint8Array(fileBuffer));
+
                            try {
                               const pdfTimeoutPromise = new Promise((_, reject) =>
                                  setTimeout(() => reject(new Error("PDF parsing timeout")), 15000)
                               );
                               const { text } = await Promise.race([parsePromise, pdfTimeoutPromise]) as any;
                               extractedText = Array.isArray(text) ? text.join("\n") : text;
-                           } catch (e) {
-                              console.error("[Extract] PDF parsing failed/timeout for " + filePath + ":", e);
-                              extractedText = "[ERRORE LETTURA PDF: Timeout o formato non supportato]";
+                           } catch (pdfErr) {
+                              console.warn("[Extract] UnPDF failed (execution):", pdfErr);
+                              extractedText = ""; // Trigger fallback
                            }
+                        } catch (importErr) {
+                           console.warn("[Extract] UnPDF Import Failed (likely Edge incompatibility). Triggering Fallback.", importErr);
+                           extractedText = ""; // Trigger fallback
                         }
                      }
+                  } catch (e) {
+                     console.warn("[Extract] Native extraction error:", e);
+                     extractedText = "";
+                  }
+
+                  // 2. FALLBACK / SCAN DETECTED: Gemini Vision
+                  // If native text is missing, too short, or garbled, assume SCAN and use Gemini.
+                  const isSuspicious = !extractedText || extractedText.trim().length < 50 || extractedText.includes("ERRORE");
+
+                  if (isSuspicious) {
+                     console.log("[Extract] Native text insufficient. Assuming SCAN/COMPLEX DOC. Switching to Gemini Vision...");
+
+                     try {
+                        const geminiText = await extractWithGemini(fileData, filePath.split('/').pop() || 'doc.pdf');
+                        if (geminiText) {
+                           extractedText = geminiText + "\n\n[[scan_detected]]"; // MARK AS SCAN FOR LOGIC
+                           console.log("[Extract] Gemini Scan Extraction successful.");
+                        }
+                     } catch (geminiError: any) {
+                        console.error("[Extract] Gemini extraction failed hard:", geminiError);
+                        extractedText = "[ERRORE LETTURA: Impossibile estrarre testo]";
+                     }
+                  } else {
+                     console.log("[Extract] Native text valid. Skipping Gemini.");
                   }
 
                   console.log(`[Extract] ${filePath} raw text length: ${extractedText.length}`);
@@ -766,12 +782,7 @@ Deno.serve(async (req) => {
          }
 
          if (!fullPdfText) {
-            // Fallback: Extract if no text found (legacy behavior)
-            // fullPdfText = await extractTextFromFiles();
-            // Actually, for consistency, if we are here and allowDirectUpload is false, we MUST extract.
-            if (!allowDirectUpload) {
-               fullPdfText = await extractTextFromFiles();
-            }
+            console.log("[Analysis] No cached text found. Text will be extracted in background.");
          }
 
          const performAnalysis = async (targetModel: string, systemPrompt: string, allowDirectUpload: boolean = true) => {
@@ -785,94 +796,9 @@ Deno.serve(async (req) => {
             // AUTOMATIC REMAP: Fix 404s for deprecated/unavailable models
             // (Removals: Gemini 1.5 is now supported natively. GPT-4.1 is removed.)
 
-            // --- STAGE 1: DIRECT PDF UPLOAD (GEMINI ONLY) ---
-            // Only use Direct Upload if we DON'T have full text already (or explicit override)
-            if (allowDirectUpload && !fullPdfText && targetModel && targetModel.startsWith('gemini')) {
-               console.log("[Analysis] Stage 1: Attempting Direct PDF Upload...");
-               try {
-                  const geminiKey = Deno.env.get('GEMINI_API_KEY');
-                  if (!geminiKey) throw new Error("GEMINI_API_KEY is missing");
-
-                  const { GoogleGenerativeAI } = await import("npm:@google/generative-ai");
-                  const { GoogleAIFileManager } = await import("npm:@google/generative-ai/server");
-
-                  const genAI = new GoogleGenerativeAI(geminiKey);
-                  const fileManager = new GoogleAIFileManager(geminiKey);
-                  const geminiModel = genAI.getGenerativeModel({ model: targetModel });
-
-                  // 1. Separate PDFs from other files
-                  const pdfPaths = filePaths.filter((p: string) => p.toLowerCase().endsWith('.pdf'));
-                  const otherPaths = filePaths.filter((p: string) => !p.toLowerCase().endsWith('.pdf'));
-
-                  if (pdfPaths.length === 0) throw new Error("No PDFs for direct upload");
-
-                  const uploadedFiles = [];
-                  let otherFilesText = "";
-
-                  // 2. Upload PDFs
-                  for (const pdfPath of pdfPaths) {
-                     console.log(`[Stage 1] Uploading PDF: ${pdfPath}`);
-                     const { data: fileData, error: downloadError } = await supabaseClient.storage.from('tenders').download(pdfPath);
-                     if (downloadError) throw downloadError;
-
-                     // Create temporary file for upload (Deno Deploy specific)
-                     const tempFilePath = `/tmp/${pdfPath.split('/').pop()}`;
-                     await Deno.writeFile(tempFilePath, new Uint8Array(await fileData.arrayBuffer()));
-
-                     const uploadResponse = await fileManager.uploadFile(tempFilePath, {
-                        mimeType: "application/pdf",
-                        displayName: pdfPath.split('/').pop(),
-                     });
-
-                     console.log(`[Stage 1] Uploaded ${pdfPath} as ${uploadResponse.file.name}`);
-                     uploadedFiles.push(uploadResponse.file);
-                  }
-
-                  // 3. Wait for files to be active
-                  console.log("[Stage 1] Waiting for files to be processed...");
-                  for (const file of uploadedFiles) {
-                     let fileState = file.state;
-                     while (fileState === "PROCESSING") {
-                        await new Promise((resolve) => setTimeout(resolve, 2000));
-                        const fileStatus = await fileManager.getFile(file.name);
-                        fileState = fileStatus.state;
-                        console.log(`[Stage 1] File ${file.name} state: ${fileState}`);
-                        if (fileState === "FAILED") throw new Error(`File processing failed for ${file.name}`);
-                     }
-                  }
-
-                  // 4. Extract text from non-PDFs
-                  if (otherPaths.length > 0) {
-                     console.log("[Stage 1] Extracting text from non-PDF files...");
-                     otherFilesText = "\n\n[NOTA: Ci sono altri file non-PDF che non sono stati caricati direttamente in questo stadio. Se mancano info, usa il fallback.]";
-                  }
-
-                  // 5. Generate Content
-                  const promptParts = [
-                     { text: FINAL_PROMPT },
-                     { text: otherFilesText },
-                     ...uploadedFiles.map(f => ({ fileData: { mimeType: f.mimeType, fileUri: f.uri } })),
-                     { text: "\n\nAnalizza il corpus documentale fornito (PDF allegati) ed estrai i dati richiesti." }
-                  ];
-
-                  console.log("[Stage 1] Generating content...");
-                  const result = await geminiModel.generateContent(promptParts);
-                  const responseText = result.response.text();
-
-                  // Cleanup uploaded files
-                  for (const file of uploadedFiles) {
-                     try {
-                        await fileManager.deleteFile(file.name);
-                     } catch (e) { console.warn("Failed to delete file:", e); }
-                  }
-
-                  return parseResponse(responseText);
-
-               } catch (e) {
-                  console.warn("[Stage 1] Failed. Falling back to Stage 2 (Hybrid). Error:", e);
-                  // Fallthrough to Stage 2
-               }
-            }
+            // --- STAGE 1: DIRECT PDF UPLOAD (DISABLED / REMOVED) ---
+            // Removed to fix Edge Runtime crashes caused by GoogleAIFileManager (Node.js dependency)
+            // Logic falls through to STAGE 2 (Hybrid Text Extraction) automatically.
 
             // --- STAGE 2: HYBRID FALLBACK (TEXT EXTRACTION) ---
             console.log("[Analysis] Stage 2: Hybrid Text Extraction...");
@@ -884,30 +810,54 @@ Deno.serve(async (req) => {
             let completion;
             if (targetModel && targetModel.startsWith('gemini')) {
                const geminiKey = Deno.env.get('GEMINI_API_KEY');
-               const { GoogleGenerativeAI } = await import("npm:@google/generative-ai");
-               const genAI = new GoogleGenerativeAI(geminiKey!);
+               if (!geminiKey) throw new Error("GEMINI_API_KEY is missing");
+
+               // RAW API Helper
+               const generateRaw = async (mId: string, p: string) => {
+                  const controller = new AbortController();
+                  const timeoutId = setTimeout(() => controller.abort(), 300000); // 300s Timeout
+
+                  try {
+                     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${mId}:generateContent?key=${geminiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: p }] }] }),
+                        signal: controller.signal
+                     });
+                     clearTimeout(timeoutId);
+
+                     if (!res.ok) {
+                        const errText = await res.text();
+                        throw new Error(`Gemini API Error (${res.status}): ${errText}`);
+                     }
+                     const data = await res.json();
+                     return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                  } catch (e: any) {
+                     clearTimeout(timeoutId);
+                     if (e.name === 'AbortError') throw new Error("Gemini Request Timed Out (180s)");
+                     throw e;
+                  }
+               };
 
                try {
-                  console.log(`[Stage 2] Using model: ${targetModel}`);
-                  const geminiModel = genAI.getGenerativeModel({ model: targetModel });
+                  console.log(`[Stage 2] Using model (Raw API): ${targetModel}`);
                   const prompt = `${FINAL_PROMPT}\n\nAnalizza il seguente corpus documentale:\n\n${fullPdfText}`;
-                  const result = await geminiModel.generateContent(prompt);
-                  const parsed = parseResponse(result.response.text());
+                  const text = await generateRaw(targetModel, prompt);
+                  const parsed = parseResponse(text);
 
                   // FORCE FALLBACK ON JSON ERROR
                   if (parsed && (parsed.error || parsed.message === "JSON Parse Error")) {
                      throw new Error(`JSON Parse Error in Primary Model: ${JSON.stringify(parsed)}`);
                   }
-
                   return parsed;
-               } catch (e) {
-                  console.warn(`[Stage 2] Primary model ${targetModel} failed. Falling back to gemini-1.5-flash. Error:`, e);
+
+               } catch (e: any) {
+                  console.warn(`[Stage 2] Primary model ${targetModel} failed. Falling back to gemini-3-pro-preview. Error:`, e);
                   try {
-                     // Use specific version to avoid 404
-                     const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+                     // Use robust version (Fallback)
                      const prompt = `${FINAL_PROMPT}\n\nAnalizza il seguente corpus documentale:\n\n${fullPdfText}`;
-                     const result = await fallbackModel.generateContent(prompt);
-                     return parseResponse(result.response.text());
+                     const text = await generateRaw('gemini-3-pro-preview', prompt);
+                     return parseResponse(text);
                   } catch (fallbackError) {
                      console.error("[Stage 2] Fallback failed:", fallbackError);
                      throw fallbackError;
@@ -928,25 +878,24 @@ Deno.serve(async (req) => {
 
                   return JSON.parse(completion.choices[0].message.content);
                } catch (e: any) {
-                  console.error("[Analysis] OpenAI Error:", e);
-                  console.warn("[Analysis] Falling back to Gemini 1.5 Flash for Semantic Analysis...");
+                  console.error("[Analysis] OpenAI Primary Error:", e);
 
-                  // FALLBACK TO GEMINI
+                  // SIMPLE FALLBACK: Try GPT-4o once if Mini fails. No Gemini.
+                  console.warn("[Analysis] Primary OpenAI model failed by timeout or error. Retrying with GPT-4o...");
                   try {
-                     const geminiKey = Deno.env.get('GEMINI_API_KEY');
-                     if (!geminiKey) throw new Error("GEMINI_API_KEY missing for fallback");
+                     completion = await openai.chat.completions.create({
+                        model: "gpt-4o",
+                        messages: [
+                           { role: "system", content: FINAL_PROMPT },
+                           { role: "user", content: `Analizza il seguente corpus documentale:\n\n${fullPdfText}` }
+                        ],
+                        response_format: { type: "json_object" }
+                     }, { timeout: 400000 });
 
-                     const { GoogleGenerativeAI } = await import("npm:@google/generative-ai");
-                     const genAI = new GoogleGenerativeAI(geminiKey);
-                     // Use specific version to avoid 404
-                     const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
-
-                     const prompt = `${FINAL_PROMPT}\n\nAnalizza il seguente corpus documentale:\n\n${fullPdfText}`;
-                     const result = await fallbackModel.generateContent(prompt);
-                     return parseResponse(result.response.text());
-                  } catch (geminiError) {
-                     console.error("[Analysis] Fallback Gemini failed:", geminiError);
-                     throw new Error(`Dual Model Failure: OpenAI (${e.message}) AND Gemini Fallback failed.`);
+                     return JSON.parse(completion.choices[0].message.content);
+                  } catch (retryError: any) {
+                     console.error("[Analysis] GPT-4o Fallback also failed:", retryError);
+                     throw new Error(`OpenAI Analysis Failed: ${e.message} -> Retry: ${retryError.message}`);
                   }
                }
             }
@@ -994,30 +943,32 @@ Deno.serve(async (req) => {
          };
 
          const executeDualModelAnalysis = async () => {
-            // 1. Structured Analysis (Primary)
-            let sModel = structuredModel || model || 'gemini-2.0-flash';
-
-            // SECURITY REMAP: Force safe model (Strict Mode: Remap ALL 2.5 to 2.0 to avoid hangs)
-            if (sModel.includes('gpt') || sModel.includes('2.5')) {
-               console.warn(`[DualModel] Remapping unstable model ${sModel} to gemini-2.0-flash`);
-               sModel = 'gemini-2.0-flash';
+            // LAZY LOAD / EXTRACT IN BACKGROUND to avoid HTTP Timeout
+            if (!fullPdfText) {
+               console.log("[DualModel] Text missing. Performing background extraction...");
+               try {
+                  fullPdfText = await extractTextFromFiles();
+               } catch (e) {
+                  console.error("[DualModel] Background Extraction Failed:", e);
+                  throw e;
+               }
             }
+            // 1. Structured Analysis (Primary) - DEFAULT: GEMINI 2.5 FLASH
+            let sModel = structuredModel || model || 'gemini-2.5-flash';
 
             console.log(`[DualModel] Starting Structured Analysis with ${sModel}`);
             const structuredResult = await performAnalysis(sModel, SYSTEM_PROMPT, true);
 
-            // 2. Semantic Analysis (Secondary, Optional)
+            // 2. Semantic Analysis (Secondary, Optional) - DEFAULT: GEMINI 2.5 FLASH
             const semSections = semanticAnalysisSections ? Object.keys(semanticAnalysisSections).filter(k => semanticAnalysisSections[k]) : [];
-            let semModel = semanticModel || 'gpt-5-mini';
+            let semModel = semanticModel || 'gemini-2.5-flash';
+
+            // REVERTED: Visual Mode Override removed to prevent complexity/hangs. Using GPT-5-Mini for everything.
 
             if (semSections.length > 0) {
-               // SECURITY REMAP FOR SEMANTIC TOO
-               if (semModel.includes('gpt') || (semModel.includes('2.5') && !semModel.includes('flash'))) {
-                  console.warn(`[DualModel] Remapping unstable semantic model ${semModel} to gemini-2.0-flash`);
-                  semModel = 'gemini-2.0-flash';
-               }
-
                console.log(`[DualModel] Starting Semantic Analysis with ${semModel} for sections: ${semSections.join(', ')}`);
+               // ... rest of logic remains similar but without the 1.5 fallback warnings
+
 
                const SEMANTIC_PROMPT = `
 Per OGNI sezione del JSON, quando analizzi compili il blocco relativo all'analisi semantica "Analisi & Rischi" devi assumere IL RUOLO combinato di:

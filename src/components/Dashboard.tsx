@@ -26,7 +26,7 @@ interface DashboardProps {
     loadingBatches?: string[];
 }
 
-const SemanticAnalysisBlock = ({ data, sectionId }: { data?: { semantic_analysis: string, rischi_rilevati: string[] }, sectionId: string }) => {
+const SemanticAnalysisBlock = ({ data, sectionId }: { data?: { semantic_analysis?: string, rischi_rilevati?: string[] }, sectionId: string }) => {
     if (!data) return null;
     // EXCLUSION: Don't show Genius Card for these sections (inherent logic)
     if (sectionId === '14_note_importanti' || sectionId === '17_ambiguita_punti_da_chiarire') return null;

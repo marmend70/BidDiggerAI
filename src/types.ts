@@ -1,3 +1,8 @@
+export interface GeniusData {
+    semantic_analysis?: string;
+    rischi_rilevati?: string[];
+}
+
 export interface AnalysisResult {
     "1_requisiti_partecipazione": Array<{
         lotto: string;
@@ -9,7 +14,7 @@ export interface AnalysisResult {
         consorzi_stabili: string;
         avvalimento: string;
         subappalto: string;
-    }>;
+    }> & GeniusData;
     "3_sintesi": {
         oggetto: string;
         codici: {
@@ -19,7 +24,7 @@ export interface AnalysisResult {
         };
         scenario: string;
         ref: string;
-    };
+    } & GeniusData;
     "3b_checklist_amministrativa": Array<{
         lotto: string;
         garanzia_provvisoria: { importo: string; beneficiario: string; validita: string; clausole: string; ref: string; };
@@ -28,14 +33,14 @@ export interface AnalysisResult {
         imposta_bollo: { importo: string; modalita: string; ref: string; };
         firma_formato: { formato: string; piattaforma: string; ref: string; };
         elenco_documenti: Array<{ documento: string; descrizione: string; ref: string; }>;
-    }>;
+    }> & GeniusData;
     "4_servizi": Array<{
         lotto: string;
         attivita: string[];
         innovazioni: string;
         fabbisogno: string;
         ref: string;
-    }>;
+    }> & GeniusData;
     "5_scadenze": Array<{
         lotto: string;
         timeline: Array<{
@@ -49,7 +54,7 @@ export interface AnalysisResult {
             modalita: string;
             scadenze: string;
         };
-    }>;
+    }> & GeniusData;
     "6_importi": Array<{
         lotto: string;
         base_asta_totale: number;
@@ -59,27 +64,27 @@ export interface AnalysisResult {
             importo: number;
         }>;
         ref: string;
-    }>;
+    }> & GeniusData;
     "7_durata": Array<{
         lotto: string;
         durata_base: string;
         proroghe: string;
         tempistiche_operative: string;
         ref: string;
-    }>;
+    }> & GeniusData;
     "8_ccnl": Array<{
         lotto: string;
         contratti: string[];
         equivalenze: string;
         clausola_sociale: string;
         ref: string;
-    }>;
+    }> & GeniusData;
     "9_oneri": Array<{
         lotto: string;
         carico_fornitore: string[];
         carico_stazione: string[];
         ref: string;
-    }>;
+    }> & GeniusData;
     "10_punteggi": Array<{
         lotto: string;
         tecnico: number;
@@ -103,40 +108,40 @@ export interface AnalysisResult {
         };
         note_economiche: string;
         ref: string;
-    }>;
+    }> & GeniusData;
     "11_pena_esclusione": Array<{
         lotto: string;
         elementi: Array<{
             descrizione: string;
             ref: string;
         }>;
-    }>;
+    }> & GeniusData;
     "12_offerta_tecnica": Array<{
         lotto: string;
         documenti: string[];
         formattazione_modalita: string;
         ref: string;
-    }>;
+    }> & GeniusData;
     "13_offerta_economica": Array<{
         lotto: string;
         documenti: string[];
         formattazione_modalita: string;
         ref: string;
-    }>;
+    }> & GeniusData;
     "14_note_importanti": Array<{
         lotto: string;
         note: Array<{
             nota: string;
             ref: string;
         }>;
-    }>;
+    }> & GeniusData;
     "15_remunerazione": Array<{
         lotto: string;
         modalita: string;
         pagamenti: string;
         clausole: string;
         ref: string;
-    }>;
+    }> & GeniusData;
     "16_sla_penali": Array<{
         lotto: string;
         sla: Array<{
@@ -151,13 +156,13 @@ export interface AnalysisResult {
         }>;
         clausole_cumulative: string;
         ref: string;
-    }>;
+    }> & GeniusData;
     "17_ambiguita_punti_da_chiarire": Array<{
         lotto: string;
         ambiguita: Array<{ descrizione: string; riferimento_documento: string; tipo: string }>;
         punti_da_chiarire: Array<{ quesito_suggerito: string; contesto: string; motivazione: string }>;
         ref: string;
-    }>;
+    }> & GeniusData;
     deep_dives?: {
         [sectionId: string]: Array<{
             question: string;

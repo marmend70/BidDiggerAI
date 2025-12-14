@@ -137,64 +137,82 @@ Deno.serve(async (req) => {
 
       // --- ACTION: ANALYZE (Native) ---
       if (action === 'analyze') {
-         let resultJson = null;
+         // Encapsulate analysis logic for Async/Sync reuse
+         const runAnalysis = async () => {
+            let resultJson = null;
 
-         // User-defined Pipeline:
-         // Structure/Parsing: Primary = gemini-2.5-flash (structuredModel), Fallback = gemini-3-pro-preview
-         const primaryModel = structuredModel || 'gemini-2.5-flash';
-         const fallbackModel = 'gemini-3-pro-preview';
+            // User-defined Pipeline:
+            // Structure/Parsing: Primary = gemini-2.5-flash (structuredModel), Fallback = gemini-3-pro-preview
+            const primaryModel = structuredModel || 'gemini-2.5-flash';
+            const fallbackModel = 'gemini-3-pro-preview';
 
-         // 1. Upload Files to Google
-         const googleFiles = await prepareFilesForGoogle(filePaths || []);
-         if (googleFiles.length === 0) throw new Error("No files could be prepared for Google AI.");
+            // 1. Upload Files to Google
+            const googleFiles = await prepareFilesForGoogle(filePaths || []);
+            if (googleFiles.length === 0) throw new Error("No files could be prepared for Google AI.");
 
-         // 2. Generate Prompt
-         const activePrompt = prompt || generateAnalysisPrompt(analysisPreferences, batchName || 'default', semanticPreferences);
+            // 2. Generate Prompt
+            const activePrompt = prompt || generateAnalysisPrompt(analysisPreferences, batchName || 'default', semanticPreferences);
 
-         // 3. Perform Analysis (PASS JSON SYSTEM PROMPT)
-         const responseText = await performAnalysisNative(primaryModel, fallbackModel, activePrompt, googleFiles, JSON_ANALYSIS_PROMPT);
+            // 3. Perform Analysis (PASS JSON SYSTEM PROMPT)
+            const responseText = await performAnalysisNative(primaryModel, fallbackModel, activePrompt, googleFiles, JSON_ANALYSIS_PROMPT);
 
-         // Clean Response (Gemini sometimes adds ```json ... ```)
-         const cleanText = responseText.replace(/```json/g, '').replace(/```/g, '');
-         try {
-            resultJson = JSON.parse(cleanText); // or use jsonrepair?
-         } catch (e) {
-            console.warn("JSON Parse failed, trying repair...");
+            // Clean Response (Gemini sometimes adds ```json ... ```)
+            const cleanText = responseText.replace(/```json/g, '').replace(/```/g, '');
             try {
-               resultJson = JSON5.parse(jsonrepair(cleanText));
-            } catch (e2) {
-               console.error("Critical JSON Parse Error", cleanText);
-               throw new Error("Failed to parse AI response.");
-            }
-         }
-
-         // INJECT META & SAVE TO DB
-         if (resultJson) {
-            resultJson._batch_name = batchName;
-
-            // DEBUG: Inject info
-            resultJson._debug_info = {
-               model_used: primaryModel, // We assume primary worked or fallback throw info
-               mode: "GEMINI_NATIVE_FILE_API",
-               file_count: googleFiles.length
-            };
-
-            if (saveToDb) {
-               console.log("[Analysis] Saving result to DB for Polling...");
-               const { error: dbError } = await supabaseClient
-                  .from('analyses')
-                  .insert({
-                     tender_id: tenderId,
-                     result_json: resultJson,
-                     model_used: primaryModel
-                  });
-               if (dbError) {
-                  console.error("[Analysis] DB Save Failed:", dbError);
+               resultJson = JSON.parse(cleanText); // or use jsonrepair?
+            } catch (e) {
+               console.warn("JSON Parse failed, trying repair...");
+               try {
+                  resultJson = JSON5.parse(jsonrepair(cleanText));
+               } catch (e2) {
+                  console.error("Critical JSON Parse Error", cleanText);
+                  throw new Error("Failed to parse AI response.");
                }
             }
-         }
 
-         return new Response(JSON.stringify(resultJson), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+            // INJECT META & SAVE TO DB
+            if (resultJson) {
+               resultJson._batch_name = batchName;
+
+               // DEBUG: Inject info
+               resultJson._debug_info = {
+                  model_used: primaryModel, // We assume primary worked or fallback throw info
+                  mode: "GEMINI_NATIVE_FILE_API",
+                  file_count: googleFiles.length
+               };
+
+               if (saveToDb) {
+                  console.log("[Analysis] Saving result to DB for Polling...");
+                  const { error: dbError } = await supabaseClient
+                     .from('analyses')
+                     .insert({
+                        tender_id: tenderId,
+                        result_json: resultJson,
+                        model_used: primaryModel
+                     });
+                  if (dbError) {
+                     console.error("[Analysis] DB Save Failed:", dbError);
+                  }
+               }
+            }
+            return resultJson;
+         };
+
+         // CHECK BACKGROUND MODE
+         if (body.background) {
+            console.log(`[Analysis] Background mode enabled for ${batchName}. Returning status 'queued'.`);
+            // @ts-ignore
+            EdgeRuntime.waitUntil(runAnalysis());
+            return new Response(JSON.stringify({ status: 'queued', batch: batchName }), {
+               status: 200, // Return 200 so invocation doesn't throw, client will start polling
+               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+         } else {
+            // SYNC MODE (Legacy/Direct)
+            console.log(`[Analysis] Sync mode for ${batchName}. Waiting for completion...`);
+            const result = await runAnalysis();
+            return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+         }
       }
 
       // --- ACTION: ASK QUESTION (Chatbot / Native) ---

@@ -20,7 +20,7 @@ import { countPdfPages } from '@/lib/fileUtils';
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   structured_model: 'gemini-2.5-flash',
-  semantic_model: 'gpt-5-mini',
+  semantic_model: 'gemini-3-pro-preview',
   faq_questions: [
     "Descrivimi lo scenario dei sistemi tecnologici, infrastrutturale software, sistemi informatici",
     "Approfondisci il fabbisogno del personale impiegato in termini di giorni e/o ore richieste",
@@ -263,6 +263,7 @@ function App() {
   const [selectedStructuredModel, setSelectedStructuredModel] = useState<string>('gemini-2.5-flash');
   const [selectedSemanticModel, setSelectedSemanticModel] = useState<string>('gemini-2.5-flash');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [uploadedPaths, setUploadedPaths] = useState<string[]>([]); // Added for Chatbot Context
 
 
 
@@ -293,9 +294,9 @@ function App() {
       return;
     }
 
-    // Use hardcoded models directly as user requested "Elimina scelta modello"
-    const sModel = 'gemini-2.5-flash';
-    const semModel = 'gemini-2.5-flash';
+    // Use user preferences or defaults
+    const sModel = userPreferences.structured_model || 'gemini-2.5-flash';
+    const semModel = userPreferences.semantic_model || 'gemini-3-pro-preview';
 
     // Verify User Preference overrides if needed? User said "Metti di default", implies forceful.
     // But then "Elimina scelta". So I imply Hardcode.
@@ -316,7 +317,7 @@ function App() {
     setIsUploading(true);
     setElapsedTime(0);
     setProgressMessage(`Avvio analisi (Standard: ${structuredModelId})...`);
-    setLoadingBatches(['batch_1', 'batch_2', 'batch_2b', 'batch_3', 'batch_3b', 'batch_4']);
+    setLoadingBatches(['batch_1', 'batch_2', 'batch_2b', 'batch_2c', 'batch_3', 'batch_3b', 'batch_4']);
     setAnalysisData(null); // Reset previous data
 
     try {
@@ -350,6 +351,7 @@ function App() {
         uploadedPaths.push(filePath);
         fileNames.push(file.name);
       }
+      setUploadedPaths(uploadedPaths); // Store in state for UI/Chatbot
 
       // 2. Create tender record
       const title = fileNames.length === 1 ? fileNames[0] : `${fileNames[0]} + ${fileNames.length - 1} others`;
@@ -414,6 +416,14 @@ function App() {
 
       console.log("Text stored at:", textStoragePath);
 
+      // DEDUCT CREDIT (1 per Analysis)
+      const { error: creditError } = await supabase.rpc('deduct_user_credits', { count: 1 });
+      if (creditError) {
+        console.error("Credit deduction failed:", creditError);
+      } else {
+        setUserCredits(prev => Math.max(0, prev - 1));
+      }
+
       setProgressMessage('Attendi ancora qualche secondo...');
 
       // 4. Launch Parallel Requests (referencing stored text)
@@ -436,7 +446,39 @@ function App() {
           return {};
         }
 
-        const processResult = (data: any) => {
+        const processResult = (originalData: any) => {
+          // --- ADAPTER: Handle Dual-Layer Schema (Structured + Analysis) ---
+          const data = { ...originalData };
+
+          // Iterate all keys to find "structured/analysis" blocks
+          Object.keys(data).forEach(key => {
+            // Check if this key holds a Dual-Layer object
+            if (data[key] && typeof data[key] === 'object' && 'structured' in data[key]) {
+              console.log(`[Adapter] Flattening Dual-Layer key: ${key}`);
+
+              // 1. Extract and Move Analysis to semantic_analysis_data
+              if (data[key].analysis) {
+                if (!data.semantic_analysis_data) data.semantic_analysis_data = {};
+                data.semantic_analysis_data[key] = data[key].analysis;
+              }
+
+              // CAPTURE GENIUS MODE FIELDS
+              const geniusAnalysis = data[key].semantic_analysis;
+              const geniusRisks = data[key].rischi_rilevati;
+
+              // 2. Flatten Structured Data to Top Level
+              // If structured is null/empty, we try to preserve it as null, or empty object
+              data[key] = data[key].structured;
+
+              // RE-ATTACH GENIUS FIELDS to the flattened object/array
+              if (data[key] && (geniusAnalysis || geniusRisks)) {
+                if (geniusAnalysis) data[key].semantic_analysis = geniusAnalysis;
+                if (geniusRisks) data[key].rischi_rilevati = geniusRisks;
+              }
+            }
+          });
+          // -----------------------------------------------------------------
+
           console.log(`Batch ${batchName} completed.`);
           setLoadingBatches(prev => prev.filter(b => b !== batchName));
 
@@ -523,7 +565,7 @@ function App() {
                 tenderId: tender.id,
                 filePaths: uploadedPaths,
                 analysisPreferences: preferences,
-                semanticAnalysisSections: batchSemanticSections,
+                semanticPreferences: userPreferences.semantic_analysis_sections, // PASS GENIUS CONFIG
                 background: true, // ASYNC MODE
                 saveToDb: true,
                 textStoragePath: textStoragePath,
@@ -642,7 +684,10 @@ function App() {
 
       const BATCH_2B = {
         '9_oneri': true,
-        '15_remunerazione': true,
+        '15_remunerazione': true
+      };
+
+      const BATCH_2C = {
         '16_sla_penali': true
       };
 
@@ -666,6 +711,7 @@ function App() {
         { name: 'batch_1', prefs: BATCH_1 },
         { name: 'batch_2', prefs: BATCH_2 },
         { name: 'batch_2b', prefs: BATCH_2B },
+        { name: 'batch_2c', prefs: BATCH_2C },
         { name: 'batch_3', prefs: BATCH_3 },
         { name: 'batch_3b', prefs: BATCH_3B },
         { name: 'batch_4', prefs: BATCH_4 }
@@ -736,26 +782,39 @@ function App() {
     try {
       // Fetch file paths from tender_documents
       const tenderId = (analysisData as any).tender_id || (analysisData as any).id;
-      const { data: documents, error: docsError } = await supabase
-        .from('tender_documents')
-        .select('file_path')
-        .eq('tender_id', tenderId);
 
-      if (docsError) throw docsError;
-      const filePaths = documents.map(d => d.file_path);
+      // FALLBACK: If we have newly uploaded paths in state, use them first to avoid DB lag
+      let filePaths = uploadedPaths && uploadedPaths.length > 0 ? uploadedPaths : [];
+
+      if (filePaths.length === 0) {
+        const { data: documents, error: docsError } = await supabase
+          .from('tender_documents')
+          .select('file_path')
+          .eq('tender_id', tenderId);
+
+        if (docsError) throw docsError;
+        filePaths = documents.map(d => d.file_path);
+      }
 
       if (filePaths.length === 0) {
         throw new Error("Nessun documento trovato per questa gara.");
       }
 
-      const { data, error } = await supabase.functions.invoke('ask-question', {
+      // Context Injection: Pass the current analysis JSON to the chatbot
+      // This allows Gemini to know what it has already extracted.
+      const analysisContext = analysisData;
+
+      const { data, error } = await supabase.functions.invoke('analyze-tender', {
         body: {
+          action: 'ask_question', // Explicit Action
           tenderId: tenderId,
           section: sectionId,
           question: question,
           filePaths: filePaths,
-          model: selectedSemanticModel, // Use semantic model for questions
-          forceVisualMode: forceVisualMode
+          analysisContext: analysisContext, // NEW: Full JSON Context
+          model: selectedSemanticModel,
+          forceVisualMode: forceVisualMode,
+          // Reuse same function 'analyze-tender' which handles 'ask_question'
         }
       });
 
@@ -899,6 +958,8 @@ function App() {
         onClose={() => setShowChatAssistant(false)}
         tenderId={(analysisData as any)?.tender_id || (analysisData as any)?.id}
         tenderTitle={(analysisData as any)?.title || 'Analisi Gara'}
+        filePaths={uploadedPaths} // Pass currently uploaded paths
+        analysisContext={analysisData} // Pass the full analysis JSON
       />
       <TimeoutModal
         isOpen={showTimeoutModal}

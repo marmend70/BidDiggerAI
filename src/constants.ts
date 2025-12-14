@@ -114,39 +114,30 @@ export const SECTION_BATCH_MAP: Record<string, string> = {
 export const AVAILABLE_MODELS = [
     // ESTRAZIONE STRUTTURATA (Structured)
     {
-        id: 'gemini-3-pro-preview',
-        name: 'Gemini 3 Pro (Preview)',
-        description: 'Ultima generazione. Potenza massima per ogni task.',
-        recommendedFor: 'Tutto',
-        type: 'structured',
-        isRecommended: true,
-        speed: 'Medio',
-        cost: 'Basso'
-    },
-    {
-        id: 'gpt-5-mini',
-        name: 'GPT-5 Mini',
-        description: 'Rapidissimo, ideale per parsing strutturato veloce.',
+        id: 'gemini-2.5-flash',
+        name: 'Gemini 2.5 Flash',
+        description: 'Rapidissimo, ideale per parsing strutturato e tabelle.',
         recommendedFor: 'Parsing veloce, tabelle',
         type: 'structured',
+        isRecommended: true,
         speed: 'Molto Veloce',
         cost: 'Basso'
     },
     {
-        id: 'gpt-5.1',
-        name: 'GPT-5.1 (High Precision)',
-        description: 'Massima accuratezza per strutture complesse.',
-        recommendedFor: 'Estrazione accurata',
+        id: 'gemini-3-pro-preview',
+        name: 'Gemini 3 Pro (Preview)',
+        description: 'Potenza massima. Usato come fallback per strutture complesse.',
+        recommendedFor: 'Strutture complesse',
         type: 'structured',
         speed: 'Medio',
-        cost: 'Alto'
+        cost: 'Basso'
     },
 
     // ANALISI SEMANTICA (Semantic)
     {
         id: 'gemini-3-pro-preview',
         name: 'Gemini 3 Pro (Preview)',
-        description: 'Ragionamento superiore. Ideale per analisi complesse.',
+        description: 'Ragionamento superiore. Ideale per analisi semantica e chatbot.',
         recommendedFor: 'Tutto',
         type: 'semantic',
         isRecommended: true,
@@ -154,18 +145,9 @@ export const AVAILABLE_MODELS = [
         cost: 'Basso'
     },
     {
-        id: 'gemini-2.5-pro',
-        name: 'Gemini 2.5 Pro',
-        description: 'Ragionamento complesso e contesto ampio.',
-        recommendedFor: 'Analisi profonda',
-        type: 'semantic',
-        speed: 'Medio',
-        cost: 'Alto'
-    },
-    {
         id: 'gemini-2.5-flash',
         name: 'Gemini 2.5 Flash',
-        description: 'Velocità e capacità multimodale.',
+        description: 'Velocità. Usato come fallback per analisi semantica.',
         recommendedFor: 'Analisi veloce',
         type: 'semantic',
         speed: 'Veloce',

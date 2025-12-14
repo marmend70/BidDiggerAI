@@ -26,8 +26,11 @@ interface DashboardProps {
     loadingBatches?: string[];
 }
 
-const SemanticAnalysisBlock = ({ data }: { data?: { semantic_analysis: string, rischi_rilevati: string[] } }) => {
+const SemanticAnalysisBlock = ({ data, sectionId }: { data?: { semantic_analysis: string, rischi_rilevati: string[] }, sectionId: string }) => {
     if (!data) return null;
+    // EXCLUSION: Don't show Genius Card for these sections (inherent logic)
+    if (sectionId === '14_note_importanti' || sectionId === '17_ambiguita_punti_da_chiarire') return null;
+
     const { semantic_analysis, rischi_rilevati } = data;
     if (!semantic_analysis && (!rischi_rilevati || rischi_rilevati.length === 0)) return null;
 
@@ -193,7 +196,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </div>
                         </div>
 
-                        <SemanticAnalysisBlock data={data.semantic_analysis_data?.['1_requisiti_partecipazione']} />
+                        <SemanticAnalysisBlock data={data['1_requisiti_partecipazione']} sectionId="1_requisiti_partecipazione" />
                         <DeepDive
                             sectionId="1_requisiti_partecipazione"
                             existingQA={data.deep_dives?.['1_requisiti_partecipazione']}
@@ -238,7 +241,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <p className="text-slate-700 leading-relaxed">{data['3_sintesi'].scenario}</p>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data.semantic_analysis_data?.['3_sintesi']} />
+                        <SemanticAnalysisBlock data={data['3_sintesi']} sectionId="3_sintesi" />
                         <DeepDive
                             sectionId="3_sintesi"
                             existingQA={data.deep_dives?.['3_sintesi']}
@@ -420,7 +423,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardContent>
                         </Card>
 
-                        <SemanticAnalysisBlock data={data.semantic_analysis_data?.['3b_checklist_amministrativa']} />
+                        <SemanticAnalysisBlock data={data['3b_checklist_amministrativa']} sectionId="3b_checklist_amministrativa" />
                         <DeepDive
                             sectionId="3b_checklist_amministrativa"
                             existingQA={data.deep_dives?.['3b_checklist_amministrativa']}
@@ -477,7 +480,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <p className="text-slate-700">{data['4_servizi'][0]?.fabbisogno}</p>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data.semantic_analysis_data?.['4_servizi']} />
+                        <SemanticAnalysisBlock data={data['4_servizi']} sectionId="4_servizi" />
                         <DeepDive
                             sectionId="4_servizi"
                             existingQA={data.deep_dives?.['4_servizi']}
@@ -527,7 +530,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </div>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data.semantic_analysis_data?.['5_scadenze']} />
+                        <SemanticAnalysisBlock data={data['5_scadenze']} sectionId="5_scadenze" />
                         <DeepDive
                             sectionId="5_scadenze"
                             existingQA={data.deep_dives?.['5_scadenze']}
@@ -588,7 +591,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </Table>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data.semantic_analysis_data?.['6_importi']} />
+                        <SemanticAnalysisBlock data={data['6_importi']} sectionId="6_importi" />
                         <DeepDive
                             sectionId="6_importi"
                             existingQA={data.deep_dives?.['6_importi']}
@@ -632,7 +635,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <p className="text-slate-700">{data['7_durata'][0]?.tempistiche_operative}</p>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data.semantic_analysis_data?.['7_durata']} />
+                        <SemanticAnalysisBlock data={data['7_durata']} sectionId="7_durata" />
                         <DeepDive
                             sectionId="7_durata"
                             existingQA={data.deep_dives?.['7_durata']}
@@ -676,7 +679,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <p className="text-slate-700">{data['8_ccnl'][0]?.clausola_sociale}</p>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data.semantic_analysis_data?.['8_ccnl']} />
+                        <SemanticAnalysisBlock data={data['8_ccnl']} sectionId="8_ccnl" />
                         <DeepDive
                             sectionId="8_ccnl"
                             existingQA={data.deep_dives?.['8_ccnl']}
@@ -726,7 +729,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </CardContent>
                             </Card>
                         </div>
-                        <SemanticAnalysisBlock data={data.semantic_analysis_data?.['9_oneri']} />
+                        <SemanticAnalysisBlock data={data['9_oneri']} sectionId="9_oneri" />
                         <DeepDive
                             sectionId="9_oneri"
                             existingQA={data.deep_dives?.['9_oneri']}
@@ -841,7 +844,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <p className="text-slate-700">{data['10_punteggi'][0]?.note_economiche}</p>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data.semantic_analysis_data?.['10_punteggi']} />
+                        <SemanticAnalysisBlock data={data['10_punteggi']} sectionId="10_punteggi" />
                         <DeepDive
                             sectionId="10_punteggi"
                             existingQA={data.deep_dives?.['10_punteggi']}
@@ -871,7 +874,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </Card>
                             ))}
                         </div>
-                        <SemanticAnalysisBlock data={data.semantic_analysis_data?.['11_pena_esclusione']} />
+                        <SemanticAnalysisBlock data={data['11_pena_esclusione']} sectionId="11_pena_esclusione" />
                         <DeepDive
                             sectionId="11_pena_esclusione"
                             existingQA={data.deep_dives?.['11_pena_esclusione']}
@@ -912,7 +915,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <p className="text-slate-700 whitespace-pre-line">{data['12_offerta_tecnica'][0]?.formattazione_modalita}</p>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data.semantic_analysis_data?.['12_offerta_tecnica']} />
+                        <SemanticAnalysisBlock data={data['12_offerta_tecnica']} sectionId="12_offerta_tecnica" />
                         <DeepDive
                             sectionId="12_offerta_tecnica"
                             existingQA={data.deep_dives?.['12_offerta_tecnica']}
@@ -953,7 +956,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <p className="text-slate-700 whitespace-pre-line">{data['13_offerta_economica'][0]?.formattazione_modalita}</p>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data.semantic_analysis_data?.['13_offerta_economica']} />
+                        <SemanticAnalysisBlock data={data['13_offerta_economica']} sectionId="13_offerta_economica" />
                         <DeepDive
                             sectionId="13_offerta_economica"
                             existingQA={data.deep_dives?.['13_offerta_economica']}
@@ -986,7 +989,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </Card>
                             ))}
                         </div>
-                        <SemanticAnalysisBlock data={data.semantic_analysis_data?.['14_note_importanti']} />
+                        <SemanticAnalysisBlock data={data['14_note_importanti']} sectionId="14_note_importanti" />
                         <DeepDive
                             sectionId="14_note_importanti"
                             existingQA={data.deep_dives?.['14_note_importanti']}
@@ -1030,7 +1033,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </CardContent>
                             </Card>
                         </div>
-                        <SemanticAnalysisBlock data={data.semantic_analysis_data?.['15_remunerazione']} />
+                        <SemanticAnalysisBlock data={data['15_remunerazione']} sectionId="15_remunerazione" />
                         <DeepDive
                             sectionId="15_remunerazione"
                             existingQA={data.deep_dives?.['15_remunerazione']}
@@ -1088,7 +1091,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </div>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data.semantic_analysis_data?.['16_sla_penali']} />
+                        <SemanticAnalysisBlock data={data['16_sla_penali']} sectionId="16_sla_penali" />
                         <DeepDive
                             sectionId="16_sla_penali"
                             existingQA={data.deep_dives?.['16_sla_penali']}
@@ -1133,19 +1136,34 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardContent>
                                     <div className="space-y-4">
                                         {sectionData.ambiguita?.length > 0 ? (
-                                            sectionData.ambiguita.map((item, i) => (
-                                                <div key={i} className="bg-amber-50 p-4 rounded-lg border border-amber-100">
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <Badge variant="outline" className="bg-white text-amber-700 border-amber-200">
-                                                            {item.tipo}
-                                                        </Badge>
-                                                        {item.riferimento_documento && (
-                                                            <span className="text-xs text-slate-500">Ref: {item.riferimento_documento}</span>
-                                                        )}
+                                            sectionData.ambiguita.map((item, i) => {
+                                                const riskLevel = item.tipo?.toUpperCase() || 'BASSO';
+                                                let icon = "🟢"; // Default BASSO
+                                                let colorClass = "text-green-600 border-green-200 bg-green-50";
+
+                                                if (riskLevel.includes('ALTO')) {
+                                                    icon = "🔴";
+                                                    colorClass = "text-red-700 border-red-200 bg-red-50";
+                                                } else if (riskLevel.includes('MEDIO')) {
+                                                    icon = "🟡";
+                                                    colorClass = "text-amber-700 border-amber-200 bg-amber-50";
+                                                }
+
+                                                return (
+                                                    <div key={i} className={`p-4 rounded-lg border ${colorClass.replace('text-', 'border-').replace('bg-', 'bg-opacity-50 ')}`}>
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <Badge variant="outline" className={`bg-white ${colorClass} border-current flex gap-1 items-center`}>
+                                                                <span>{icon}</span>
+                                                                <span>{item.tipo}</span>
+                                                            </Badge>
+                                                            {item.riferimento_documento && (
+                                                                <span className="text-xs text-slate-500">Ref: {item.riferimento_documento}</span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-slate-800 font-medium">{item.descrizione}</p>
                                                     </div>
-                                                    <p className="text-slate-800 font-medium">{item.descrizione}</p>
-                                                </div>
-                                            ))
+                                                );
+                                            })
                                         ) : (
                                             <p className="text-slate-500 italic">Nessuna ambiguità critica rilevata.</p>
                                         )}

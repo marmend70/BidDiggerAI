@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Bot, User, Search, RefreshCw, AlertTriangle } from 'lucide-react';
+import { X, Send, Bot, User, Search } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import ReactMarkdown from 'react-markdown';
 
@@ -13,9 +13,11 @@ interface ChatAssistantModalProps {
     onClose: () => void;
     tenderId: string;
     tenderTitle: string;
+    filePaths?: string[];
+    analysisContext?: any;
 }
 
-export function ChatAssistantModal({ isOpen, onClose, tenderId, tenderTitle }: ChatAssistantModalProps) {
+export function ChatAssistantModal({ isOpen, onClose, tenderId, tenderTitle, filePaths, analysisContext }: ChatAssistantModalProps) {
     const [messages, setMessages] = useState<Message[]>([
         { role: 'model', content: "Ciao! Sono il tuo assistente per questa gara. Come posso aiutarti? Posso analizzare i documenti o cercare informazioni aggiornate su internet (scrivi 'Cerca su internet:')." }
     ]);
@@ -53,16 +55,15 @@ export function ChatAssistantModal({ isOpen, onClose, tenderId, tenderTitle }: C
         if (isSearch) setIsSearching(true);
 
         try {
-            // Prepare history (excluding the very first welcome message if desired, or keep it)
-            // We pass the full history including the new message implicitly handled by the backend logic or explicitly here.
-            // The backend expects "messages" including the new one.
             const conversationHistory = [...messages, { role: 'user', content: userMsg }];
 
             const { data, error } = await supabase.functions.invoke('chat-assistant', {
                 body: {
                     tenderId,
                     messages: conversationHistory,
-                    model: 'gpt-5-mini' // Default to GPT-5 Mini
+                    model: 'gemini-3-pro-preview',
+                    filePaths, // Pass file paths
+                    analysisContext // Pass context
                 }
             });
 

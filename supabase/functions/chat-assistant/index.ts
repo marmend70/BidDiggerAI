@@ -1,222 +1,169 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { GoogleGenerativeAI } from "npm:@google/generative-ai";
-import OpenAI from 'https://esm.sh/openai@4.28.0'
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// --- HELPER: Upload to Google AI (Copied/Adapted from utils.ts) ---
+const uploadFileToGoogleAI = async (file: File, apiKey: string): Promise<any> => {
+    const metaData = { mimeType: file.type, displayName: file.name };
+    // 1. Start Resumable Upload
+    const startUrl = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`;
+    const startResp = await fetch(startUrl, {
+        method: 'POST',
+        headers: { 'X-Goog-Upload-Protocol': 'resumable', 'X-Goog-Upload-Command': 'start', 'X-Goog-Upload-Header-Content-Length': file.size.toString(), 'X-Goog-Upload-Header-Content-Type': file.type, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file: metaData })
+    });
+    if (!startResp.ok) throw new Error(`Upload Init Failed: ${startResp.statusText}`);
+    const uploadUrl = startResp.headers.get('x-goog-upload-url');
+    if (!uploadUrl) throw new Error("No upload URL returned");
+
+    // 2. Upload Bytes
+    const uploadResp = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: { 'Content-Length': file.size.toString(), 'X-Goog-Upload-Offset': '0', 'X-Goog-Upload-Command': 'upload, finalize' },
+        body: file
+    });
+    if (!uploadResp.ok) throw new Error(`Upload Failed: ${uploadResp.statusText}`);
+    const uploadResult = await uploadResp.json();
+    return { fileUri: uploadResult.file.uri, mimeType: uploadResult.file.mimeType };
+};
+
 serve(async (req) => {
-    // Handle CORS preflight requests
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
-    }
+    if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
     try {
-        const { tenderId, messages, model } = await req.json()
+        const { tenderId, messages, model, filePaths, analysisContext } = await req.json();
 
-        if (!tenderId || !messages) {
-            throw new Error("Missing required fields: tenderId or messages");
-        }
+        if (!messages) throw new Error("Missing messages");
 
-        // Initialize Supabase Client
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        )
+        );
+        const geminiKey = Deno.env.get('GEMINI_API_KEY');
+        if (!geminiKey) throw new Error("GEMINI_API_KEY is missing");
 
-        // Default to Gemini 2.5 Flash as requested
-        let modelName = model || 'gemini-2.5-flash';
-        console.log(`[ChatAssistant] Using model: ${modelName}`);
+        const genAI = new GoogleGenerativeAI(geminiKey);
+        const modelName = model || 'gemini-2.5-flash';
 
-        // 0. Fetch Tender Owner for Storage Path (Required to locate file)
-        const { data: tenderData, error: tenderError } = await supabaseClient
-            .from('tenders')
-            .select('user_id')
-            .eq('id', tenderId)
-            .single();
+        console.log(`[ChatAssistant] Model: ${modelName}, Files: ${filePaths?.length || 0}, Context: ${!!analysisContext}`);
 
-        if (tenderError || !tenderData) {
-            console.error("Failed to find tender owner:", tenderError);
-            // Verify if we can proceed? No, path needs userId.
-            // Assume path might be without userId for legacy? No, standardize.
-        }
-        const userId = tenderData?.user_id;
+        // 1. Prepare Files (Native API)
+        const fileParts: any[] = [];
+        if (filePaths && filePaths.length > 0) {
+            console.log(`[ChatAssistant] Processing ${filePaths.length} files...`);
+            for (const path of filePaths) {
+                const { data, error } = await supabaseClient.storage.from('tenders').download(path);
+                if (data) {
+                    try {
+                        const arrayBuffer = await data.arrayBuffer();
+                        const fileName = path.split('/').pop() || 'doc.pdf';
+                        const mimeType = fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/plain';
+                        const fileObj = new File([arrayBuffer], fileName, { type: mimeType });
 
-
-        // 1. Fetch Context (Extracted Text)
-        // Optimization: Try to minimize context loading if conversation is long, but for now we simple-load context.
-        // We reuse the logic from ask-question: look for pre-extracted text.
-        let fullPdfText = "";
-        try {
-            // Fix: Path requires userId
-            const storagePath = userId ? `${userId}/${tenderId}/extracted_text.txt` : `${tenderId}/extracted_text.txt`;
-            console.log(`[ChatAssistant] Loading context from: ${storagePath}`);
-            const { data, error } = await supabaseClient.storage.from('tenders').download(storagePath);
-            if (!error && data) {
-                fullPdfText = await data.text();
+                        console.log(`[ChatAssistant] Uploading ${fileName}...`);
+                        const result = await uploadFileToGoogleAI(fileObj, geminiKey);
+                        fileParts.push({
+                            fileData: { mimeType: result.mimeType, fileUri: result.fileUri }
+                        });
+                    } catch (e) {
+                        console.error(`[ChatAssistant] Upload failed for ${path}:`, e);
+                    }
+                } else if (error) {
+                    console.error(`[ChatAssistant] Download failed for ${path}:`, error);
+                }
             }
-        } catch (e) {
-            console.error("Failed to load context:", e);
         }
 
-        if (!fullPdfText) {
-            fullPdfText = "[NESSUN DOCUMENTO DISPONIBILE O ERRORE NEL CARICAMENTO]";
-        }
-
-        // Truncate context if too massive (Gemini 1.5 has huge context but let's be safe/fast)
-        const MAX_CONTEXT_CHARS = 500000;
-        if (fullPdfText.length > MAX_CONTEXT_CHARS) {
-            fullPdfText = fullPdfText.substring(0, MAX_CONTEXT_CHARS) + "\n...[TRUNCATED]";
-        }
-
-        // 2. Construct System Instruction
-        const systemInstructionText = `
+        // 2. Construct System Instruction with Analysis Context
+        let systemInstructionText = `
 SEI "BID DIGGER ASSISTANT", UN'INTELLIGENZA ARTIFICIALE SPECIALIZZATA NELL'ANALISI DI GARE D'APPALTO.
-SEI INTEGRATO NEL SOFTWARE "BID DIGGER AI".
-
 IL TUO RUOLO:
-1.  Assistere l'utente (Bid Manager, Proposal Engineer) nell'analisi ESCLUSIVA della gara corrente.
-2.  Rispondere a domande basandoti **SOLO ED ESCLUSIVAMENTE** sui documenti forniti qui sotto (CONTESTO DOCUMENTI GARA).
-3.  Se l'informazione richiesta NON è presente nei documenti, DEVI rispondere: "Non ho trovato questa informazione nei documenti della gara analizzata."
-4.  NON usare conoscenze generali, esterne o pregresse per rispondere a domande specifiche sulla gara (es. scadenze, requisiti, importi). Usa solo il testo fornito.
-5.  Se l'utente scrive esplicitamente "Cerca su internet:", allora (e solo allora) puoi usare strumenti esterni o conoscenze generali se i documenti non bastano.
-
-REGOLE DI COMPORTAMENTO:
--   Sii professionale e diretto.
--   Cita sempre la fonte ("come indicato nel Disciplinare...", "a pag. 3 del Capitolato...") quando trovi l'info.
--   Se i documenti allegati sono vuoti o illeggibili, dillo chiaramente.
-
-CONTESTO DOCUMENTI GARA (RAG):
-${fullPdfText}
+1. Assistere l'utente (Bid Manager) nell'analisi della gara.
+2. Rispondere basandoti **SUI DOCUMENTI FORNITI** (allegati alla chat) e **SUI DATI DI ANALISI** (JSON) se disponibili.
+3. Se l'informazione NON è nei documenti o nel JSON, rispondi: "Non ho trovato questa informazione nei documenti della gara analizzata."
+4. Se l'utente scrive "Cerca su internet:", USA LO STRUMENTO DI RICERCA GOOGLE per trovare informazioni aggiornate (es. decreti, indici ISTAT, news aziende).
+5. Sii professionale, cita la fonte (pag. X o sezione Y).
 `;
 
-        let responseText = "";
-
-        // --- BRANCH: OPENAI (GPT-*) ---
-        if (modelName.toLowerCase().startsWith('gpt')) {
-            console.log("[ChatAssistant] Using OpenAI Provider");
-
-            const apiKey = Deno.env.get('OPENAI_API_KEY');
-            if (!apiKey) throw new Error("OPENAI_API_KEY is missing");
-            const openai = new OpenAI({ apiKey: apiKey });
-
-            // Normalize model name for API if needed (e.g. gpt-5.2 might need specific ID if not public yet)
-            let apiModel = modelName;
-
-            // Prepare messages
-            const openAiMessages = [
-                { role: "system", content: systemInstructionText },
-                ...messages.map((m: any) => ({
-                    role: m.role === 'model' ? 'assistant' : 'user',
-                    content: m.content
-                }))
-            ];
-
-            const completion = await openai.chat.completions.create({
-                model: apiModel,
-                messages: openAiMessages as any,
-            });
-
-            responseText = completion.choices[0]?.message?.content || "";
-
+        if (analysisContext) {
+            const contextString = JSON.stringify(analysisContext, null, 2).substring(0, 100000); // Fail-safe truncate
+            systemInstructionText += `\n\nDATI DI ANALISI GIA ESTRATTI (JSON):\n${contextString}\nUSALI COME RIFERIMENTO PRIMARIO se la risposta è certa.`;
         }
-        // --- BRANCH: GEMINI (gemini-*) ---
-        else {
-            console.log("[ChatAssistant] Using Gemini Provider");
 
-            const geminiKey = Deno.env.get('GEMINI_API_KEY');
-            if (!geminiKey) throw new Error("GEMINI_API_KEY is missing");
-            const genAI = new GoogleGenerativeAI(geminiKey);
+        // 3. Prepare Chat History
+        // We need to inject the files. Best strategy: consistent "Ghost" message at start.
+        // OR, check if this is a fresh session.
+        // Simplified: We reconstruct history from `messages`.
+        // We insert a System-like User message at index 0 containing the files.
 
-            // Re-usable chat execution function
-            const executeChat = async (targetModelId: string) => {
-                console.log(`[ChatAssistant] Attempting generation with ${targetModelId}...`);
+        let chatHistory = messages.map((m: any) => ({
+            role: m.role === 'user' ? 'user' : 'model',
+            parts: [{ text: m.content }]
+        }));
 
-                const lastMsg = messages[messages.length - 1];
-                const isSearchRequest = lastMsg.content.toLowerCase().startsWith("cerca su internet:");
+        // SANITIZATION: Remove leading 'model' messages (e.g. Welcome message)
+        while (chatHistory.length > 0 && chatHistory[0].role !== 'user') {
+            chatHistory.shift();
+        }
 
-                let tools = [];
-                if (isSearchRequest) {
-                    console.log("Search trigger detected.");
-                    tools.push({ googleSearch: {} });
-                }
+        // Remove the Newest User Message (it will be passed to sendMessage)
+        let newMsgContent = "";
+        let newMsgIsSearch = false;
 
-                const generativeModel = genAI.getGenerativeModel({
-                    model: targetModelId,
-                    tools: tools,
-                    systemInstruction: {
-                        parts: [{ text: systemInstructionText }],
-                        role: "system"
-                    }
-                });
-
-                // 3. Prepare History for Gemini
-                let chatHistory = messages.map((m: any) => ({
-                    role: m.role === 'user' ? 'user' : 'model',
-                    parts: [{ text: m.content }]
-                }));
-
-                // Remove the very last message from history because sendMessage(msg) takes the new message as arg
-                let newMsgContent = "";
-                if (chatHistory.length > 0) {
-                    const lastMsg = chatHistory.pop();
-                    newMsgContent = lastMsg.parts[0].text;
-                }
-
-                // SANITIZATION: Remove leading 'model' messages.
-                while (chatHistory.length > 0 && chatHistory[0].role !== 'user') {
-                    chatHistory.shift();
-                }
-
-                const chat = generativeModel.startChat({
-                    history: chatHistory,
-                });
-
-                // 4. Generate Response
-                const result = await chat.sendMessage(newMsgContent);
-                return result.response.text();
-            };
-
-            try {
-                responseText = await executeChat(modelName); // Try Default (2.5 Flash)
-            } catch (e: any) {
-                console.error(`[ChatAssistant] Primary model ${modelName} failed:`, e);
-
-                // FALLBACK LOGIC: If 2.5 Flash fails, try 3 Pro Preview
-                if (modelName === 'gemini-2.5-flash') {
-                    console.warn("[ChatAssistant] Fallback: Retrying with gemini-3-pro-preview...");
-                    try {
-                        responseText = await executeChat('gemini-3-pro-preview');
-                    } catch (retryErr: any) {
-                        throw new Error(`Chat Failed (Total Failure): ${e.message} -> ${retryErr.message}`);
-                    }
-                } else {
-                    throw e; // Rethrow if not our target model
-                }
+        if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].role === 'user') {
+            const lastMsg = chatHistory.pop();
+            newMsgContent = lastMsg.parts[0].text;
+            if (newMsgContent.toLowerCase().startsWith('cerca su internet:')) {
+                newMsgIsSearch = true;
             }
-
-            console.log(`[ChatAssistant] Success.`);
         }
 
-        return new Response(JSON.stringify({
-            answer: responseText,
-            _debug_model: modelName
-        }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        // Inject Files into the VERY FIRST message (User role) if not empty
+        // Or create a prepended message.
+        if (fileParts.length > 0) {
+            const fileMessage = {
+                role: 'user',
+                parts: [
+                    { text: "Ecco i documenti ufficiali della gara. Analizzali per rispondere alle mie domande." },
+                    ...fileParts
+                ]
+            };
+            const ackMessage = {
+                role: 'model',
+                parts: [{ text: "Ho ricevuto i documenti e i dati di analisi. Sono pronto a rispondere." }]
+            };
+            // Prepend to history
+            chatHistory = [fileMessage, ackMessage, ...chatHistory];
+        }
+
+        // 4. Configure Tools
+        const tools = [];
+        if (newMsgIsSearch) {
+            tools.push({ googleSearch: {} });
+        }
+
+        const generativeModel = genAI.getGenerativeModel({
+            model: modelName,
+            tools: tools,
+            systemInstruction: { parts: [{ text: systemInstructionText }], role: "system" }
         });
 
+        const chat = generativeModel.startChat({ history: chatHistory });
+
+        console.log(`[ChatAssistant] Sending message: "${newMsgContent.substring(0, 50)}..."`);
+        const result = await chat.sendMessage(newMsgContent);
+        const responseText = result.response.text();
+
+        return new Response(JSON.stringify({ answer: responseText }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
     } catch (error: any) {
-        console.error("[ChatAssistant] Critical Error:", error);
-        // Return 200 with error field so frontend reads it instead of throwing "non-2xx"
-        return new Response(JSON.stringify({
-            error: error.message,
-            stack: error.stack
-        }), {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+        console.error("[ChatAssistant] Error:", error);
+        return new Response(JSON.stringify({ error: error.message }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-})
+});

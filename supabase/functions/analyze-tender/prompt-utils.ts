@@ -1,41 +1,39 @@
 export const generateAnalysisPrompt = (preferences: Record<string, boolean>, batchName: string, semanticPreferences: Record<string, boolean> = {}): string => {
 
-  const GENIUS_PROMPT = `
-  "semantic_analysis": "GENIUS MODE: Analisi critica approfondita (500-1000 caratteri). Agisci come Senior Bid Manager e Ingegnere. Evidenzia insidie, opportunità nascoste, e consigli strategici.",
-  "rischi_rilevati": ["Rischio 1", "Rischio 2"]`;
+
 
   const prompts: string[] = [];
   prompts.push(`
-OBIETTIVO: Analisi Multi-Livello (Structured + Semantic Analysis) di documenti di gara.
-OUTPUT: Unico oggetto JSON. 
+  OBIETTIVO: Analisi Multi - Livello(Structured + Semantic Analysis) di documenti di gara.
+    OUTPUT: Unico oggetto JSON. 
 Ogni sezione attivata deve avere la struttura:
-"Key": {
-  "structured": ... (Vedi Schema),
-  "analysis": { ... },
-  "semantic_analysis": "..." (Opzionale: Solo se richiesto),
-  "rischi_rilevati": [...] (Opzionale)
-}
-    `);
+  "Key": {
+    "structured": ... (Vedi Schema),
+    "analysis": { ... },
+    "semantic_analysis": "..."(Opzionale: Solo se richiesto),
+      "rischi_rilevati": [...](Opzionale)
+  }
+  `);
 
   // GENIUS MODE LOGIC
   const activeSemanticKeys = Object.keys(semanticPreferences).filter(k => semanticPreferences[k]);
 
   const rules = `
 REGOLE GENERALI:
-- JSON valido.
-- Se un dato manca, usa null o []. Non inventare.
-- Normalizza date in YYYY-MM-DD.
-- "structured" DEVE seguire rigorosamente lo schema indicato (Spesso è un ARRAY di 1 elemento).
+  - JSON valido.
+- Se un dato manca, usa null o[].Non inventare.
+- Normalizza date in YYYY - MM - DD.
+- "structured" DEVE seguire rigorosamente lo schema indicato(Spesso è un ARRAY di 1 elemento).
 `;
 
   if (activeSemanticKeys.length > 0) {
     prompts.push(`
-*** ATTENZIONE: GENIUS MODE (ANALISI SEMANTICA) ATTIVO PER LE SEZIONI: ${activeSemanticKeys.join(', ')} ***
+    *** ATTENZIONE: GENIUS MODE(ANALISI SEMANTICA) ATTIVO PER LE SEZIONI: ${activeSemanticKeys.join(', ')} ***
 
-PER QUESTE SPECIFICHE SEZIONI, IL TUO OUTPUT JSON DEVE INCLUDERE (Allo stesso livello di "structured" e "analysis") I SEGUENTI CAMPI:
-1. "semantic_analysis": "GENIUS MODE: Analisi critica approfondita (500-1000 caratteri). Agisci come Senior Bid Manager e Ingegnere. Evidenzia insidie, opportunità nascoste, e consigli strategici."
-2. "rischi_rilevati": ["Elenco rischi specifici rilevati in questa sezione"]
-`);
+      PER QUESTE SPECIFICHE SEZIONI, IL TUO OUTPUT JSON DEVE INCLUDERE(Allo stesso livello di "structured" e "analysis") I SEGUENTI CAMPI:
+  1. "semantic_analysis": "Analisi critica approfondita. Vai dritto al punto: evidenzia insidie, opportunità nascoste e consigli strategici senza premesse."
+  2. "rischi_rilevati": ["Elenco rischi specifici rilevati in questa sezione"]
+    `);
   }
 
   prompts.push(rules);
@@ -44,12 +42,13 @@ PER QUESTE SPECIFICHE SEZIONI, IL TUO OUTPUT JSON DEVE INCLUDERE (Allo stesso li
   // Dashboard: data['3_sintesi'].oggetto (Object Access)
   if (preferences['3_sintesi']) prompts.push(`
   Chiave: "3_sintesi"
-  ISTRUZIONI: Estrai Sintesi, Ente, Oggetto.
+  ISTRUZIONI: Estrai Sintesi, Stazione Appaltante, Oggetto.
+  IMPORTANTE: Report "stazione_appaltante" (Ente banditore) e "oggetto" (Oggetto dell'appalto) in modo COMPLETO ed ESAUSTIVO come da documenti.
 JSON SCHEMA:
   "3_sintesi": {
     "structured": {
-      "oggetto": "Oggetto dell'appalto",
-        "ente": "Nome Ente Appaltante",
+      "stazione_appaltante": "Nome completo Stazione Appaltante / Amministrazione",
+      "oggetto": "Oggetto dell'appalto completo",
           "scopo": "Scopo generale",
             "scenario": "Descrizione contesto",
               "codici": { "cig": "...", "cup": "...", "cpv": "..." }

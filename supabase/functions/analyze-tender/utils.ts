@@ -74,7 +74,8 @@ export async function generateContentGoogle(
     model: string,
     prompt: string,
     fileUris: GoogleFileResult[],
-    apiKey: string
+    apiKey: string,
+    responseMimeType: string = "application/json" // Default to JSON for backward combatibility
 ): Promise<string> {
 
     // Construct Content
@@ -105,8 +106,8 @@ export async function generateContentGoogle(
         body: JSON.stringify({
             contents: contents,
             generationConfig: {
-                temperature: 0.2, // Structured
-                responseMimeType: "application/json" // Native JSON mode if supported
+                temperature: 0.1, // Structured
+                responseMimeType: responseMimeType // Use dynamic mime type
             }
         })
     });

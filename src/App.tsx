@@ -259,9 +259,9 @@ function App() {
 
   // Model Selection State
   const [showModelModal, setShowModelModal] = useState(false);
-  // MODEL SELECTION STATE - Hardcoded to Gemini 2.5 Flash as per User Request (Fallback: Gemini 3)
+  // MODEL SELECTION STATE
   const [selectedStructuredModel, setSelectedStructuredModel] = useState<string>('gemini-2.5-flash');
-  const [selectedSemanticModel, setSelectedSemanticModel] = useState<string>('gemini-2.5-flash');
+  const [selectedSemanticModel, setSelectedSemanticModel] = useState<string>('gemini-3-pro-preview');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [uploadedPaths, setUploadedPaths] = useState<string[]>([]); // Added for Chatbot Context
 
@@ -317,7 +317,7 @@ function App() {
     setIsUploading(true);
     setElapsedTime(0);
     setProgressMessage(`Avvio analisi (Standard: ${structuredModelId})...`);
-    setLoadingBatches(['batch_1', 'batch_2', 'batch_2b', 'batch_2c', 'batch_3', 'batch_3b', 'batch_4']);
+    setLoadingBatches(['batch_1', 'batch_1b', 'batch_2', 'batch_2b', 'batch_2c', 'batch_3', 'batch_3b', 'batch_4']);
     setAnalysisData(null); // Reset previous data
 
     try {
@@ -658,7 +658,8 @@ function App() {
         } catch (error: any) {
           console.error(`Error in batch ${batchName}:`, error);
           let msg = error.message || 'Timeout';
-          if (msg.includes('404') || msg.toLowerCase().includes('not found')) {
+          // Fix: Prevent "Polling timeout: Result not found" from triggering the "Model not available" message
+          if ((msg.includes('404') || msg.toLowerCase().includes('not found')) && !msg.includes('Polling timeout')) {
             msg = "Il modello selezionato non è disponibile nel backend oppure non è supportato al momento.";
           }
           alert(`Errore durante l'analisi del gruppo "${batchName}": ${msg}`);
@@ -671,8 +672,11 @@ function App() {
       const BATCH_1 = {
         '3_sintesi': true,
         '3b_checklist_amministrativa': true,
+        '5_scadenze': true
+      };
+
+      const BATCH_1B = {
         '1_requisiti_partecipazione': true,
-        '5_scadenze': true,
         '6_importi': true,
         '8_ccnl': true
       };
@@ -709,6 +713,7 @@ function App() {
       // Configuration for Batches
       const batchConfigs = [
         { name: 'batch_1', prefs: BATCH_1 },
+        { name: 'batch_1b', prefs: BATCH_1B },
         { name: 'batch_2', prefs: BATCH_2 },
         { name: 'batch_2b', prefs: BATCH_2B },
         { name: 'batch_2c', prefs: BATCH_2C },
@@ -722,7 +727,18 @@ function App() {
       const batchPromises: Promise<any>[] = [];
 
       for (const batch of batchConfigs) {
-        batchPromises.push(runBatch(batch.name, getBatchPreferences(batch.prefs), structuredModelId, semanticModelId));
+        // SMART CONFIG: Check if ANY section in this batch has semantic analysis enabled
+        const batchKeys = Object.keys(batch.prefs);
+        const hasSemanticActive = batchKeys.some(key => userPreferences.semantic_analysis_sections?.[key]);
+
+        // If semantic is active, UPGRADE the structured model to Pro (as requested)
+        const batchStructuredModel = hasSemanticActive ? 'gemini-3-pro-preview' : structuredModelId;
+
+        if (hasSemanticActive) {
+          console.log(`[Batch ${batch.name}] Semantic Active -> Upgrading Structured Model to ${batchStructuredModel}`);
+        }
+
+        batchPromises.push(runBatch(batch.name, getBatchPreferences(batch.prefs), batchStructuredModel, semanticModelId));
         await new Promise(resolve => setTimeout(resolve, 2000)); // 2s delay
       }
 
@@ -804,21 +820,56 @@ function App() {
       // This allows Gemini to know what it has already extracted.
       const analysisContext = analysisData;
 
-      const { data, error } = await supabase.functions.invoke('analyze-tender', {
-        body: {
-          action: 'ask_question', // Explicit Action
-          tenderId: tenderId,
-          section: sectionId,
-          question: question,
-          filePaths: filePaths,
-          analysisContext: analysisContext, // NEW: Full JSON Context
-          model: selectedSemanticModel,
-          forceVisualMode: forceVisualMode,
-          // Reuse same function 'analyze-tender' which handles 'ask_question'
-        }
-      });
 
-      if (error) throw error;
+      let responseData;
+      let usedModel = selectedSemanticModel;
+
+      try {
+        // Attempt 1: Primary Model
+        const { data, error } = await supabase.functions.invoke('analyze-tender', {
+          body: {
+            action: 'ask_question',
+            tenderId: tenderId,
+            section: sectionId,
+            question: question,
+            filePaths: filePaths,
+            analysisContext: analysisContext,
+            model: selectedSemanticModel,
+            forceVisualMode: forceVisualMode,
+          }
+        });
+
+        if (error) throw error;
+        responseData = data;
+
+      } catch (err: any) {
+        // Fallback Logic
+        console.warn(`Attempt with ${selectedSemanticModel} failed:`, err);
+        if (selectedSemanticModel === 'gemini-3-pro-preview') {
+          console.log("Falling back to gemini-2.5-pro...");
+          usedModel = 'gemini-2.5-pro';
+
+          const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke('analyze-tender', {
+            body: {
+              action: 'ask_question',
+              tenderId: tenderId,
+              section: sectionId,
+              question: question,
+              filePaths: filePaths,
+              analysisContext: analysisContext,
+              model: 'gemini-2.5-pro', // Fallback Model
+              forceVisualMode: forceVisualMode,
+            }
+          });
+
+          if (fallbackError) throw fallbackError;
+          responseData = fallbackData;
+        } else {
+          throw err;
+        }
+      }
+
+      const data = responseData;
       console.log("Backend response debug mode:", data._debug_mode);
       console.log("Full backend response:", data);
 
@@ -910,7 +961,7 @@ function App() {
   };
 
   if (!session) {
-    return <Login />;
+    return <Login onOpenContact={() => setContactModalOpen(true)} />;
   }
 
   return (

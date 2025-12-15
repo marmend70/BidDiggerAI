@@ -90,10 +90,11 @@ export const MENU_ORDER = [
 export const SECTION_BATCH_MAP: Record<string, string> = {
     "3_sintesi": "batch_1",
     "3b_checklist_amministrativa": "batch_1",
-    "1_requisiti_partecipazione": "batch_1",
     "5_scadenze": "batch_1",
-    "6_importi": "batch_1",
-    "8_ccnl": "batch_1",
+
+    "1_requisiti_partecipazione": "batch_1b",
+    "6_importi": "batch_1b",
+    "8_ccnl": "batch_1b",
 
     "4_servizi": "batch_2",
     "7_durata": "batch_2",
@@ -152,6 +153,15 @@ export const AVAILABLE_MODELS = [
         type: 'semantic',
         speed: 'Veloce',
         cost: 'Basso'
+    },
+    {
+        id: 'gemini-2.5-pro',
+        name: 'Gemini 2.5 Pro',
+        description: 'Bilanciamento. Fallback affidabile per analisi complessa.',
+        recommendedFor: 'Analisi robusta',
+        type: 'semantic',
+        speed: 'Veloce',
+        cost: 'Medio'
     }
 ];
 

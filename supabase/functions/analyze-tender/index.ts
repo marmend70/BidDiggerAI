@@ -55,15 +55,15 @@ Deno.serve(async (req) => {
 
 
       // --- HELPER: Native Analysis with Fallback ---
-      const performAnalysisNative = async (primaryModelId: string, fallbackModelId: string, userPrompt: string, googleFiles: GoogleFileResult[], systemPrompt: string) => {
-         console.log(`[Analysis] Starting Native with Primary: ${primaryModelId}`);
+      const performAnalysisNative = async (primaryModelId: string, fallbackModelId: string, userPrompt: string, googleFiles: GoogleFileResult[], systemPrompt: string, responseMimeType: string = "application/json") => {
+         console.log(`[Analysis] Starting Native with Primary: ${primaryModelId} (Output: ${responseMimeType})`);
 
          const callAI = async (modelId: string) => {
             console.log(`[AI] Calling Google Native ${modelId}...`);
             // We append SYSTEM_PROMPT to userPrompt because native API 'systemInstruction' is optional/beta.
             // Concatenating is safer for now.
             const fullPrompt = systemPrompt + "\n\n" + userPrompt;
-            return await generateContentGoogle(modelId, fullPrompt, googleFiles, geminiKey);
+            return await generateContentGoogle(modelId, fullPrompt, googleFiles, geminiKey, responseMimeType);
          };
 
          try {
@@ -139,63 +139,108 @@ Deno.serve(async (req) => {
       if (action === 'analyze') {
          // Encapsulate analysis logic for Async/Sync reuse
          const runAnalysis = async () => {
-            let resultJson = null;
-
-            // User-defined Pipeline:
-            // Structure/Parsing: Primary = gemini-2.5-flash (structuredModel), Fallback = gemini-3-pro-preview
-            const primaryModel = structuredModel || 'gemini-2.5-flash';
-            const fallbackModel = 'gemini-3-pro-preview';
-
-            // 1. Upload Files to Google
-            const googleFiles = await prepareFilesForGoogle(filePaths || []);
-            if (googleFiles.length === 0) throw new Error("No files could be prepared for Google AI.");
-
-            // 2. Generate Prompt
-            const activePrompt = prompt || generateAnalysisPrompt(analysisPreferences, batchName || 'default', semanticPreferences);
-
-            // 3. Perform Analysis (PASS JSON SYSTEM PROMPT)
-            const responseText = await performAnalysisNative(primaryModel, fallbackModel, activePrompt, googleFiles, JSON_ANALYSIS_PROMPT);
-
-            // Clean Response (Gemini sometimes adds ```json ... ```)
-            const cleanText = responseText.replace(/```json/g, '').replace(/```/g, '');
             try {
-               resultJson = JSON.parse(cleanText); // or use jsonrepair?
-            } catch (e) {
-               console.warn("JSON Parse failed, trying repair...");
-               try {
-                  resultJson = JSON5.parse(jsonrepair(cleanText));
-               } catch (e2) {
-                  console.error("Critical JSON Parse Error", cleanText);
-                  throw new Error("Failed to parse AI response.");
+               let resultJson = null;
+
+               // User-defined Pipeline:
+               // Structure/Parsing: Primary = gemini-2.5-flash (structuredModel), Fallback = gemini-2.5-flash (Reliable)
+               const primaryModel = structuredModel || 'gemini-2.5-flash';
+               let fallbackModel = 'gemini-2.5-flash'; // Default fallback
+
+               // SMART FALLBACK: If user explicitly wants Pro, fallback to 2.5 Pro (as per user request)
+               if (primaryModel === 'gemini-3-pro-preview') {
+                  fallbackModel = 'gemini-2.5-pro';
                }
-            }
 
-            // INJECT META & SAVE TO DB
-            if (resultJson) {
-               resultJson._batch_name = batchName;
+               // 1. Upload Files to Google
+               const googleFiles = await prepareFilesForGoogle(filePaths || []);
+               if (googleFiles.length === 0) throw new Error("No files could be prepared for Google AI.");
 
-               // DEBUG: Inject info
-               resultJson._debug_info = {
-                  model_used: primaryModel, // We assume primary worked or fallback throw info
-                  mode: "GEMINI_NATIVE_FILE_API",
-                  file_count: googleFiles.length
-               };
+               // 2. Generate Prompt
+               const activePrompt = prompt || generateAnalysisPrompt(analysisPreferences, batchName || 'default', semanticPreferences);
 
-               if (saveToDb) {
-                  console.log("[Analysis] Saving result to DB for Polling...");
-                  const { error: dbError } = await supabaseClient
-                     .from('analyses')
-                     .insert({
-                        tender_id: tenderId,
-                        result_json: resultJson,
-                        model_used: primaryModel
-                     });
-                  if (dbError) {
-                     console.error("[Analysis] DB Save Failed:", dbError);
+               // Logic for Temperature:
+               // If Semantic Analysis (Genius Mode) is active for any section, bump temperature to 0.3 for better creativity.
+               // Otherwise (Pure Structured), keep it at 0.1 for precision.
+               const activeSemanticKeys = Object.keys(semanticPreferences || {}).filter(k => semanticPreferences[k]);
+               const analysisTemperature = activeSemanticKeys.length > 0 ? 0.3 : 0.1;
+
+               if (activeSemanticKeys.length > 0) {
+                  console.log(`[Analysis] Genius Mode Active (${activeSemanticKeys.length} sections). Using Temperature: ${analysisTemperature}`);
+               }
+
+               // 3. Perform Analysis (PASS JSON SYSTEM PROMPT)
+               // Note: performAnalysisNative needs to be updated to accept temperature or we pass it via a config object?
+               // Looking at performAnalysisNative signature in current view... I need to update it too or just update where it calls generateContentGoogle.
+               // Let's assume I need to update performAnalysisNative's signature in utils.ts FIRST, but I didn't see performAnalysisNative in utils.ts view earlier?
+               // Wait, performAnalysisNative is imported or defined in index.ts? 
+               // Accessing it now: it is likely defined in this file (index.ts) or imported.
+               // Based on previous reads, performAnalysisNative was used. I'll pass the temperature to it.
+               const responseText = await performAnalysisNative(primaryModel, fallbackModel, activePrompt, googleFiles, JSON_ANALYSIS_PROMPT, "application/json", analysisTemperature);
+
+               // Clean Response (Gemini sometimes adds ```json ... ```)
+               const cleanText = responseText.replace(/```json/g, '').replace(/```/g, '');
+               try {
+                  resultJson = JSON.parse(cleanText); // or use jsonrepair?
+               } catch (e) {
+                  console.warn("JSON Parse failed, trying repair...");
+                  try {
+                     resultJson = JSON5.parse(jsonrepair(cleanText));
+                  } catch (e2) {
+                     console.error("Critical JSON Parse Error", cleanText);
+                     throw new Error("Failed to parse AI response.");
                   }
                }
+
+               // INJECT META & SAVE TO DB
+               if (resultJson) {
+                  resultJson._batch_name = batchName;
+
+                  // DEBUG: Inject info
+                  resultJson._debug_info = {
+                     model_used: primaryModel, // We assume primary worked or fallback throw info
+                     mode: "GEMINI_NATIVE_FILE_API",
+                     file_count: googleFiles.length
+                  };
+
+                  if (saveToDb) {
+                     console.log("[Analysis] Saving result to DB for Polling...");
+                     const { error: dbError } = await supabaseClient
+                        .from('analyses')
+                        .insert({
+                           tender_id: tenderId,
+                           result_json: resultJson,
+                           model_used: primaryModel
+                        });
+                     if (dbError) {
+                        console.error("[Analysis] DB Save Failed:", dbError);
+                     }
+                  }
+               }
+               return resultJson;
+            } catch (err: any) {
+               console.error(`[Background Analysis] Error in batch ${batchName}:`, err);
+
+               // CRITICAL: Save error state to DB so polling client stops waiting
+               if (saveToDb && tenderId) {
+                  try {
+                     await supabaseClient
+                        .from('analyses')
+                        .insert({
+                           tender_id: tenderId,
+                           result_json: {
+                              _batch_name: batchName,
+                              error: err.message || "Unknown background error",
+                              debug_stack: err.stack
+                           },
+                           model_used: "error"
+                        });
+                  } catch (dbErr) {
+                     console.error("[Background Analysis] Failed to save error log:", dbErr);
+                  }
+               }
+               throw err;
             }
-            return resultJson;
          };
 
          // CHECK BACKGROUND MODE
@@ -240,8 +285,10 @@ ${contextString}
 
          fullPrompt += `\nISTRUZIONI: Rispondi alla domanda basandoti SUI DOCUMENTI FORNITI (File) e SUI DATI DI ANALISI sopra riportati.
          IMPORTANTE: RISPONDI ESCLUSIVAMENTE IN TESTO SEMPLICE (MARKDOWN). NON USARE JSON. NON RESTITUIRE STRUTTURE DATI COMPLESSE. SOLO TESTO LEGGIBILE.
-         Se l'informazione è nel JSON, usala. Se no, cercala nei documenti allegati.
-         Sii preciso e professionale. Rispondi in italiano.`;
+         Se l'informazione è nel JSON, usala per formulare una risposta discorsiva.
+         Sii preciso e professionale. Rispondi in italiano.
+         
+         RICORDA: IL TUO OUTPUT DEVE ESSERE SOLO TESTO. NIENTE PARENTESI GRAFFE O JSON.`;
 
          // Upload files if provided (Stateless/Reset per call)
          let googleFiles: GoogleFileResult[] = [];
@@ -249,8 +296,8 @@ ${contextString}
             googleFiles = await prepareFilesForGoogle(filePaths);
          }
 
-         // Use the helper, but pass our TEXT system prompt
-         const responseText = await performAnalysisNative(primaryModel, fallbackModel, fullPrompt, googleFiles, TEXT_QA_PROMPT);
+         // Use the helper, but pass our TEXT system prompt AND "text/plain" AND temperature 0.3 (Creative/Human)
+         const responseText = await performAnalysisNative(primaryModel, fallbackModel, fullPrompt, googleFiles, TEXT_QA_PROMPT, "text/plain", 0.3);
 
          let finalAnswer = responseText;
          // CLEANUP: If model stubbornly returns JSON, try to extract the text

@@ -104,7 +104,7 @@ serve(async (req) => {
 
             // Fallback (matches analyze-tender: 1.5-flash-002)
             log("[GeminiRaw] Generating content (Fallback: 1.5-flash-002)...");
-            const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-002:generateContent?key=${geminiKey}`;
+            const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
             const fallbackRes = await fetch(fallbackUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -581,7 +581,7 @@ serve(async (req) => {
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-                        const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+                        const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
                         const fallbackRes = await fetch(fallbackUrl, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -768,7 +768,12 @@ serve(async (req) => {
                    DOCUMENTI:
                    ${fullPdfText}`;
 
-                    const result = await geminiModel.generateContent(prompt);
+                    const result = await geminiModel.generateContent({
+                        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                        generationConfig: {
+                            temperature: 0.3 // Standard Deep Dive (Semantic)
+                        }
+                    });
                     return result.response.text();
                 };
 

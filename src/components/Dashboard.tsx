@@ -9,7 +9,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import {
     AlertTriangle, Info, DollarSign, FileText, CheckSquare, ShieldCheck, Briefcase,
     Award, Users, MapPin, Target, Settings, Zap, Box, Calendar, Clock, AlertCircle,
-    TrendingUp, Hourglass, RefreshCw, PlayCircle, BookOpen, Scale, Wallet, Building,
+    TrendingUp, Hourglass, RefreshCw, PlayCircle, BookOpen, Scale, Wallet, Building, Building2,
     Calculator, Percent, Ban, FileCode, Banknote, Lightbulb, CreditCard, Activity, Gavel,
     Bot, MessageSquare, HelpCircle, ClipboardCheck, Database, BrainCircuit, Sparkles
 } from 'lucide-react';
@@ -214,6 +214,22 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             <FileText className="h-8 w-8 text-amber-500" />
                             Sintesi Gara
                         </h2>
+
+                        {/* STAZIONE APPALTANTE CARD */}
+                        <Card className="bg-slate-50 border-slate-200">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-slate-800 flex items-center gap-2">
+                                    <Building2 className="h-5 w-5 text-indigo-600" />
+                                    Ente Appaltante
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-lg font-semibold text-slate-900 leading-snug">
+                                    {data['3_sintesi'].stazione_appaltante || data['3_sintesi'].ente || 'Dato non disponibile'}
+                                </p>
+                            </CardContent>
+                        </Card>
+
                         <Card className="bg-amber-50 border-amber-200">
                             <CardHeader>
                                 <CardTitle className="text-amber-900">Oggetto dell'Appalto</CardTitle>
@@ -249,7 +265,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             isGlobalLoading={isGlobalLoading}
                             exampleQuestion={DEEP_DIVE_EXAMPLES['3_sintesi']}
                         />
-                    </div>
+                    </div >
                 );
 
             case '3b_checklist_amministrativa':
@@ -1442,120 +1458,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardContent>
                         </Card>
 
-                        {/* Model Configuration */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Modelli di Analisi Predefiniti</CardTitle>
-                                <CardDescription>Seleziona i modelli di intelligenza artificiale da utilizzare per le analisi.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid gap-8 md:grid-cols-2">
-                                    {/* Structured Models */}
-                                    <div>
-                                        <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                                            <div className="bg-emerald-100 p-1.5 rounded">
-                                                <Database className="h-4 w-4 text-emerald-600" />
-                                            </div>
-                                            Estrazione Strutturata
-                                        </h3>
-                                        <div className="space-y-3">
-                                            {AVAILABLE_MODELS.filter(m => m.type === 'structured').map((model) => (
-                                                <div
-                                                    key={model.id}
-                                                    className={`cursor-pointer rounded-lg border p-4 transition-all hover:shadow-md relative ${userPreferences?.structured_model === model.id
-                                                        ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600 ring-offset-2'
-                                                        : (model as any).isRecommended
-                                                            ? 'border-amber-400 bg-amber-50/30'
-                                                            : 'border-slate-200 bg-white'
-                                                        }`}
-                                                    onClick={() => {
-                                                        if (onUpdatePreferences && userPreferences) {
-                                                            onUpdatePreferences({
-                                                                ...userPreferences,
-                                                                structured_model: model.id
-                                                            });
-                                                        }
-                                                    }}
-                                                >
-                                                    {(model as any).isRecommended && (
-                                                        <Badge className="absolute -top-2 -right-2 bg-amber-500 hover:bg-amber-600 text-white border-none shadow-sm text-[10px]">
-                                                            Consigliato
-                                                        </Badge>
-                                                    )}
-                                                    <div className="flex items-center justify-between mb-1">
-                                                        <h4 className="font-semibold text-slate-900">{model.name}</h4>
-                                                        {userPreferences?.structured_model === model.id && (
-                                                            <CheckSquare className="h-5 w-5 text-emerald-600" />
-                                                        )}
-                                                    </div>
-                                                    <p className="text-xs text-slate-500 mb-2">{model.description}</p>
-                                                    <div className="flex gap-2 text-[10px]">
-                                                        <Badge variant="secondary" className="bg-slate-100 text-slate-700">
-                                                            {model.speed}
-                                                        </Badge>
-                                                        <Badge variant="secondary" className="bg-slate-100 text-slate-700">
-                                                            {model.cost}
-                                                        </Badge>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
 
-                                    {/* Semantic Models */}
-                                    <div>
-                                        <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                                            <div className="bg-purple-100 p-1.5 rounded">
-                                                <BrainCircuit className="h-4 w-4 text-purple-600" />
-                                            </div>
-                                            Analisi Semantica
-                                        </h3>
-                                        <div className="space-y-3">
-                                            {AVAILABLE_MODELS.filter(m => m.type === 'semantic').map((model) => (
-                                                <div
-                                                    key={model.id}
-                                                    className={`cursor-pointer rounded-lg border p-4 transition-all hover:shadow-md relative ${userPreferences?.semantic_model === model.id
-                                                        ? 'border-purple-600 bg-purple-50 ring-2 ring-purple-600 ring-offset-2'
-                                                        : (model as any).isRecommended
-                                                            ? 'border-amber-400 bg-amber-50/30'
-                                                            : 'border-slate-200 bg-white'
-                                                        }`}
-                                                    onClick={() => {
-                                                        if (onUpdatePreferences && userPreferences) {
-                                                            onUpdatePreferences({
-                                                                ...userPreferences,
-                                                                semantic_model: model.id
-                                                            });
-                                                        }
-                                                    }}
-                                                >
-                                                    {(model as any).isRecommended && (
-                                                        <Badge className="absolute -top-2 -right-2 bg-amber-500 hover:bg-amber-600 text-white border-none shadow-sm text-[10px]">
-                                                            Consigliato
-                                                        </Badge>
-                                                    )}
-                                                    <div className="flex items-center justify-between mb-1">
-                                                        <h4 className="font-semibold text-slate-900">{model.name}</h4>
-                                                        {userPreferences?.semantic_model === model.id && (
-                                                            <CheckSquare className="h-5 w-5 text-purple-600" />
-                                                        )}
-                                                    </div>
-                                                    <p className="text-xs text-slate-500 mb-2">{model.description}</p>
-                                                    <div className="flex gap-2 text-[10px]">
-                                                        <Badge variant="secondary" className="bg-slate-100 text-slate-700">
-                                                            {model.speed}
-                                                        </Badge>
-                                                        <Badge variant="secondary" className="bg-slate-100 text-slate-700">
-                                                            {model.cost}
-                                                        </Badge>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
 
                         {/* FAQ Configuration */}
                         < Card >

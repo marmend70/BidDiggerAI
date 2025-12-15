@@ -17,6 +17,8 @@ export interface AnalysisResult {
     }> & GeniusData;
     "3_sintesi": {
         oggetto: string;
+        stazione_appaltante?: string; // New field
+        ente?: string; // Legacy field
         codici: {
             cig: string;
             cup: string;

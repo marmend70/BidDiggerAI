@@ -280,18 +280,32 @@ JSON SCHEMA:
   if (preferences['16_sla_penali']) prompts.push(`
   Chiave: "16_sla_penali"
   ISTRUZIONI: SLA e Penali.
-JSON SCHEMA:
+  IMPORTANTE:
+  - Tenta SEMPRE di strutturare i dati in "sla" e "penali".
+  - Analizza con RIGORE: Cerca Livelli di Servizio, Priorità, Tempi di Risposta, Gravità e Penali correlate.
+  - Mappa ogni SLA trovato nei campi specifici (vedi schema).
+  - SE e SOLO SE i dati non sono strutturabili, usa "elenco_testuale".
+  JSON SCHEMA:
   "16_sla_penali": {
     "structured": [
       {
-        "sla": [{ "indicatore": "...", "soglia": "..." }],
-        "penali": [{ "descrizione": "...", "calcolo": "..." }],
-        "clausole_cumulative": "..."
+        "sla": [
+          {
+            "servizio": "Descrizione Livello Servizio / Ambito",
+            "indicatore": "KPI o Parametro (es. Tempo Presa in Carico)",
+            "soglia": "Valore limite o Obiettivo (es. 99%, < 4h)",
+            "priorita": "Livello Priorità o Gravità (es. Alta, Bloccante, Severity 1)",
+            "penale_correlata": "Importo o calcolo penale specifica per questo SLA"
+          }
+        ],
+        "penali": [{ "descrizione": "Causa applicazione (penali generiche)", "calcolo": "Formula o Importo" }],
+        "clausole_cumulative": "...",
+        "elenco_testuale": "..."
       }
     ],
       "analysis": {
       "severita_penali": "...",
-        "ambiguita_sla": "..."
+      "ambiguita_sla": "..."
     }
   }
   Nota: "structured" è un ARRAY contenente un oggetto con liste di SLA e Penali.`);

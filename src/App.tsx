@@ -4,6 +4,16 @@ import { Upload } from '@/components/Upload';
 import { Dashboard } from '@/components/Dashboard';
 import { Login } from '@/components/Login';
 import { ArchivePage } from '@/components/ArchivePage';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { TimeoutModal } from '@/components/TimeoutModal';
 import { ModelSelectionModal } from '@/components/ModelSelectionModal';
 import { UpgradeModal } from '@/components/UpgradeModal';
@@ -11,7 +21,7 @@ import { ContactModal } from '@/components/ContactModal';
 import { ScanRetryModal } from '@/components/ScanRetryModal';
 import { PricingModal } from '@/components/PricingModal';
 import { ChatAssistantModal } from '@/components/ChatAssistantModal';
-import { AVAILABLE_MODELS } from '@/constants';
+import { AVAILABLE_MODELS, SECTIONS_MAP } from '@/constants';
 import { supabase } from '@/lib/supabase';
 import type { AnalysisResult, UserPreferences } from '@/types';
 import type { Session } from '@supabase/supabase-js';
@@ -265,6 +275,228 @@ function App() {
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [uploadedPaths, setUploadedPaths] = useState<string[]>([]); // Added for Chatbot Context
 
+  // NEW: Resume Analysis State
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [resumeSections, setResumeSections] = useState<string[]>([]);
+
+
+
+
+  /* EXECUTE ANALYSIS (Moved here for scope) */
+  const executeAnalysis = async (
+    tenderId: string,
+    isResume: boolean = false,
+    sectionsToResume: string[] = [],
+    currentPreferences: UserPreferences,
+    existingPartialIds: string[] = []
+  ) => {
+    // VALIDATION: Ensure session exists for path construction
+    if (!session?.user?.id) {
+      console.error("Critical: Session missing in executeAnalysis");
+      alert("Errore critico: Sessione utente persa. Ricarica la pagina.");
+      return;
+    }
+
+    // Reconstruct storage path
+    const textStoragePath = `${session.user.id}/${tenderId}/extracted_text.txt`;
+    console.log("[executeAnalysis] textStoragePath:", textStoragePath);
+
+    const preferences = currentPreferences.analysis_sections || {}; // Safety check
+
+    // Helper to filter preferences
+    const getBatchPreferences = (batch: Record<string, boolean>) => {
+      const prefs: Record<string, boolean> = {};
+      Object.keys(batch).forEach(key => {
+        if (preferences[key]) prefs[key] = true;
+      });
+      return prefs;
+    };
+
+    // Define internal runBatch inside executeAnalysis (or pass args)
+    const runBatch = async (batchName: string, batchPrefs: Record<string, boolean>, sModel: string, semModel: string) => {
+      if (Object.keys(batchPrefs).length === 0) {
+        setLoadingBatches(prev => prev.filter(b => b !== batchName));
+        return {};
+      }
+
+      const processResult = (originalData: any) => {
+        // --- ADAPTER ---
+        const data = { ...originalData };
+        Object.keys(data).forEach(key => {
+          if (data[key] && typeof data[key] === 'object' && 'structured' in data[key]) {
+            if (data[key].analysis) {
+              if (!data.semantic_analysis_data) data.semantic_analysis_data = {};
+              data.semantic_analysis_data[key] = data[key].analysis;
+            }
+            const geniusAnalysis = data[key].semantic_analysis;
+            const geniusRisks = data[key].rischi_rilevati;
+            data[key] = data[key].structured;
+            if (data[key] && (geniusAnalysis || geniusRisks)) {
+              if (geniusAnalysis) data[key].semantic_analysis = geniusAnalysis;
+              if (geniusRisks) data[key].rischi_rilevati = geniusRisks;
+            }
+          }
+        });
+        // ----------------
+
+        setLoadingBatches(prev => prev.filter(b => b !== batchName));
+
+        if (data && data.error) {
+          // Only alert if it's not a known "not found" that we can ignore or handled elsewhere
+          // But here we alert.
+          alert(`Errore batch ${batchName}: ${data.error}`);
+          return data;
+        }
+
+        setAnalysisData(prev => {
+          const newData = prev ? { ...prev } : { tender_id: tenderId } as AnalysisResult;
+          if (data.semantic_analysis_data) {
+            newData.semantic_analysis_data = { ...(newData.semantic_analysis_data || {}), ...data.semantic_analysis_data };
+            delete data.semantic_analysis_data;
+          }
+          Object.assign(newData, data);
+          return newData;
+        });
+        return data;
+      };
+
+      try {
+        // ... invoke analyze-tender 'analyze' ...
+        const { error: invokeError } = await supabase.functions.invoke('analyze-tender', {
+          body: {
+            tenderId: tenderId,
+            filePaths: uploadedPaths, // State
+            analysisPreferences: batchPrefs,
+            semanticPreferences: currentPreferences.semantic_analysis_sections,
+            background: true,
+            saveToDb: true,
+            textStoragePath: textStoragePath,
+            structuredModel: sModel,
+            semanticModel: semModel,
+            action: 'analyze',
+            batchName: batchName,
+            allowDirectUpload: false
+          }
+        });
+
+        if (invokeError) throw invokeError;
+
+        // ... Polling Logic ...
+        const startTime = new Date().toISOString();
+        const MAX_POLL_TIME = 10 * 60 * 1000;
+        const POLL_INTERVAL = 2000;
+        let elapsed = 0;
+
+        while (elapsed < MAX_POLL_TIME) {
+          await new Promise(r => setTimeout(r, POLL_INTERVAL));
+          elapsed += POLL_INTERVAL;
+
+          const { data: rows } = await supabase.from('analyses').select('*').eq('tender_id', tenderId).gt('created_at', startTime);
+          if (rows && rows.length > 0) {
+            const match = rows.find(r => r.result_json?._batch_name === batchName);
+            if (match) {
+              if (existingPartialIds) existingPartialIds.push(match.id);
+              return processResult(match.result_json);
+            }
+          }
+          // Check failure
+          const { data: tCheck } = await supabase.from('tenders').select('status').eq('id', tenderId).single();
+          if (tCheck?.status === 'failed') throw new Error("Analysis marked as failed");
+        }
+        throw new Error("Timeout polling partial result");
+      } catch (e: any) {
+        console.error(e);
+        setLoadingBatches(prev => prev.filter(b => b !== batchName));
+        return {};
+      }
+    }; // End runBatch (Internal)
+
+    const BATCH_1 = { '3_sintesi': true, '3b_checklist_amministrativa': true, '5_scadenze': true };
+    const BATCH_1B = { '1_requisiti_partecipazione': true, '6_importi': true, '8_ccnl': true };
+    const BATCH_2 = { '4_servizi': true, '7_durata': true };
+    const BATCH_2B = { '9_oneri': true, '15_remunerazione': true };
+    const BATCH_2C = { '16_sla_penali': true };
+    const BATCH_3 = { '12_offerta_tecnica': true };
+    const BATCH_3B = { '13_offerta_economica': true, '10_punteggi': true, '11_pena_esclusione': true };
+    const BATCH_4 = { '14_note_importanti': true, '17_ambiguita_punti_da_chiarire': true };
+
+    const batchConfigs = [
+      { name: 'batch_1', prefs: BATCH_1 }, { name: 'batch_1b', prefs: BATCH_1B },
+      { name: 'batch_2', prefs: BATCH_2 }, { name: 'batch_2b', prefs: BATCH_2B }, { name: 'batch_2c', prefs: BATCH_2C },
+      { name: 'batch_3', prefs: BATCH_3 }, { name: 'batch_3b', prefs: BATCH_3B }, { name: 'batch_4', prefs: BATCH_4 }
+    ];
+
+    const batchPromises: Promise<any>[] = [];
+    const structuredModelId = userPreferences.structured_model || 'gemini-2.5-flash';
+    const semanticModelId = userPreferences.semantic_model || 'gemini-3-pro-preview';
+
+    for (const batch of batchConfigs) {
+      // RESUME FILTER: Only process batches that contain missing sections
+      if (isResume && sectionsToResume.length > 0) {
+        const batchSectionKeys = Object.keys(batch.prefs); // e.g. ["3_sintesi", "5_scadenze"]
+        const needsProcessing = batchSectionKeys.some(key => sectionsToResume.includes(key));
+        if (!needsProcessing) {
+          console.log(`[Analysis] Skipping ${batch.name} (Resume Mode - Not in missing sections)`);
+          continue; // Skip this batch
+        }
+        console.log(`[Analysis] Resuming ${batch.name} for sections:`, batchSectionKeys.filter(k => sectionsToResume.includes(k)));
+      }
+
+      // Add to loading state
+      // const batchId = `${batch.name}-${Date.now()}`; // Unique ID for tracking if needed, but we use name for UI
+      setLoadingBatches(prev => [...prev, batch.name]);
+      const hasSemantic = Object.keys(batch.prefs).some(k => currentPreferences.semantic_analysis_sections?.[k]);
+      const batchStructModel = hasSemantic ? 'gemini-3-pro-preview' : structuredModelId;
+
+      // Filter prefs logic
+      let activePrefs = getBatchPreferences(batch.prefs);
+      if (isResume && sectionsToResume.length > 0) {
+        const filtered: Record<string, boolean> = {};
+        Object.keys(activePrefs).forEach(k => { if (sectionsToResume.includes(k)) filtered[k] = true; });
+        activePrefs = filtered;
+      }
+
+      if (Object.keys(activePrefs).length > 0) {
+        batchPromises.push(runBatch(batch.name, activePrefs, batchStructModel, semanticModelId));
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+
+    const rawResults = await Promise.all(batchPromises);
+    const results = rawResults.filter(r => r && Object.keys(r).length > 0);
+
+    const finalJson = { _ragionamento: "Analisi completata" };
+    results.forEach(r => Object.assign(finalJson, r));
+
+    // SAVE FINAL
+    await supabase.functions.invoke('analyze-tender', {
+      body: {
+        action: 'save_final_and_cleanup',
+        tenderId: tenderId,
+        finalJson: finalJson,
+        partialRecordIds: existingPartialIds,
+        modelUsed: structuredModelId
+      }
+    });
+
+    await supabase.from('tenders').update({ status: 'completed' }).eq('id', tenderId);
+    setIsUploading(false);
+
+    // COMPLETION CHECK
+    // Only verify if we are truly done (no other batches loading)
+    if (currentPreferences.analysis_sections) {
+      const req = Object.keys(currentPreferences.analysis_sections).filter(k => currentPreferences.analysis_sections[k]);
+      const got = Object.keys(finalJson);
+      // Exclude 'faq' as it's not a standard analysis section
+      const missing = req.filter(k => k !== 'faq' && !got.includes(k) && !finalJson[k]); // Check both existence and truthiness
+
+      if (missing.length > 0) {
+        console.warn("Analysis incomplete. Missing:", missing);
+        setResumeSections(missing);
+        setShowResumeModal(true);
+      }
+    }
+  };
 
 
   const handleFileSelection = async (files: File[]) => {
@@ -275,6 +507,22 @@ function App() {
     }
 
     // 2. CHECK FILE LIMIT
+    // If resuming, files are already passed or we use current uploadedPaths
+    const filesToProcess = files.length > 0 ? files : (uploadedPaths.length > 0 ? [] : []); // Logic handled below or passed arg
+
+    // We expect files arg to be empty if resuming, but let's handle it in runAnalysis primarily.
+    // Actually handleFileSelection is triggered by file input usually. 
+    // Resume will call runAnalysis directly.
+
+    // ... logic continues ...
+    // But since I refactored runAnalysis OUT or modified it...
+    // Wait, the previous edit CHANGED runAnalysis signature BUT it was inside handleFileSelection scope.
+    // I need to be careful about where I placed runAnalysis. It seems I kept it inside?
+    // Let's assume runAnalysis is still inside handleFileSelection scope? No, I likely want it accessible.
+    // But handleFileSelection uses `setLoaded...` etc.
+
+    // Let's implement the logic INSIDE runAnalysis loop first.
+
     if (files.length > 3) {
       alert("Puoi caricare un massimo di 3 documenti per analisi.");
       return;
@@ -416,6 +664,9 @@ function App() {
 
       console.log("Text stored at:", textStoragePath);
 
+      console.log("Text stored at:", textStoragePath);
+
+      // DEDUCT CREDIT (1 per Analysis) - SKIP IF RESUMING
       // DEDUCT CREDIT (1 per Analysis)
       const { error: creditError } = await supabase.rpc('deduct_user_credits', { count: 1 });
       if (creditError) {
@@ -438,357 +689,38 @@ function App() {
         return prefs;
       };
 
-      const partialRecordIds: string[] = []; // Store IDs of partial records to delete later
+      const partialRecordIds: string[] = [];
 
-      const runBatch = async (batchName: string, preferences: Record<string, boolean>, structuredModel: string, semanticModel: string) => {
-        if (Object.keys(preferences).length === 0) {
-          setLoadingBatches(prev => prev.filter(b => b !== batchName));
-          return {};
-        }
-
-        const processResult = (originalData: any) => {
-          // --- ADAPTER: Handle Dual-Layer Schema (Structured + Analysis) ---
-          const data = { ...originalData };
-
-          // Iterate all keys to find "structured/analysis" blocks
-          Object.keys(data).forEach(key => {
-            // Check if this key holds a Dual-Layer object
-            if (data[key] && typeof data[key] === 'object' && 'structured' in data[key]) {
-              console.log(`[Adapter] Flattening Dual-Layer key: ${key}`);
-
-              // 1. Extract and Move Analysis to semantic_analysis_data
-              if (data[key].analysis) {
-                if (!data.semantic_analysis_data) data.semantic_analysis_data = {};
-                data.semantic_analysis_data[key] = data[key].analysis;
-              }
-
-              // CAPTURE GENIUS MODE FIELDS
-              const geniusAnalysis = data[key].semantic_analysis;
-              const geniusRisks = data[key].rischi_rilevati;
-
-              // 2. Flatten Structured Data to Top Level
-              // If structured is null/empty, we try to preserve it as null, or empty object
-              data[key] = data[key].structured;
-
-              // RE-ATTACH GENIUS FIELDS to the flattened object/array
-              if (data[key] && (geniusAnalysis || geniusRisks)) {
-                if (geniusAnalysis) data[key].semantic_analysis = geniusAnalysis;
-                if (geniusRisks) data[key].rischi_rilevati = geniusRisks;
-              }
-            }
-          });
-          // -----------------------------------------------------------------
-
-          console.log(`Batch ${batchName} completed.`);
-          setLoadingBatches(prev => prev.filter(b => b !== batchName));
-
-          if (data && data.error) {
-            console.error(`Batch ${batchName} returned error:`, data.error);
-            alert(`Errore nell'analisi del gruppo ${batchName}: ${data.error}`);
-            return data;
-          }
-
-          setAnalysisData(prev => {
-            const newData = prev ? { ...prev } : { tender_id: tender.id } as AnalysisResult;
-
-            // Deep merge for semantic_analysis_data to avoid overwriting between batches
-            if (data.semantic_analysis_data) {
-              newData.semantic_analysis_data = {
-                ...(newData.semantic_analysis_data || {}),
-                ...data.semantic_analysis_data
-              };
-              // Remove semantic_analysis_data from data before merging other fields
-              const { semantic_analysis_data, ...rest } = data;
-
-              // SMART MERGE: Only merge keys that belong to this batch's preferences
-              // This prevents overwriting existing data with empty/null values from other batches
-              Object.keys(preferences).forEach(key => {
-                if (rest[key] !== undefined) {
-                  // @ts-ignore
-                  newData[key] = rest[key];
-                }
-              });
-
-              // Merge metadata if present
-              if (rest._batch_name) newData._batch_name = rest._batch_name;
-              if (rest._semantic_debug_info) newData._semantic_debug_info = rest._semantic_debug_info;
-              if (rest._semantic_error) newData._semantic_error = rest._semantic_error;
-
-            } else {
-              console.warn(`[Batch ${batchName}] NO Semantic Data in result!`);
-              if (data._semantic_error) console.error(`[Batch ${batchName}] Semantic Error:`, data._semantic_error);
-
-              // SMART MERGE for non-semantic batch results too
-              Object.keys(preferences).forEach(key => {
-                if (data[key] !== undefined) {
-                  // @ts-ignore
-                  newData[key] = data[key];
-                }
-              });
-
-              // Merge metadata
-              if (data._batch_name) newData._batch_name = data._batch_name;
-              if (data._semantic_debug_info) newData._semantic_debug_info = data._semantic_debug_info;
-            }
-
-            return newData;
-          });
-          return data;
-        };
-
-        const maxRetries = 1;
-        let attempt = 0;
-
-        try {
-          while (attempt < maxRetries) {
-            attempt++;
-            console.log(`Starting batch: ${batchName} (Attempt ${attempt}/${maxRetries}) - Background Mode`);
-
-            const startTime = new Date().toISOString();
-
-            // Calculate semantic sections for this batch
-            const batchSemanticSections = Object.keys(preferences).reduce((acc, key) => {
-              // MANDATORY SEMANTIC ANALYSIS for specific sections
-              if (key === '14_note_importanti' || key === '17_ambiguita_punti_da_chiarire') {
-                acc[key] = true;
-              } else if (userPreferences.semantic_analysis_sections?.[key]) {
-                acc[key] = true;
-              }
-              return acc;
-            }, {} as Record<string, boolean>);
-
-            console.log(`[Batch ${batchName}] FINAL Semantic Sections to Send:`, JSON.stringify(batchSemanticSections));
-
-            // 1. Trigger Background Job
-            const { error: invokeError } = await supabase.functions.invoke('analyze-tender', {
-              body: {
-                tenderId: tender.id,
-                filePaths: uploadedPaths,
-                analysisPreferences: preferences,
-                semanticPreferences: userPreferences.semantic_analysis_sections, // PASS GENIUS CONFIG
-                background: true, // ASYNC MODE
-                saveToDb: true,
-                textStoragePath: textStoragePath,
-                structuredModel: structuredModel, // Pass structured model
-                semanticModel: semanticModel,     // Pass semantic model
-                action: 'analyze',
-                batchName: batchName,             // PASS BATCH NAME
-                allowDirectUpload: false          // DISABLE Direct Upload (Use cached text)
-              }
-            });
-
-            if (invokeError) {
-              console.error(`Batch ${batchName} failed to start:`, invokeError);
-
-              // Try to extract the error message from the response body
-              let errorMessage = invokeError.message;
-              if (invokeError.context && invokeError.context.json) {
-                try {
-                  const errBody = await (invokeError as any).context.json();
-                  if (errBody.error) errorMessage = errBody.error;
-                } catch (e) { console.error("Failed to parse error body", e); }
-              }
-
-              alert(`Errore avvio analisi (${batchName}): ${errorMessage}`);
-              return {}; // Return empty object to signify failure for this batch
-            }
-
-            console.log(`Batch ${batchName} started successfully.`);
-
-            // 2. Poll for Results
-            // Polling Loop
-            const POLL_INTERVAL = 2000;
-            const MAX_POLL_TIME = 5 * 60 * 1000; // 5 minutes
-            let elapsed = 0;
-
-            while (elapsed < MAX_POLL_TIME) {
-              await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
-              elapsed += POLL_INTERVAL;
-
-              // Check for new analysis rows
-              const { data: analyses, error: pollError } = await supabase
-                .from('analyses')
-                .select('*')
-                .eq('tender_id', tender.id)
-                .gt('created_at', startTime);
-
-              if (pollError) {
-                console.warn(`Polling error for ${batchName}:`, pollError);
-                continue;
-              }
-
-              if (analyses && analyses.length > 0) {
-                // Find the row that matches our batch keys
-                const matchingRow = analyses.find(row => {
-                  // Filter by batch name if available (New Logic)
-                  if (row.result_json?._batch_name) {
-                    return row.result_json._batch_name === batchName;
-                  }
-                  // Fallback to key matching (Old Logic)
-                  const resultKeys = Object.keys(row.result_json || {});
-                  return Object.keys(preferences).some(k => resultKeys.includes(k));
-                });
-
-                if (matchingRow) {
-                  console.log(`Batch ${batchName} result found!`, matchingRow.result_json);
-                  partialRecordIds.push(matchingRow.id); // Capture ID for cleanup
-                  if (matchingRow.result_json.semantic_analysis_data) {
-                    console.log(`[Batch ${batchName}] Received Semantic Data:`, matchingRow.result_json.semantic_analysis_data);
-                  } else {
-                    console.warn(`[Batch ${batchName}] NO Semantic Data in result!`);
-                  }
-                  return processResult(matchingRow.result_json);
-                }
-              }
-
-              // Check if tender failed
-              const { data: tenderCheck } = await supabase
-                .from('tenders')
-                .select('status')
-                .eq('id', tender.id)
-                .single();
-
-              if (tenderCheck?.status === 'failed') {
-                throw new Error("Analysis marked as failed in database.");
-              }
-            }
-
-            throw new Error("Polling timeout: Result not found after 10 minutes.");
-          }
-        } catch (error: any) {
-          console.error(`Error in batch ${batchName}:`, error);
-          let msg = error.message || 'Timeout';
-          // Fix: Prevent "Polling timeout: Result not found" from triggering the "Model not available" message
-          if ((msg.includes('404') || msg.toLowerCase().includes('not found')) && !msg.includes('Polling timeout')) {
-            msg = "Il modello selezionato non è disponibile nel backend oppure non è supportato al momento.";
-          }
-          alert(`Errore durante l'analisi del gruppo "${batchName}": ${msg}`);
-          return {};
-        } finally {
-          setLoadingBatches(prev => prev.filter(b => b !== batchName));
-        }
-      };
-
-      const BATCH_1 = {
-        '3_sintesi': true,
-        '3b_checklist_amministrativa': true,
-        '5_scadenze': true
-      };
-
-      const BATCH_1B = {
-        '1_requisiti_partecipazione': true,
-        '6_importi': true,
-        '8_ccnl': true
-      };
-
-      const BATCH_2 = {
-        '4_servizi': true,
-        '7_durata': true
-      };
-
-      const BATCH_2B = {
-        '9_oneri': true,
-        '15_remunerazione': true
-      };
-
-      const BATCH_2C = {
-        '16_sla_penali': true
-      };
-
-      const BATCH_3 = {
-        '12_offerta_tecnica': true
-      };
-
-      const BATCH_3B = {
-        '13_offerta_economica': true,
-        '10_punteggi': true,
-        '11_pena_esclusione': true
-      };
-
-      const BATCH_4 = {
-        '14_note_importanti': true,
-        '17_ambiguita_punti_da_chiarire': true
-      };
-
-      // Configuration for Batches
-      const batchConfigs = [
-        { name: 'batch_1', prefs: BATCH_1 },
-        { name: 'batch_1b', prefs: BATCH_1B },
-        { name: 'batch_2', prefs: BATCH_2 },
-        { name: 'batch_2b', prefs: BATCH_2B },
-        { name: 'batch_2c', prefs: BATCH_2C },
-        { name: 'batch_3', prefs: BATCH_3 },
-        { name: 'batch_3b', prefs: BATCH_3B },
-        { name: 'batch_4', prefs: BATCH_4 }
-      ];
-
-      // Staggered Parallel Execution
-      // Launch batches with a delay to prevent request spikes
-      const batchPromises: Promise<any>[] = [];
-
-      for (const batch of batchConfigs) {
-        // SMART CONFIG: Check if ANY section in this batch has semantic analysis enabled
-        const batchKeys = Object.keys(batch.prefs);
-        const hasSemanticActive = batchKeys.some(key => userPreferences.semantic_analysis_sections?.[key]);
-
-        // If semantic is active, UPGRADE the structured model to Pro (as requested)
-        const batchStructuredModel = hasSemanticActive ? 'gemini-3-pro-preview' : structuredModelId;
-
-        if (hasSemanticActive) {
-          console.log(`[Batch ${batch.name}] Semantic Active -> Upgrading Structured Model to ${batchStructuredModel}`);
-        }
-
-        batchPromises.push(runBatch(batch.name, getBatchPreferences(batch.prefs), batchStructuredModel, semanticModelId));
-        await new Promise(resolve => setTimeout(resolve, 2000)); // 2s delay
-      }
-
-      const rawResults = await Promise.all(batchPromises);
-
-      // Filter out null results (terminated batches)
-      const results = rawResults.filter(res => res !== null);
-
-      // Merge results manually for DB save
-      const finalJson = { _ragionamento: "Analisi sequenziale completata." };
-      results.forEach(res => Object.assign(finalJson, res));
-
-      // Save to DB via Backend (to bypass RLS and handle cleanup)
-      const { error: saveError } = await supabase.functions.invoke('analyze-tender', {
-        body: {
-          action: 'save_final_and_cleanup',
-          tenderId: tender.id,
-          finalJson: finalJson,
-          partialRecordIds: partialRecordIds,
-          modelUsed: structuredModelId
-        }
-      });
-
-      if (saveError) {
-        console.error("Error saving final analysis via backend:", saveError);
-        // Try to extract error message
-        let errMsg = saveError.message;
-        try {
-          const errBody = await (saveError as any).context.json();
-          if (errBody.error) errMsg = errBody.error;
-        } catch (e) { }
-        alert(`Errore nel salvataggio dell'analisi finale: ${errMsg}`);
-      } else {
-        console.log("Final analysis saved and cleaned up via backend.");
-      }
-      // Update status
-      await supabase
-        .from('tenders')
-        .update({ status: 'completed' })
-        .eq('id', tender.id);
-
-      setIsUploading(false);
+      // CALL EXECUTE ANALYSIS
+      await executeAnalysis(tender.id, false, [], userPreferences, partialRecordIds);
 
     } catch (error: any) {
       console.error('Error:', error);
-      alert('Error during analysis: ' + error.message);
+      alert('Errore durante l\'analisi: ' + error.message);
       setIsUploading(false);
       setLoadingBatches([]);
     }
+  }; // END startAnalysis
+
+
+
+  // RESUME HANDLER
+  const handleResumeAnalysis = () => {
+    setShowResumeModal(false);
+    if (resumeSections.length > 0) {
+      console.log("Resuming analysis for:", resumeSections);
+      // Get tenderId from analysisData
+      // @ts-ignore
+      const tId = analysisData?.tender_id || analysisData?.id;
+      if (tId) {
+        // Execute in Resume Mode
+        executeAnalysis(tId, true, resumeSections, userPreferences, []);
+      } else {
+        alert("Impossibile recuperare ID gara per la ripresa.");
+      }
+    }
   };
+
 
   const handleAskQuestion = async (sectionId: string, question: string, forceVisualMode = false) => {
     if (!analysisData || !session?.user) return;
@@ -1012,6 +944,38 @@ function App() {
         filePaths={uploadedPaths} // Pass currently uploaded paths
         analysisContext={analysisData} // Pass the full analysis JSON
       />
+      <TimeoutModal
+        isOpen={showTimeoutModal}
+        onClose={() => setShowTimeoutModal(false)}
+        onConfirm={() => handleTimeoutDecision('continue')}
+        onCancel={() => handleTimeoutDecision('terminate')}
+      />
+
+      {/* RESUME ANALYSIS MODAL */}
+      <AlertDialog open={showResumeModal} onOpenChange={setShowResumeModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Analisi Incompleta</AlertDialogTitle>
+            <AlertDialogDescription>
+              A causa del sovraccarico delle richieste o di un timeout, le seguenti sezioni non sono state completate:
+              <ul className="list-disc pl-5 mt-2 mb-2 text-slate-700 font-medium">
+                {resumeSections.map(sId => (
+                  <li key={sId}>{SECTIONS_MAP[sId]?.label || sId}</li>
+                ))}
+              </ul>
+              <br />
+              Vuoi riavviare l'analisi <strong>limitatamente alle sezioni mancanti</strong>?
+              <br />
+              <span className="font-semibold text-green-600">Nota: Non verranno scalati ulteriori crediti.</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowResumeModal(false)}>Ignora e continua</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResumeAnalysis}>Prosegui Analisi</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <TimeoutModal
         isOpen={showTimeoutModal}
         onContinue={() => handleTimeoutDecision('continue')}

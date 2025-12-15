@@ -1073,14 +1073,24 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-4">
-                                    {data['16_sla_penali'][0]?.sla?.map((s: any, i: number) => (
-                                        <div key={i} className="p-3 bg-slate-50 rounded border border-slate-100 text-sm text-slate-700">
-                                            <p><strong>Indicatore:</strong> {s.indicatore}</p>
-                                            <p><strong>Soglia:</strong> {s.soglia}</p>
-                                        </div>
-                                    ))}
-                                    {(!data['16_sla_penali'][0]?.sla || data['16_sla_penali'][0]?.sla.length === 0) && (
-                                        <p className="text-slate-500 italic">Nessun SLA specifico rilevato.</p>
+                                    {data['16_sla_penali'][0]?.sla?.length > 0 ? (
+                                        data['16_sla_penali'][0].sla.map((s: any, i: number) => (
+                                            <div key={i} className="p-3 bg-slate-50 rounded border border-slate-100 text-sm text-slate-700">
+                                                {s.servizio && <p><strong className="text-slate-900">Servizio:</strong> {s.servizio}</p>}
+                                                <p><strong>Indicatore:</strong> {s.indicatore || '-'}</p>
+                                                <p><strong>Soglia:</strong> {s.soglia || '-'}</p>
+                                                {s.priorita && <p><strong>Priorità:</strong> <Badge variant="outline" className="text-xs">{s.priorita}</Badge></p>}
+                                                {s.penale_correlata && <p className="mt-1 text-red-600 font-medium"><strong>Penale:</strong> {s.penale_correlata}</p>}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        data['16_sla_penali'][0]?.elenco_testuale ? (
+                                            <div className="p-4 bg-slate-50 rounded border border-slate-100 text-sm text-slate-700 prose prose-sm max-w-none">
+                                                <ReactMarkdown>{data['16_sla_penali'][0].elenco_testuale}</ReactMarkdown>
+                                            </div>
+                                        ) : (
+                                            <p className="text-slate-500 italic">Nessun SLA specifico rilevato.</p>
+                                        )
                                     )}
                                 </div>
                             </CardContent>
@@ -1091,19 +1101,30 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-4">
-                                    {data['16_sla_penali'][0]?.penali?.map((p: any, i: number) => (
-                                        <div key={i} className="p-3 bg-red-50 rounded border border-red-100 text-sm text-slate-700">
-                                            <p><strong>Descrizione:</strong> {p.descrizione}</p>
-                                            <p><strong>Calcolo:</strong> {p.calcolo}</p>
-                                        </div>
-                                    ))}
-                                    {(!data['16_sla_penali'][0]?.penali || data['16_sla_penali'][0]?.penali.length === 0) && (
-                                        <p className="text-slate-500 italic">Nessuna penale specifica rilevata.</p>
+                                    {data['16_sla_penali'][0]?.penali?.length > 0 ? (
+                                        data['16_sla_penali'][0].penali.map((p: any, i: number) => (
+                                            <div key={i} className="p-3 bg-red-50 rounded border border-red-100 text-sm text-slate-700">
+                                                <p><strong>Descrizione:</strong> {p.descrizione}</p>
+                                                <p><strong>Calcolo:</strong> {p.calcolo}</p>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        // If we showed the text in SLA card, we might duplicate it here or just reference it.
+                                        // Typically user wants it in one place if it's a big blob.
+                                        // But let's check if we should fallback here too or if the text covers everything.
+                                        // If 'elenco_testuale' is mostly about SLA, we showed it above.
+                                        // Let's assume 'elenco_testuale' covers everything if structured failed.
+                                        // Better UX: Show it in the first card (SLA) if present, and in this card show a reference or nothing?
+                                        // Or render it again? "Vedi sopra" is ugly.
+                                        // Let's use simple logic: if penalities are missing, show "Nessuna penale" UNLESS we already showed a big text above.
+                                        // Actually, simpler: Show "Vedi descrizione testuale SLA" or similar if text exists?
+                                        // Let's stick to standard behavior: if no penali array, show message.
+                                        <p className="text-slate-500 italic">Nessuna penale specifica strutturata rilevata.</p>
                                     )}
                                 </div>
                                 <div className="mt-4 p-3 bg-slate-100 rounded text-sm flex items-start gap-2">
                                     <Info className="h-4 w-4 text-slate-500 mt-0.5" />
-                                    <div><strong>Clausole Cumulative:</strong> {data['16_sla_penali'][0]?.clausole_cumulative}</div>
+                                    <div><strong>Clausole Cumulative:</strong> {data['16_sla_penali'][0]?.clausole_cumulative || "Non specificato"}</div>
                                 </div>
                             </CardContent>
                         </Card>
@@ -1307,7 +1328,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     <Info className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
                                     <div className="text-sm text-amber-800">
                                         <span className="font-semibold block mb-1">Nota sull'Analisi Semantica</span>
-                                        L'analisi semantica permette di avere un approfondimento sulle informazioni della sezione, tuttavia si evidenzia che maggiore sarà l'utilizzo dell'analisi semantica, maggiore sarà il tempo richiesto per l'analisi.
+                                        L'analisi semantica (Bid Digger - Genius Mode) permette di avere un approfondimento sulle informazioni della sezione, tuttavia si evidenzia che maggiore sarà l'utilizzo dell'analisi semantica, maggiore sarà il tempo richiesto per l'analisi.
                                     </div>
                                 </div>
 
@@ -1316,9 +1337,81 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                         <TableHeader>
                                             <TableRow>
                                                 <TableHead>Sezione</TableHead>
-                                                <TableHead className="text-center w-32">Analisi AI</TableHead>
-                                                <TableHead className="text-center w-32">Analisi Semantica</TableHead>
-                                                <TableHead className="text-center w-32">Export DOCX</TableHead>
+                                                <TableHead className="text-center w-32">
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span>Analisi AI</span>
+                                                        <input
+                                                            type="checkbox"
+                                                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                            checked={MENU_ORDER.every(id => userPreferences?.analysis_sections?.[id] !== false)}
+                                                            onChange={(e) => {
+                                                                if (!onUpdatePreferences || !userPreferences) return;
+                                                                const checked = e.target.checked;
+                                                                const newAnalysis = { ...userPreferences.analysis_sections };
+                                                                const newSemantic = { ...userPreferences.semantic_analysis_sections };
+                                                                const newExport = { ...userPreferences.export_sections };
+
+                                                                MENU_ORDER.forEach(id => {
+                                                                    newAnalysis[id] = checked;
+                                                                    if (!checked) {
+                                                                        newSemantic[id] = false;
+                                                                        newExport[id] = false;
+                                                                    }
+                                                                });
+                                                                onUpdatePreferences({ ...userPreferences, analysis_sections: newAnalysis, semantic_analysis_sections: newSemantic, export_sections: newExport });
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </TableHead>
+                                                <TableHead className="text-center w-32">
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span>Bid Digger - Genius Mode</span>
+                                                        <input
+                                                            type="checkbox"
+                                                            className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                                            checked={MENU_ORDER.every(id => {
+                                                                const isRequired = id === '14_note_importanti' || id === '17_ambiguita_punti_da_chiarire';
+                                                                return isRequired || userPreferences?.semantic_analysis_sections?.[id] === true;
+                                                            })}
+                                                            onChange={(e) => {
+                                                                if (!onUpdatePreferences || !userPreferences) return;
+                                                                const checked = e.target.checked;
+                                                                const newSemantic = { ...userPreferences.semantic_analysis_sections };
+
+                                                                MENU_ORDER.forEach(id => {
+                                                                    const isRequired = id === '14_note_importanti' || id === '17_ambiguita_punti_da_chiarire';
+                                                                    const isAnalysisActive = userPreferences.analysis_sections?.[id] !== false;
+                                                                    if (!isRequired && isAnalysisActive) {
+                                                                        newSemantic[id] = checked;
+                                                                    }
+                                                                });
+                                                                onUpdatePreferences({ ...userPreferences, semantic_analysis_sections: newSemantic });
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </TableHead>
+                                                <TableHead className="text-center w-32">
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span>Export DOCX</span>
+                                                        <input
+                                                            type="checkbox"
+                                                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                            checked={MENU_ORDER.every(id => userPreferences?.export_sections?.[id] !== false)}
+                                                            onChange={(e) => {
+                                                                if (!onUpdatePreferences || !userPreferences) return;
+                                                                const checked = e.target.checked;
+                                                                const newExport = { ...userPreferences.export_sections };
+
+                                                                MENU_ORDER.forEach(id => {
+                                                                    if (id !== 'faq' && userPreferences.analysis_sections?.[id] !== false) {
+                                                                        newExport[id] = checked;
+                                                                    }
+                                                                });
+                                                                onUpdatePreferences({ ...userPreferences, export_sections: newExport });
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>

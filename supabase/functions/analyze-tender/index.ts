@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
 
    try {
       const body = await req.json();
-      const { tenderId, filePaths, action, analysisPreferences, semanticPreferences, batchName, finalJson, partialRecordIds, modelUsed, prompt, saveToDb, structuredModel, semanticModel } = body;
+      const { tenderId, filePaths, textStoragePath, action, analysisPreferences, semanticPreferences, batchName, finalJson, partialRecordIds, modelUsed, prompt, saveToDb, structuredModel, semanticModel } = body;
 
       const supabaseClient = createClient(
          Deno.env.get('SUPABASE_URL') ?? '',
@@ -153,7 +153,30 @@ Deno.serve(async (req) => {
                }
 
                // 1. Upload Files to Google
-               const googleFiles = await prepareFilesForGoogle(filePaths || []);
+               let pathsToProcess = filePaths || [];
+
+               // FALLBACK: If resume (no filePaths), fetch from DB (tender_documents)
+               if (pathsToProcess.length === 0) {
+                  console.log("[Analysis] No filePaths provided (Resume Mode). Fetching from DB...");
+                  const { data: dbDocs, error: dbError } = await supabaseClient
+                     .from('tender_documents')
+                     .select('file_path')
+                     .eq('tender_id', tenderId);
+
+                  if (dbError) {
+                     console.error("[Analysis] Failed to fetch documents from DB:", dbError);
+                  } else if (dbDocs && dbDocs.length > 0) {
+                     pathsToProcess = dbDocs.map(d => d.file_path);
+                     console.log(`[Analysis] Retrieved ${pathsToProcess.length} paths from DB.`);
+                  } else {
+                     console.warn("[Analysis] No documents found in DB for this tender.");
+                  }
+               }
+
+               // Verify again
+               if (pathsToProcess.length === 0) throw new Error("No files could be prepared for Google AI (Input empty and DB empty).");
+
+               const googleFiles = await prepareFilesForGoogle(pathsToProcess);
                if (googleFiles.length === 0) throw new Error("No files could be prepared for Google AI.");
 
                // 2. Generate Prompt

@@ -281,10 +281,26 @@ JSON SCHEMA:
   Chiave: "16_sla_penali"
   ISTRUZIONI: SLA e Penali.
   IMPORTANTE:
-  - Tenta SEMPRE di strutturare i dati in "sla" e "penali".
-  - Analizza con RIGORE: Cerca Livelli di Servizio, Priorità, Tempi di Risposta, Gravità e Penali correlate.
-  - Mappa ogni SLA trovato nei campi specifici (vedi schema).
-  - SE e SOLO SE i dati non sono strutturabili, usa "elenco_testuale".
+  - Devi ESTRARRE TUTTI i Livelli di Servizio (SLA) e le Penali presenti nel testo.
+  - Se ci sono tabelle di SLA (es. 20+ righe), devi riportare OGNI SINGOLA RIGA nell'array "sla". NON RIPORTARE SOLO UN RIASSUNTO.
+  - Cerca: "Livello di Servizio", "KPI", "Indicatori", "Soglie", "Priorità", "Gravità", "Penali".
+  - Mappa i campi (lascia vuoto se non trovato, ma ESTRAI COMUNQUE LA RIGA):
+    - "servizio": Ambito, nome servizio o area (es. "Manutenzione", "Help Desk").
+    - "indicatore": Il parametro misurato, inclusa la formula se presente (es. "Tempo risp. / Totale chiamate").
+    - "soglia": Il valore obiettivo o di riferimento, inclusa la frequenza (es. "99% Mensile", "< 2h").
+    - "priorita": Gravità, Priorità o criticità (es. "Alta", "Severity 1").
+    - "penale_correlata": Importo, formula di calcolo o sanzione associata.
+  - DIVIETO ASSOLUTO DI RIASSUNTI O LISTE TESTUALI.
+  - FOCUS SU TABELLE: Se i dati sono in tabella, DEVI mappare ogni colonna dei "Livelli di Servizio" nel campo più appropriato. NON SALTARE RIGHE.
+  - Se gli SLA sono descritti in forma discorsiva, CONVERTILI in righe tabellari.
+  
+  ESEMPIO:
+  Testo: "Tabella 1. SLA. | Servizio | Parametro | Obiettivo | Penale |
+         | Help Desk | Presa in carico | < 15 min | 100€ |"
+  Output JSON: { "sla": [{ "servizio": "Help Desk", "indicatore": "Presa in carico", "soglia": "< 15 min", "priorita": "", "penale_correlata": "100€" }] }
+
+  - Se un campo non è presente, lascialo vuoto stringa.
+  - NON USARE "elenco_testuale".
   JSON SCHEMA:
   "16_sla_penali": {
     "structured": [

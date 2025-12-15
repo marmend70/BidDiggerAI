@@ -5,6 +5,7 @@ interface TimeoutModalProps {
     isOpen: boolean;
     onContinue: () => void;
     onTerminate: () => void;
+    onClose?: () => void;
 }
 
 export function TimeoutModal({ isOpen, onContinue, onTerminate }: TimeoutModalProps) {

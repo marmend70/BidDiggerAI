@@ -149,7 +149,10 @@ export interface AnalysisResult {
         sla: Array<{
             indicatore: string;
             soglia: string;
-            penale_associata?: string;
+            servizio?: string;
+            priorita?: string;
+            penale_correlata?: string;
+            penale_associata?: string; // Legacy
         }>;
         penali: Array<{
             descrizione: string;
@@ -157,6 +160,7 @@ export interface AnalysisResult {
             sla_associato: string;
         }>;
         clausole_cumulative: string;
+        elenco_testuale?: string;
         ref: string;
     }> & GeniusData;
     "17_ambiguita_punti_da_chiarire": Array<{

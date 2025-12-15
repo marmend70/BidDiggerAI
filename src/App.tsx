@@ -102,6 +102,12 @@ function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [activeSection, setActiveSection] = useState('3_sintesi');
   const [analysisData, setAnalysisData] = useState<AnalysisResult | null>(null);
+  const analysisDataRef = useRef<AnalysisResult | null>(null); // Ref to track live state for async access
+
+  useEffect(() => {
+    analysisDataRef.current = analysisData;
+  }, [analysisData]);
+
   const [isUploading, setIsUploading] = useState(false);
   const [isAsking, setIsAsking] = useState(false);
   const [userPreferences, setUserPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
@@ -312,6 +318,9 @@ function App() {
       return prefs;
     };
 
+    // Local accumulator for semantic data to ensure it persists in finalJson
+    const semanticAccumulator: Record<string, any> = {};
+
     // Define internal runBatch inside executeAnalysis (or pass args)
     const runBatch = async (batchName: string, batchPrefs: Record<string, boolean>, sModel: string, semModel: string) => {
       if (Object.keys(batchPrefs).length === 0) {
@@ -348,16 +357,45 @@ function App() {
           return data;
         }
 
+        // --- FILTERING PROTECTION ---
+        // Ensure we only accept keys that were requested in this batch.
+        // This prevents "hallucinated" empty keys from other sections (e.g. Batch 3 returning empty SLA)
+        // from overwriting the valid state.
+        const filteredData: any = {};
+        Object.keys(data).forEach(k => {
+          // We accept:
+          // 1. Keys explicitly in batchPrefs (e.g. "16_sla_penali")
+          // 2. Metadata keys (starting with _)
+          // 3. "semantic_analysis_data" (special handling below)
+          if (batchPrefs[k] || k.startsWith('_') || k === 'semantic_analysis_data') {
+            filteredData[k] = data[k];
+          }
+        });
+        // -----------------------------
+
+        if (filteredData.semantic_analysis_data) {
+          // Capture semantic data for final save
+          Object.assign(semanticAccumulator, filteredData.semantic_analysis_data);
+        }
+
         setAnalysisData(prev => {
           const newData = prev ? { ...prev } : { tender_id: tenderId } as AnalysisResult;
-          if (data.semantic_analysis_data) {
-            newData.semantic_analysis_data = { ...(newData.semantic_analysis_data || {}), ...data.semantic_analysis_data };
-            delete data.semantic_analysis_data;
+
+          if (filteredData.semantic_analysis_data) {
+            // Deep merge semantic analysis data
+            newData.semantic_analysis_data = {
+              ...(newData.semantic_analysis_data || {}),
+              ...filteredData.semantic_analysis_data
+            };
+            // Don't modify 'filteredData' in place as it might be used elsewhere? 
+            // actually we can just delete it from the merge source to avoid top-level clutter
+            delete filteredData.semantic_analysis_data;
           }
-          Object.assign(newData, data);
+
+          Object.assign(newData, filteredData);
           return newData;
         });
-        return data;
+        return filteredData;
       };
 
       try {
@@ -465,8 +503,42 @@ function App() {
     const rawResults = await Promise.all(batchPromises);
     const results = rawResults.filter(r => r && Object.keys(r).length > 0);
 
-    const finalJson = { _ragionamento: "Analisi completata" };
-    results.forEach(r => Object.assign(finalJson, r));
+    // MERGE LOGIC: Start with existing data if resuming, otherwise clean slate
+    // MERGE LOGIC: Start with existing data (Ref or Resume)
+    // We use a "Smart Merge" to prevent empty batches from overwriting populated ones
+    const finalJson: any = analysisDataRef.current ? { ...analysisDataRef.current } : (isResume && analysisData ? { ...analysisData } : { _ragionamento: "Analisi completata" });
+
+    // Attach accumulated semantic data
+    if (!finalJson.semantic_analysis_data) finalJson.semantic_analysis_data = {};
+    if (isResume && analysisData?.semantic_analysis_data) {
+      Object.assign(finalJson.semantic_analysis_data, analysisData.semantic_analysis_data);
+    }
+    Object.assign(finalJson.semantic_analysis_data, semanticAccumulator);
+
+    // Apply results from current run with protection
+    console.log("[Final Save] Merging results into Final JSON. Results count:", results.length);
+    results.forEach((r, idx) => {
+      if (!r) return;
+      Object.keys(r).forEach(key => {
+        const existing = finalJson[key];
+        const incoming = r[key];
+
+        // PROTECTIVE MERGE:
+        // 1. If we don't have it, take it.
+        // 2. If incoming is populated array/object, take it (overwrite).
+        // 3. If incoming is empty/null, BUT we already have data, IGNORE incoming.
+        const isIncomingGood = incoming && (Array.isArray(incoming) ? incoming.length > 0 : Object.keys(incoming).length > 0);
+        const isExistingGood = existing && (Array.isArray(existing) ? existing.length > 0 : Object.keys(existing).length > 0);
+
+        if (!isExistingGood || isIncomingGood) {
+          finalJson[key] = incoming;
+        } else {
+          console.warn(`[Final Save] Prevented overwrite of key '${key}' by empty data from batch result index ${idx}`);
+        }
+      });
+    });
+
+    console.log("[Final Save] Constructing final JSON from", analysisDataRef.current ? "Live Ref" : "Reconstruction");
 
     // SAVE FINAL
     await supabase.functions.invoke('analyze-tender', {
@@ -947,8 +1019,8 @@ function App() {
       <TimeoutModal
         isOpen={showTimeoutModal}
         onClose={() => setShowTimeoutModal(false)}
-        onConfirm={() => handleTimeoutDecision('continue')}
-        onCancel={() => handleTimeoutDecision('terminate')}
+        onContinue={() => handleTimeoutDecision('continue')}
+        onTerminate={() => handleTimeoutDecision('terminate')}
       />
 
       {/* RESUME ANALYSIS MODAL */}

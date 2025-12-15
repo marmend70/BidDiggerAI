@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { AnalysisResult, UserPreferences } from '@/types';
 import { Badge } from '@/components/ui/badge';
@@ -1106,19 +1107,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                             <div key={i} className="p-3 bg-red-50 rounded border border-red-100 text-sm text-slate-700">
                                                 <p><strong>Descrizione:</strong> {p.descrizione}</p>
                                                 <p><strong>Calcolo:</strong> {p.calcolo}</p>
+                                                {p.sla_associato && <p className="text-xs text-slate-500 mt-1">SLA: {p.sla_associato}</p>}
                                             </div>
                                         ))
                                     ) : (
-                                        // If we showed the text in SLA card, we might duplicate it here or just reference it.
-                                        // Typically user wants it in one place if it's a big blob.
-                                        // But let's check if we should fallback here too or if the text covers everything.
-                                        // If 'elenco_testuale' is mostly about SLA, we showed it above.
-                                        // Let's assume 'elenco_testuale' covers everything if structured failed.
-                                        // Better UX: Show it in the first card (SLA) if present, and in this card show a reference or nothing?
-                                        // Or render it again? "Vedi sopra" is ugly.
-                                        // Let's use simple logic: if penalities are missing, show "Nessuna penale" UNLESS we already showed a big text above.
-                                        // Actually, simpler: Show "Vedi descrizione testuale SLA" or similar if text exists?
-                                        // Let's stick to standard behavior: if no penali array, show message.
                                         <p className="text-slate-500 italic">Nessuna penale specifica strutturata rilevata.</p>
                                     )}
                                 </div>

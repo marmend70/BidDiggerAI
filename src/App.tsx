@@ -3,6 +3,7 @@ import { Layout } from '@/components/Layout';
 import { Upload } from '@/components/Upload';
 import { Dashboard } from '@/components/Dashboard';
 import { Login } from '@/components/Login';
+import { AdminPage } from '@/components/AdminPage';
 import { ArchivePage } from '@/components/ArchivePage';
 import {
   AlertDialog,
@@ -972,6 +973,11 @@ function App() {
 
   if (!session) {
     return <Login onOpenContact={() => setContactModalOpen(true)} />;
+  }
+
+  // Admin Route Check
+  if (window.location.pathname === '/admin') {
+    return <AdminPage />;
   }
 
   return (

@@ -210,4 +210,5 @@ export interface UserProfile {
     full_name?: string;
     credits: number; // Added for credit system
     preferences?: UserPreferences;
+    role?: string; // Added for admin functionality
 }

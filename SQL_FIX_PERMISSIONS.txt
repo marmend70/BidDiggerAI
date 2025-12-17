@@ -1,0 +1,38 @@
+-- ESEGUI QUESTO SCRIPT IN SUPABASE SQL EDITOR PER SISTEMARE I PERMESSI
+
+-- 1. Assicuriamoci che tu possa leggere il tuo profilo (spesso causa problemi con le policy annidate)
+-- Se questa policy esiste già, darà errore ma non importa.
+DROP POLICY IF EXISTS "Users can see own profile" ON profiles;
+CREATE POLICY "Users can see own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+
+-- 2. Ricrea la tabella app_settings per sicurezza
+CREATE TABLE IF NOT EXISTS app_settings (
+  key text PRIMARY KEY,
+  value boolean NOT NULL
+);
+
+-- 3. Inserisci il valore se manca
+INSERT INTO app_settings (key, value) VALUES ('registrazione_attiva', true) 
+ON CONFLICT (key) DO NOTHING;
+
+-- 4. Resetta e Ricrea le Policy di app_settings in modo più permissivo per l'admin
+-- Prima disabilitiamo e riabilitiamo RLS per pulire stati strani
+ALTER TABLE app_settings DISABLE ROW LEVEL SECURITY;
+ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Enable read access for all users" ON app_settings;
+DROP POLICY IF EXISTS "Enable update for admins only" ON app_settings;
+DROP POLICY IF EXISTS "Enable insert for admins only" ON app_settings;
+
+-- Policy Lettura (Tutti)
+CREATE POLICY "Public Read" ON app_settings FOR SELECT USING (true);
+
+-- Policy Scrittura (Solo Admin)
+-- Usiamo una subquery diretta per verificare il ruolo
+CREATE POLICY "Admin Update" ON app_settings FOR UPDATE USING (
+  (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
+);
+
+CREATE POLICY "Admin Insert" ON app_settings FOR INSERT WITH CHECK (
+  (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
+);

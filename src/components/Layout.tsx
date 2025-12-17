@@ -10,7 +10,8 @@ import {
     FilePlus,
     Menu,
     X,
-    Bot
+    Bot,
+    ShieldAlert
 } from 'lucide-react';
 import { Footer } from './Footer';
 import { SECTIONS_MAP, MENU_ORDER, SECTION_BATCH_MAP } from '@/constants';
@@ -26,6 +27,7 @@ interface LayoutProps {
     onNewAnalysis?: () => void;
     onOpenContact?: () => void;
     onOpenChatAssistant?: () => void;
+    isAdmin?: boolean;
 }
 
 interface SidebarContentProps {
@@ -38,9 +40,10 @@ interface SidebarContentProps {
     onExport: () => void;
     onNewAnalysis?: () => void;
     onOpenChatAssistant?: () => void;
+    isAdmin?: boolean;
 }
 
-function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant }: SidebarContentProps) {
+function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant, isAdmin }: SidebarContentProps) {
     return (
         <div className="flex flex-col h-full text-white">
             <div className="p-6 bg-slate-950 shadow-sm z-10">
@@ -135,6 +138,22 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
             </nav>
 
             <div className="p-4 border-t border-slate-800 space-y-2 bg-slate-950 z-10">
+                {isAdmin && (
+                    <button
+                        onClick={() => !isAnalyzing && onSectionClick?.('admin')}
+                        disabled={isAnalyzing}
+                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors border border-red-900/30 ${isAnalyzing
+                            ? 'opacity-50 cursor-not-allowed text-slate-500 border-slate-800'
+                            : activeSection === 'admin'
+                                ? 'bg-red-900/20 text-red-400 border-red-900/50'
+                                : 'text-red-400 hover:bg-red-900/20 hover:text-red-300'
+                            }`}
+                    >
+                        <ShieldAlert className="h-4 w-4" />
+                        Amministrazione
+                    </button>
+                )}
+
                 <button
                     onClick={() => !isAnalyzing && onSectionClick?.('configurazioni')}
                     disabled={isAnalyzing}
@@ -205,7 +224,7 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
 }
 
 export function Layout(props: LayoutProps) {
-    const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onOpenContact, onOpenChatAssistant } = props;
+    const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onOpenContact, onOpenChatAssistant, isAdmin } = props;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
     const handleExport = async () => {
@@ -232,6 +251,7 @@ export function Layout(props: LayoutProps) {
                     onExport={handleExport}
                     onNewAnalysis={props.onNewAnalysis}
                     onOpenChatAssistant={onOpenChatAssistant}
+                    isAdmin={isAdmin}
                 />
             </aside>
 
@@ -287,6 +307,7 @@ export function Layout(props: LayoutProps) {
                                 onOpenChatAssistant?.();
                                 setIsMobileMenuOpen(false);
                             }}
+                            isAdmin={isAdmin}
                         />
                     </div>
                 </div>

@@ -116,6 +116,7 @@ function App() {
   const [userPreferences, setUserPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
 
   // Trial & Logic State
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [userPlan, setUserPlan] = useState<'trial' | 'pro'>('trial');
   const [userCredits, setUserCredits] = useState<number>(0); // Credits state
   const [tenderCount, setTenderCount] = useState(0);
@@ -151,13 +152,15 @@ function App() {
     try {
       // 1. Fetch Preferences & Plan
       const { data: profile } = await supabase
+      const { data: profile } = await supabase
         .from('profiles')
-        .select('preferences, plan_type, credits')
+        .select('preferences, plan_type, credits, app_role')
         .eq('id', userId)
         .single();
 
       if (profile) {
         if (profile.plan_type) setUserPlan(profile.plan_type as 'trial' | 'pro');
+        if (profile.app_role) setUserRole(profile.app_role);
         if (typeof profile.credits === 'number') setUserCredits(profile.credits);
 
         if (profile.preferences) {
@@ -995,6 +998,7 @@ function App() {
       onNewAnalysis={handleNewAnalysis}
       onOpenContact={() => setContactModalOpen(true)}
       onOpenChatAssistant={() => setShowChatAssistant(true)}
+      isAdmin={userRole === 'admin'}
     >
       <UpgradeModal
         isOpen={showUpgradeModal}
@@ -1150,6 +1154,8 @@ function App() {
             setActiveSection('3_sintesi');
           }}
         />
+      ) : activeSection === 'admin' ? (
+        <AdminPage />
       ) : (
         <Dashboard
           data={analysisData || {} as AnalysisResult}

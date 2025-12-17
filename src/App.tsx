@@ -1084,7 +1084,7 @@ function App() {
         defaultStructuredModelId={userPreferences.structured_model}
         defaultSemanticModelId={userPreferences.semantic_model}
       />
-      {!analysisData && activeSection !== 'configurazioni' && activeSection !== 'archivio' ? (
+      {!analysisData && activeSection !== 'configurazioni' && activeSection !== 'archivio' && activeSection !== 'admin' ? (
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-center mb-8 relative">
             <div className="inline-block mb-4 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-full text-sm font-semibold border border-indigo-100 flex items-center gap-2">

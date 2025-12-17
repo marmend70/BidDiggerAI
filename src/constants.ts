@@ -13,10 +13,12 @@ import {
     Info,
     HelpCircle,
     ClipboardCheck,
-    Briefcase
+    Briefcase,
+    Zap
 } from 'lucide-react';
 
-export const SECTIONS_MAP: Record<string, { label: string; icon: any; isSpecial?: boolean; isConfig?: boolean }> = {
+export const SECTIONS_MAP: Record<string, { label: string; icon: any; isSpecial?: boolean; isConfig?: boolean; isSnapshot?: boolean }> = {
+    '0_snapshot': { label: 'Snapshot di Gara', icon: Zap, isSpecial: true, isSnapshot: true },
     '1_requisiti_partecipazione': { label: 'Requisiti Partecipazione', icon: CheckSquare },
     '3_sintesi': { label: 'Sintesi Gara', icon: FileText },
     '3b_checklist_amministrativa': { label: 'Checklist Amministrativa', icon: ClipboardCheck },
@@ -59,6 +61,7 @@ export const DEEP_DIVE_EXAMPLES: Record<string, string> = {
 };
 
 export const MENU_ORDER = [
+    '0_snapshot',
     // Gruppo 1: Sintesi e analisi amministrativa
     '3_sintesi',
     '3b_checklist_amministrativa',

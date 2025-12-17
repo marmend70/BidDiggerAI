@@ -4,6 +4,7 @@ import { Upload } from '@/components/Upload';
 import { Dashboard } from '@/components/Dashboard';
 import { Login } from '@/components/Login';
 import { ArchivePage } from '@/components/ArchivePage';
+import { AdminPage } from '@/components/AdminPage';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -966,6 +967,11 @@ function App() {
 
   if (!session) {
     return <Login onOpenContact={() => setContactModalOpen(true)} />;
+  }
+
+  // Admin Route Check
+  if (window.location.pathname === '/admin') {
+    return <AdminPage />;
   }
 
   return (

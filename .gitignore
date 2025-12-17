@@ -26,3 +26,6 @@ dist-ssr
 # Secrets
 .env
 *key.txt
+.env.master
+.env.staging
+.env.local.DISABLED

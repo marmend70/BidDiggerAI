@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,27 @@ export function Login({ onOpenContact }: LoginProps = {}) {
 
     // Modal State
     const [modalOpen, setModalOpen] = useState<'APP_TERMS' | 'PRIVACY' | null>(null);
+    const [registrationActive, setRegistrationActive] = useState(true);
+
+    useEffect(() => {
+        checkRegistrationStatus();
+    }, []);
+
+    const checkRegistrationStatus = async () => {
+        try {
+            const { data } = await supabase
+                .from('app_settings')
+                .select('value')
+                .eq('key', 'registrazione_attiva')
+                .single();
+
+            if (data) {
+                setRegistrationActive(data.value);
+            }
+        } catch (error) {
+            console.error('Error fetching registration status:', error);
+        }
+    };
 
     const isConsentsValid = acceptedTerms && acceptedPublicNature && acceptedAiLimits;
 
@@ -230,152 +251,170 @@ export function Login({ onOpenContact }: LoginProps = {}) {
                                     </TabsContent>
 
                                     <TabsContent value="register">
-                                        <form onSubmit={handleSignUp} className="space-y-4">
-                                            {/* Trial Info Banner */}
-                                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-3 mb-4">
-                                                <Sparkles className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                                                <div className="text-sm text-amber-900">
-                                                    <span className="font-semibold block text-amber-950">Prova Gratuita Attiva</span>
-                                                    Registrati ora per ottenere <strong>2 Analisi Complete</strong> in omaggio. Nessun pagamento richiesto.
+                                        {!registrationActive ? (
+                                            <div className="text-center space-y-6 py-6 animate-in fade-in slide-in-from-bottom-4">
+                                                <div className="mx-auto w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
+                                                    <Sparkles className="h-8 w-8 text-amber-600" />
                                                 </div>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <Input
-                                                    type="email"
-                                                    placeholder="nome@azienda.com"
-                                                    value={email}
-                                                    onChange={(e) => setEmail(e.target.value)}
-                                                    required
-                                                    className="bg-white"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Input
-                                                    type="password"
-                                                    placeholder="Crea una password"
-                                                    value={password}
-                                                    onChange={(e) => setPassword(e.target.value)}
-                                                    required
-                                                    className="bg-white"
-                                                />
-                                            </div>
-
-                                            <div className="space-y-4 pt-2">
                                                 <div className="space-y-2">
-                                                    <select
-                                                        value={role}
-                                                        onChange={(e) => setRole(e.target.value)}
-                                                        className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-slate-600"
-                                                    >
-                                                        <option value="">Seleziona Ruolo / Funzione (Opzionale)</option>
-                                                        <option value="Bid / Proposal Manager">Bid / Proposal Manager</option>
-                                                        <option value="Responsabile Ufficio Gare">Responsabile Ufficio Gare</option>
-                                                        <option value="Imprenditore / CEO">Imprenditore / CEO</option>
-                                                        <option value="Area Commerciale / Sales">Area Commerciale / Sales</option>
-                                                        <option value="Tecnico / Progettista">Tecnico / Progettista</option>
-                                                        <option value="Consulente Gare / Libero Professionista">Consulente Gare / Libero Professionista</option>
-                                                        <option value="Addetto Ufficio Gare">Addetto Ufficio Gare</option>
-                                                        <option value="Avvocato / Legal">Avvocato / Legal</option>
-                                                        <option value="Altro">Altro</option>
-                                                    </select>
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <select
-                                                        value={sector}
-                                                        onChange={(e) => setSector(e.target.value)}
-                                                        className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-slate-600"
-                                                    >
-                                                        <option value="">Settore / Ambito Principale (Opzionale)</option>
-                                                        <option value="ICT & Software">ICT & Software (Servizi Digitali)</option>
-                                                        <option value="Facility Management">Facility Management (Pulizie, Vigilanza, Manutenzione)</option>
-                                                        <option value="Sanità">Servizi attinenti alla Sanità</option>
-                                                        <option value="Socio-Sanitario">Servizi Socio-Sanitari e Assistenza</option>
-                                                        <option value="Consulenza e formazione">Consulenza e formazione</option>
-                                                        <option value="Altro">Altra tipologia di servizi</option>
-                                                    </select>
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <select
-                                                        value={tenderVolume}
-                                                        onChange={(e) => setTenderVolume(e.target.value)}
-                                                        className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-slate-600"
-                                                    >
-                                                        <option value="">Volume Annuo Gare gestite (Opzionale)</option>
-                                                        <option value="Meno di 10 all'anno">Meno di 10 all'anno</option>
-                                                        <option value="1-2 al mese">1-2 al mese</option>
-                                                        <option value="3-10 al mese">3-10 al mese</option>
-                                                        <option value="Oltre 10 al mese">Oltre 10 al mese</option>
-                                                    </select>
+                                                    <h3 className="text-xl font-semibold text-slate-900">Accesso Limitato</h3>
+                                                    <p className="text-slate-600 max-w-sm mx-auto">
+                                                        Il sistema è attualmente in fase di <strong>Private Beta</strong>.
+                                                        Le nuove registrazioni sono temporaneamente chiuse per garantire la massima qualità del servizio agli utenti attuali.
+                                                    </p>
+                                                    <p className="text-sm text-slate-500 mt-4">
+                                                        Torna a trovarci presto o contattaci per maggiori informazioni.
+                                                    </p>
                                                 </div>
                                             </div>
-
-                                            <div className="space-y-4 mt-6">
-                                                <div className="flex items-start space-x-3">
-                                                    <Checkbox
-                                                        id="terms"
-                                                        checked={acceptedTerms}
-                                                        onCheckedChange={(checked) => setAcceptedTerms(checked as boolean)}
-                                                    />
-                                                    <div className="grid gap-1.5 leading-none">
-                                                        <label
-                                                            htmlFor="terms"
-                                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700"
-                                                        >
-                                                            Termini di Servizio
-                                                        </label>
-                                                        <p className="text-sm text-slate-500 text-muted-foreground">
-                                                            Ho letto, compreso e accetto integralmente i <button type="button" onClick={() => setModalOpen('APP_TERMS')} className="text-blue-600 hover:underline">Termini e Condizioni del Servizio</button> e la <button type="button" onClick={() => setModalOpen('PRIVACY')} className="text-blue-600 hover:underline">Privacy Policy</button>.
-                                                        </p>
+                                        ) : (
+                                            <form onSubmit={handleSignUp} className="space-y-4">
+                                                {/* Trial Info Banner */}
+                                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-3 mb-4">
+                                                    <Sparkles className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                                                    <div className="text-sm text-amber-900">
+                                                        <span className="font-semibold block text-amber-950">Prova Gratuita Attiva</span>
+                                                        Registrati ora per ottenere <strong>2 Analisi Complete</strong> in omaggio. Nessun pagamento richiesto.
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-start space-x-3">
-                                                    <Checkbox
-                                                        id="public_nature"
-                                                        checked={acceptedPublicNature}
-                                                        onCheckedChange={(checked) => setAcceptedPublicNature(checked as boolean)}
+                                                <div className="space-y-2">
+                                                    <Input
+                                                        type="email"
+                                                        placeholder="nome@azienda.com"
+                                                        value={email}
+                                                        onChange={(e) => setEmail(e.target.value)}
+                                                        required
+                                                        className="bg-white"
                                                     />
-                                                    <div className="grid gap-1.5 leading-none">
-                                                        <label
-                                                            htmlFor="public_nature"
-                                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700"
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Input
+                                                        type="password"
+                                                        placeholder="Crea una password"
+                                                        value={password}
+                                                        onChange={(e) => setPassword(e.target.value)}
+                                                        required
+                                                        className="bg-white"
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-4 pt-2">
+                                                    <div className="space-y-2">
+                                                        <select
+                                                            value={role}
+                                                            onChange={(e) => setRole(e.target.value)}
+                                                            className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-slate-600"
                                                         >
-                                                            Natura Pubblica dei Documenti
-                                                        </label>
-                                                        <p className="text-sm text-slate-500 text-muted-foreground">
-                                                            Dichiaro sotto la mia esclusiva responsabilità di caricare sulla piattaforma esclusivamente documenti di natura pubblica (es. Bandi, Disciplinari, Capitolati di dominio pubblico). Confermo che i file non contengono dati personali sensibili, informazioni riservate o segreti industriali, manlevando Bid Digger AI da ogni responsabilità civile e penale in materia di trattamento dati.
-                                                        </p>
+                                                            <option value="">Seleziona Ruolo / Funzione (Opzionale)</option>
+                                                            <option value="Bid / Proposal Manager">Bid / Proposal Manager</option>
+                                                            <option value="Responsabile Ufficio Gare">Responsabile Ufficio Gare</option>
+                                                            <option value="Imprenditore / CEO">Imprenditore / CEO</option>
+                                                            <option value="Area Commerciale / Sales">Area Commerciale / Sales</option>
+                                                            <option value="Tecnico / Progettista">Tecnico / Progettista</option>
+                                                            <option value="Consulente Gare / Libero Professionista">Consulente Gare / Libero Professionista</option>
+                                                            <option value="Addetto Ufficio Gare">Addetto Ufficio Gare</option>
+                                                            <option value="Avvocato / Legal">Avvocato / Legal</option>
+                                                            <option value="Altro">Altro</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <select
+                                                            value={sector}
+                                                            onChange={(e) => setSector(e.target.value)}
+                                                            className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-slate-600"
+                                                        >
+                                                            <option value="">Settore / Ambito Principale (Opzionale)</option>
+                                                            <option value="ICT & Software">ICT & Software (Servizi Digitali)</option>
+                                                            <option value="Facility Management">Facility Management (Pulizie, Vigilanza, Manutenzione)</option>
+                                                            <option value="Sanità">Servizi attinenti alla Sanità</option>
+                                                            <option value="Socio-Sanitario">Servizi Socio-Sanitari e Assistenza</option>
+                                                            <option value="Consulenza e formazione">Consulenza e formazione</option>
+                                                            <option value="Altro">Altra tipologia di servizi</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <select
+                                                            value={tenderVolume}
+                                                            onChange={(e) => setTenderVolume(e.target.value)}
+                                                            className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-slate-600"
+                                                        >
+                                                            <option value="">Volume Annuo Gare gestite (Opzionale)</option>
+                                                            <option value="Meno di 10 all'anno">Meno di 10 all'anno</option>
+                                                            <option value="1-2 al mese">1-2 al mese</option>
+                                                            <option value="3-10 al mese">3-10 al mese</option>
+                                                            <option value="Oltre 10 al mese">Oltre 10 al mese</option>
+                                                        </select>
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-start space-x-3">
-                                                    <Checkbox
-                                                        id="ai_limits"
-                                                        checked={acceptedAiLimits}
-                                                        onCheckedChange={(checked) => setAcceptedAiLimits(checked as boolean)}
-                                                    />
-                                                    <div className="grid gap-1.5 leading-none">
-                                                        <label
-                                                            htmlFor="ai_limits"
-                                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700"
-                                                        >
-                                                            Limiti dell'AI
-                                                        </label>
-                                                        <p className="text-sm text-slate-500 text-muted-foreground">
-                                                            Sono consapevole e accetto che il servizio è basato su sistemi di Intelligenza Artificiale sperimentali. Comprendo che le analisi generate possono contenere errori, omissioni o imprecisioni ('allucinazioni') e mi impegno a verificare personalmente la correttezza di ogni dato sui documenti originali prima di qualsiasi utilizzo, esonerando il fornitore da ogni responsabilità per eventuali danni, esclusioni o mancati guadagni.
-                                                        </p>
+                                                <div className="space-y-4 mt-6">
+                                                    <div className="flex items-start space-x-3">
+                                                        <Checkbox
+                                                            id="terms"
+                                                            checked={acceptedTerms}
+                                                            onCheckedChange={(checked) => setAcceptedTerms(checked as boolean)}
+                                                        />
+                                                        <div className="grid gap-1.5 leading-none">
+                                                            <label
+                                                                htmlFor="terms"
+                                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700"
+                                                            >
+                                                                Termini di Servizio
+                                                            </label>
+                                                            <p className="text-sm text-slate-500 text-muted-foreground">
+                                                                Ho letto, compreso e accetto integralmente i <button type="button" onClick={() => setModalOpen('APP_TERMS')} className="text-blue-600 hover:underline">Termini e Condizioni del Servizio</button> e la <button type="button" onClick={() => setModalOpen('PRIVACY')} className="text-blue-600 hover:underline">Privacy Policy</button>.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-start space-x-3">
+                                                        <Checkbox
+                                                            id="public_nature"
+                                                            checked={acceptedPublicNature}
+                                                            onCheckedChange={(checked) => setAcceptedPublicNature(checked as boolean)}
+                                                        />
+                                                        <div className="grid gap-1.5 leading-none">
+                                                            <label
+                                                                htmlFor="public_nature"
+                                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700"
+                                                            >
+                                                                Natura Pubblica dei Documenti
+                                                            </label>
+                                                            <p className="text-sm text-slate-500 text-muted-foreground">
+                                                                Dichiaro sotto la mia esclusiva responsabilità di caricare sulla piattaforma esclusivamente documenti di natura pubblica (es. Bandi, Disciplinari, Capitolati di dominio pubblico). Confermo che i file non contengono dati personali sensibili, informazioni riservate o segreti industriali, manlevando Bid Digger AI da ogni responsabilità civile e penale in materia di trattamento dati.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-start space-x-3">
+                                                        <Checkbox
+                                                            id="ai_limits"
+                                                            checked={acceptedAiLimits}
+                                                            onCheckedChange={(checked) => setAcceptedAiLimits(checked as boolean)}
+                                                        />
+                                                        <div className="grid gap-1.5 leading-none">
+                                                            <label
+                                                                htmlFor="ai_limits"
+                                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700"
+                                                            >
+                                                                Limiti dell'AI
+                                                            </label>
+                                                            <p className="text-sm text-slate-500 text-muted-foreground">
+                                                                Sono consapevole e accetto che il servizio è basato su sistemi di Intelligenza Artificiale sperimentali. Comprendo che le analisi generate possono contenere errori, omissioni o imprecisioni ('allucinazioni') e mi impegno a verificare personalmente la correttezza di ogni dato sui documenti originali prima di qualsiasi utilizzo, esonerando il fornitore da ogni responsabilità per eventuali danni, esclusioni o mancati guadagni.
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-md border border-red-100">{error}</div>}
-                                            <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-50" disabled={loading || !isConsentsValid}>
-                                                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Crea Account'}
-                                            </Button>
-                                        </form>
+                                                {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-md border border-red-100">{error}</div>}
+                                                <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-50" disabled={loading || !isConsentsValid}>
+                                                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Crea Account'}
+                                                </Button>
+                                            </form>
+                                        )}
                                     </TabsContent>
                                 </Tabs>
 

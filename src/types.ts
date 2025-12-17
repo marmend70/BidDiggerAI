@@ -210,4 +210,6 @@ export interface UserProfile {
     full_name?: string;
     credits: number; // Added for credit system
     preferences?: UserPreferences;
+    role?: string; // Professional role (e.g. Bid Manager)
+    app_role?: string; // System role (e.g. admin)
 }

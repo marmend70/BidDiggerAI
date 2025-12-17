@@ -83,10 +83,31 @@ export function Login({ onOpenContact }: LoginProps = {}) {
                 throw new Error("Devi accettare tutti i termini e le condizioni per procedere.");
             }
 
-            // Show test mode modal instead of creating account
-            setShowTestModeModal(true);
+            // Se la registrazione è attiva, procedi con la creazione account
+            if (registrationActive) {
+                const { error: signUpError } = await supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: {
+                            role,
+                            sector,
+                            tender_volume: tenderVolume
+                        }
+                    }
+                });
+
+                if (signUpError) throw signUpError;
+                
+                // Mostra messaggio di successo e richiesta conferma email
+                setShowConfirmation(true);
+            } else {
+                // Altrimenti mostra modale beta
+                setShowTestModeModal(true);
+            }
         } catch (err: any) {
-            setError(err.message);
+            console.error('Signup error:', err);
+            setError(err.message || "Errore durante la registrazione. Riprova.");
         } finally {
             setLoading(false);
         }

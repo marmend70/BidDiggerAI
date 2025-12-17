@@ -41,7 +41,7 @@ serve(async (req) => {
 
         // Send email to admin
         const data = await resend.emails.send({
-            from: 'Bid Digger Contact Form <info@biddigger.app>',
+            from: 'Bid Digger Contact Form <onboarding@resend.dev>',
             to: ['mm.infoapps@gmail.com'],
             subject: `Nuova Richiesta Contatto da ${firstName} ${lastName}`,
             reply_to: email, // Allow replying to the user

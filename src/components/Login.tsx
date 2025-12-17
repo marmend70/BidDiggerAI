@@ -22,7 +22,7 @@ export function Login({ onOpenContact }: LoginProps = {}) {
     const [tenderVolume, setTenderVolume] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [showConfirmation, setShowConfirmation] = useState(false);
-    const [showTestModeModal, setShowTestModeModal] = useState(false);
+
 
     // Consents State
     const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -62,8 +62,23 @@ export function Login({ onOpenContact }: LoginProps = {}) {
                 throw new Error("Devi accettare tutti i termini e le condizioni per procedere.");
             }
 
-            // Show test mode modal instead of creating account
-            setShowTestModeModal(true);
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        role: role || null,
+                        sector: sector || null,
+                        tender_volume: tenderVolume || null,
+                    }
+                }
+            });
+
+            if (error) throw error;
+
+            if (data.user) {
+                setShowConfirmation(true);
+            }
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -398,45 +413,7 @@ export function Login({ onOpenContact }: LoginProps = {}) {
                 content={modalOpen === 'APP_TERMS' ? TERMS_AND_CONDITIONS : PRIVACY_POLICY}
             />
 
-            {/* Test Mode Modal */}
-            {showTestModeModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-                        <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-amber-50">
-                            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                                <AlertTriangle className="h-5 w-5 text-amber-500" />
-                                Sistema in Test
-                            </h2>
-                            <button
-                                onClick={() => setShowTestModeModal(false)}
-                                className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-200 rounded-full"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-                        <div className="p-6">
-                            <p className="text-slate-700 mb-4">
-                                Il sistema è in fase di beta-test e sarà a breve disponibile.
-                            </p>
-                            <p className="text-slate-600 text-sm">
-                                Se desideri ricevere un invito per il trial gratuito invia una mail a:{' '}
-                                <a href="mailto:mm.infoapps@gmail.com" className="text-blue-600 hover:underline font-medium">
-                                    mm.infoapps@gmail.com
-                                </a>
-                                . Grazie!
-                            </p>
-                            <div className="mt-6">
-                                <Button
-                                    onClick={() => setShowTestModeModal(false)}
-                                    className="w-full bg-slate-900 hover:bg-slate-800 text-white"
-                                >
-                                    Chiudi
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+
         </div>
     );
 }

@@ -154,8 +154,14 @@ function App() {
         .single();
 
       if (profile) {
+        console.log("Fetched Profile:", profile); // Debug
         if (profile.plan_type) setUserPlan(profile.plan_type as 'trial' | 'pro');
-        if (typeof profile.credits === 'number') setUserCredits(profile.credits);
+        if (typeof profile.credits === 'number') {
+          console.log("Setting credits to:", profile.credits); // Debug
+          setUserCredits(profile.credits);
+        } else {
+          console.warn("Credits not found or not a number:", profile.credits);
+        }
 
         if (profile.preferences) {
           setUserPreferences({

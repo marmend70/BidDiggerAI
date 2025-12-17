@@ -152,7 +152,6 @@ function App() {
     try {
       // 1. Fetch Preferences & Plan
       const { data: profile } = await supabase
-      const { data: profile } = await supabase
         .from('profiles')
         .select('preferences, plan_type, credits, app_role')
         .eq('id', userId)

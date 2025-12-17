@@ -58,6 +58,7 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                     const Icon = section.icon;
                     const isActive = activeSection === sectionId;
                     const isSpecial = section.isSpecial;
+                    const isSnapshot = section.isSnapshot;
                     const isEnabled = userPreferences?.analysis_sections?.[sectionId] !== false;
 
                     // Check if this section is currently loading
@@ -65,7 +66,9 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                     const isLoading = batch && loadingBatches.includes(batch);
 
                     // Check if data is available for this section
-                    const hasData = data && data[sectionId as keyof AnalysisResult];
+                    const hasData = isSnapshot
+                        ? (data && (data['3_sintesi'] || data['6_importi']))
+                        : (data && data[sectionId as keyof AnalysisResult]);
 
                     // Disable logic:
                     const isDisabled = isAnalyzing && (!hasData || isLoading || sectionId === 'faq');
@@ -81,6 +84,26 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                         else if (batch === 'batch_4') header = "4. Extra";
                     }
 
+                    // Style logic
+                    let buttonClass = `w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md transition-colors `;
+
+                    if (isSnapshot) {
+                        buttonClass += isActive
+                            ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white shadow-lg shadow-amber-900/20 '
+                            : 'text-yellow-400 bg-yellow-500/10 hover:bg-yellow-500/20 hover:text-yellow-300 border border-yellow-500/20 mb-6 ';
+                    } else if (isSpecial) {
+                        buttonClass += isActive
+                            ? 'bg-purple-600 text-white shadow-md '
+                            : 'text-purple-300 hover:bg-purple-900/30 hover:text-purple-100 mt-4 border border-purple-900/50 ';
+                    } else {
+                        buttonClass += isActive
+                            ? 'bg-amber-500 text-slate-900 '
+                            : 'text-slate-300 hover:bg-slate-800 hover:text-white ';
+                    }
+
+                    buttonClass += (!isEnabled ? 'opacity-50 grayscale ' : '');
+                    buttonClass += (isDisabled ? 'opacity-50 cursor-not-allowed ' : '');
+
                     return (
                         <React.Fragment key={sectionId}>
                             {header && (
@@ -93,19 +116,16 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                             <button
                                 onClick={() => onSectionClick?.(sectionId)}
                                 disabled={isDisabled}
-                                className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md transition-colors ${isActive
-                                    ? isSpecial ? 'bg-purple-600 text-white shadow-md' : 'bg-amber-500 text-slate-900'
-                                    : isSpecial ? 'text-purple-300 hover:bg-purple-900/30 hover:text-purple-100 mt-4 border border-purple-900/50' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                                    } ${isSpecial && !isActive ? 'mt-6' : ''} ${!isEnabled ? 'opacity-50 grayscale' : ''} ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={buttonClass}
                             >
                                 <div className="flex items-center gap-3">
-                                    <Icon className={`h-4 w-4 ${isSpecial && !isActive ? 'text-purple-400' : ''}`} />
+                                    <Icon className={`h-4 w-4 ${!isActive && isSnapshot ? 'text-yellow-500' : (!isActive && isSpecial ? 'text-purple-400' : '')}`} />
                                     {section.label}
                                 </div>
                                 {isLoading && (
                                     <Loader2 className="h-4 w-4 animate-spin text-current opacity-70" />
                                 )}
-                                {!isLoading && hasData && (
+                                {!isLoading && hasData && !isSnapshot && (
                                     <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                                 )}
                             </button>

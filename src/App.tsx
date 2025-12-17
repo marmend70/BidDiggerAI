@@ -22,6 +22,7 @@ import { ContactModal } from '@/components/ContactModal';
 import { ScanRetryModal } from '@/components/ScanRetryModal';
 import { PricingModal } from '@/components/PricingModal';
 import { ChatAssistantModal } from '@/components/ChatAssistantModal';
+import { SnapshotModal } from '@/components/SnapshotModal';
 import { AVAILABLE_MODELS, SECTIONS_MAP } from '@/constants';
 import { supabase } from '@/lib/supabase';
 import type { AnalysisResult, UserPreferences } from '@/types';
@@ -102,6 +103,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [activeSection, setActiveSection] = useState('3_sintesi');
+  const [snapshotModalOpen, setSnapshotModalOpen] = useState(false);
   const [analysisData, setAnalysisData] = useState<AnalysisResult | null>(null);
   const analysisDataRef = useRef<AnalysisResult | null>(null); // Ref to track live state for async access
 
@@ -965,6 +967,14 @@ function App() {
     }
   };
 
+  const handleSectionClick = (sectionId: string) => {
+    if (sectionId === '0_snapshot') {
+      setSnapshotModalOpen(true);
+    } else {
+      setActiveSection(sectionId);
+    }
+  };
+
   if (!session) {
     return <Login onOpenContact={() => setContactModalOpen(true)} />;
   }
@@ -977,7 +987,7 @@ function App() {
   return (
     <Layout
       activeSection={activeSection}
-      onSectionClick={setActiveSection}
+      onSectionClick={handleSectionClick}
       data={analysisData}
       userPreferences={userPreferences}
       isAnalyzing={isUploading}
@@ -990,6 +1000,11 @@ function App() {
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
         onOpenContact={() => { setShowUpgradeModal(false); setContactModalOpen(true); }}
+      />
+      <SnapshotModal
+        isOpen={snapshotModalOpen}
+        onClose={() => setSnapshotModalOpen(false)}
+        data={analysisData}
       />
       <ContactModal
         isOpen={contactModalOpen}

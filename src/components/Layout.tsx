@@ -27,6 +27,9 @@ interface LayoutProps {
     onNewAnalysis?: () => void;
     onOpenContact?: () => void;
     onOpenChatAssistant?: () => void;
+    onOpenContact?: () => void;
+    onOpenChatAssistant?: () => void;
+    isAdmin?: boolean;
 }
 
 interface SidebarContentProps {
@@ -39,9 +42,12 @@ interface SidebarContentProps {
     onExport: () => void;
     onNewAnalysis?: () => void;
     onOpenChatAssistant?: () => void;
+    onNewAnalysis?: () => void;
+    onOpenChatAssistant?: () => void;
+    isAdmin?: boolean;
 }
 
-function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant }: SidebarContentProps) {
+function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant, isAdmin }: SidebarContentProps) {
     return (
         <div className="flex flex-col h-full text-white">
             <div className="p-6 bg-slate-950 shadow-sm z-10">
@@ -210,13 +216,23 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                 >
                     Esci
                 </button>
+
+                {isAdmin && (
+                    <button
+                        onClick={() => window.location.href = '/admin'}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-400 rounded-md hover:bg-slate-800 hover:text-red-300 border border-red-900/30 bg-red-900/10 mt-2"
+                    >
+                        <Settings className="h-4 w-4" />
+                        Amministrazione
+                    </button>
+                )}
             </div>
         </div>
     );
 }
 
 export function Layout(props: LayoutProps) {
-    const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onOpenContact, onOpenChatAssistant } = props;
+    const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onOpenContact, onOpenChatAssistant, isAdmin } = props;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
     const handleExport = async () => {
@@ -243,6 +259,7 @@ export function Layout(props: LayoutProps) {
                     onExport={handleExport}
                     onNewAnalysis={props.onNewAnalysis}
                     onOpenChatAssistant={onOpenChatAssistant}
+                    isAdmin={props.isAdmin}
                 />
             </aside>
 
@@ -297,7 +314,9 @@ export function Layout(props: LayoutProps) {
                             onOpenChatAssistant={() => {
                                 onOpenChatAssistant?.();
                                 setIsMobileMenuOpen(false);
+                                setIsMobileMenuOpen(false);
                             }}
+                            isAdmin={isAdmin}
                         />
                     </div>
                 </div>

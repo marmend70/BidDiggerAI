@@ -134,6 +134,7 @@ function App() {
   const [showScanRetryModal, setShowScanRetryModal] = useState(false);
   const [pendingRetryParams, setPendingRetryParams] = useState<{ sectionId: string, question: string } | null>(null);
   const [showChatAssistant, setShowChatAssistant] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Cleanup Expired Tenders Function
   const cleanupExpiredTenders = async (userId: string, retentionDays: number) => {
@@ -193,7 +194,7 @@ function App() {
       // 1. Fetch Preferences & Plan
       const { data: profile } = await supabase
         .from('profiles')
-        .select('preferences, plan_type, credits')
+        .select('preferences, plan_type, credits, app_role')
         .eq('id', userId)
         .single();
 
@@ -205,6 +206,10 @@ function App() {
           setUserCredits(profile.credits);
         } else {
           console.warn("Credits not found or not a number:", profile.credits);
+        }
+
+        if (profile.app_role === 'admin') {
+          setIsAdmin(true);
         }
 
         if (profile.preferences) {
@@ -1061,6 +1066,7 @@ function App() {
       isAnalyzing={isUploading}
       loadingBatches={loadingBatches}
       onNewAnalysis={handleNewAnalysis}
+      isAdmin={isAdmin}
       onOpenContact={() => setContactModalOpen(true)}
       onOpenChatAssistant={() => setShowChatAssistant(true)}
     >

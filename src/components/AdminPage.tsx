@@ -26,11 +26,11 @@ export function AdminPage() {
 
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('role')
+                .select('app_role')
                 .eq('id', session.user.id)
                 .single();
 
-            if (profile?.role !== 'admin') {
+            if (profile?.app_role !== 'admin') {
                 window.location.href = '/'; // Redirect non-admins
                 return;
             }

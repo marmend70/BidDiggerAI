@@ -1,3 +1,5 @@
+import { GENIUS_RULES_MAP } from './genius-rules.ts';
+
 export const generateAnalysisPrompt = (preferences: Record<string, boolean>, batchName: string, semanticPreferences: Record<string, boolean> = {}): string => {
 
 
@@ -43,7 +45,9 @@ REGOLE GENERALI:
   if (preferences['3_sintesi']) prompts.push(`
   Chiave: "3_sintesi"
   ISTRUZIONI: Estrai Sintesi, Stazione Appaltante, Oggetto.
+  ISTRUZIONI: Estrai Sintesi, Stazione Appaltante, Oggetto.
   IMPORTANTE: Report "stazione_appaltante" (Ente banditore) e "oggetto" (Oggetto dell'appalto) in modo COMPLETO ed ESAUSTIVO come da documenti.
+  ${semanticPreferences['3_sintesi'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['3_sintesi']}` : ''}
 JSON SCHEMA:
   "3_sintesi": {
     "structured": {
@@ -67,7 +71,9 @@ JSON SCHEMA:
   ISTRUZIONI: Checklist documenti e requisiti formali.
 CERCA SPECIFICATAMENTE:
   - Garanzia Provvisoria: % su base asta e importo esatto.
-- Contributo ANAC e Bollo.
+  - Garanzia Provvisoria: % su base asta e importo esatto.
+  - Contributo ANAC e Bollo.
+  ${semanticPreferences['3b_checklist_amministrativa'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['3b_checklist_amministrativa']}` : ''}
 JSON SCHEMA:
   "3b_checklist_amministrativa": {
     "structured": [
@@ -116,6 +122,7 @@ MAPPA I REQUISITI TROVATI NELLE SEGUENTI CATEGORIE ESATTE:
     - Organico Medio Annuo
       - Certificazioni ISO(9001, 14001, 27001, ecc.)
         - Figure Chiave(PM, Sistemisti)
+  ${semanticPreferences['1_requisiti_partecipazione'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['1_requisiti_partecipazione']}` : ''}
 
 JSON SCHEMA:
   "1_requisiti_partecipazione": {
@@ -139,6 +146,7 @@ JSON SCHEMA:
   if (preferences['5_scadenze']) prompts.push(`
   Chiave: "5_scadenze"
   ISTRUZIONI: Date e Timeline.
+  ${semanticPreferences['5_scadenze'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['5_scadenze']}` : ''}
 JSON SCHEMA:
   "5_scadenze": {
     "structured": [
@@ -164,6 +172,7 @@ JSON SCHEMA:
   if (preferences['6_importi']) prompts.push(`
   Chiave: "6_importi"
   ISTRUZIONI: Importi e Dettagli.
+  ${semanticPreferences['6_importi'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['6_importi']}` : ''}
 JSON SCHEMA:
   "6_importi": {
     "structured": [
@@ -187,6 +196,7 @@ JSON SCHEMA:
   if (preferences['8_ccnl']) prompts.push(`
   Chiave: "8_ccnl"
   ISTRUZIONI: Contratti e Clausola Sociale.
+  ${semanticPreferences['8_ccnl'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['8_ccnl']}` : ''}
 JSON SCHEMA:
   "8_ccnl": {
     "structured": [
@@ -207,6 +217,7 @@ JSON SCHEMA:
   if (preferences['4_servizi']) prompts.push(`
   Chiave: "4_servizi"
   ISTRUZIONI: Servizi e Tecnologie.
+  ${semanticPreferences['4_servizi'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['4_servizi']}` : ''}
 JSON SCHEMA:
   "4_servizi": {
     "structured": [
@@ -227,6 +238,7 @@ JSON SCHEMA:
   if (preferences['7_durata']) prompts.push(`
   Chiave: "7_durata"
   ISTRUZIONI: Durata e Proroghe.
+  ${semanticPreferences['7_durata'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['7_durata']}` : ''}
 JSON SCHEMA:
   "7_durata": {
     "structured": [
@@ -247,6 +259,7 @@ JSON SCHEMA:
   if (preferences['9_oneri']) prompts.push(`
   Chiave: "9_oneri"
   ISTRUZIONI: Ripartizione Oneri.
+  ${semanticPreferences['9_oneri'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['9_oneri']}` : ''}
 JSON SCHEMA:
   "9_oneri": {
     "structured": [
@@ -263,6 +276,7 @@ JSON SCHEMA:
   if (preferences['15_remunerazione']) prompts.push(`
   Chiave: "15_remunerazione"
   ISTRUZIONI: Pagamenti.
+  ${semanticPreferences['15_remunerazione'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['15_remunerazione']}` : ''}
 JSON SCHEMA:
   "15_remunerazione": {
     "structured": [
@@ -300,7 +314,9 @@ JSON SCHEMA:
   Output JSON: { "sla": [{ "servizio": "Help Desk", "indicatore": "Presa in carico", "soglia": "< 15 min", "priorita": "", "penale_correlata": "100€" }] }
 
   - Se un campo non è presente, lascialo vuoto stringa.
+  - Se un campo non è presente, lascialo vuoto stringa.
   - NON USARE "elenco_testuale".
+  ${semanticPreferences['16_sla_penali'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['16_sla_penali']}` : ''}
   JSON SCHEMA:
   "16_sla_penali": {
     "structured": [
@@ -331,6 +347,7 @@ JSON SCHEMA:
   if (preferences['12_offerta_tecnica']) prompts.push(`
   Chiave: "12_offerta_tecnica"
   ISTRUZIONI: Offerta Tecnica.
+  ${semanticPreferences['12_offerta_tecnica'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['12_offerta_tecnica']}` : ''}
 JSON SCHEMA:
   "12_offerta_tecnica": {
     "structured": [
@@ -353,6 +370,7 @@ JSON SCHEMA:
   if (preferences['13_offerta_economica']) prompts.push(`
   Chiave: "13_offerta_economica"
   ISTRUZIONI: Offerta Economica.
+  ${semanticPreferences['13_offerta_economica'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['13_offerta_economica']}` : ''}
 JSON SCHEMA:
   "13_offerta_economica": {
     "structured": [
@@ -374,6 +392,7 @@ JSON SCHEMA:
   if (preferences['10_punteggi']) prompts.push(`
   Chiave: "10_punteggi"
   ISTRUZIONI: Punteggi e Criteri.
+  ${semanticPreferences['10_punteggi'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['10_punteggi']}` : ''}
 JSON SCHEMA:
   "10_punteggi": {
     "structured": [
@@ -408,6 +427,7 @@ JSON SCHEMA:
   if (preferences['11_pena_esclusione']) prompts.push(`
   Chiave: "11_pena_esclusione"
   ISTRUZIONI: Cause Esclusione.
+  ${semanticPreferences['11_pena_esclusione'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['11_pena_esclusione']}` : ''}
 JSON SCHEMA:
   "11_pena_esclusione": {
     "structured": [
@@ -422,6 +442,8 @@ JSON SCHEMA:
   // Dashboard: data['14_note_importanti'][0].note (Array of Objects)
   if (preferences['14_note_importanti']) prompts.push(`
   Chiave: "14_note_importanti"
+  ISTRUZIONI: Note e Clausole Vessatorie.
+  ${semanticPreferences['14_note_importanti'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['14_note_importanti']}` : ''}
 JSON SCHEMA:
   "14_note_importanti": {
     "structured": [
@@ -443,6 +465,8 @@ CONTROLLI LOGICI DA ESEGUIRE(Cerca ogni anomalia):
 2. CHECK ECONOMICO: Costi manodopera non scorporati o fissi o "non soggetti a ribasso"(Art. 41).Oneri sicurezza zero o incongrui.Base d'asta sottostimata. Revisione prezzi assente.
   3. CHECK OPERATIVO: Penali senza tetto(capping > 10 %) o cumulabili.SLA vaghi o irrealistici.Clausole risolutive sbilanciate.
 4. CHECK LOCK - IN: Requisiti sartoriali, software proprietari, limiti al subappalto o avvalimento non motivati.
+
+${semanticPreferences['17_ambiguita_punti_da_chiarire'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['17_ambiguita_punti_da_chiarire']}` : ''}
 
 ISTRUZIONE OUTPUT(IMPORTANTE):
 Non usare Markdown.Mappa i risultati ESCLUSIVAMENTE nel JSON sotto:

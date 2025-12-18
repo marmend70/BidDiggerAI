@@ -202,6 +202,8 @@ export interface UserPreferences {
     semantic_analysis_sections: {
         [key: string]: boolean;
     };
+    owners?: string[];
+    retention_days?: number;
 }
 
 export interface UserProfile {

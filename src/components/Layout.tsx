@@ -75,7 +75,10 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                         : (data && data[sectionId as keyof AnalysisResult]);
 
                     // Disable logic:
-                    const isDisabled = isAnalyzing && (!hasData || isLoading || sectionId === 'faq');
+                    // For Snapshot (isSnapshot), we explicitly force disabled if isAnalyzing is true (user request: active ONLY at end of analysis).
+                    const isDisabled = isSnapshot
+                        ? (isAnalyzing || !hasData) // Snapshot: Disabled if analyzing OR no data
+                        : (isAnalyzing && (!hasData || isLoading || sectionId === 'faq')); // Others: Standard logic
 
                     // Determine if we need a header
                     let header: string | null = null;
@@ -146,11 +149,11 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                 <button
                     onClick={() => !isAnalyzing && onSectionClick?.('configurazioni')}
                     disabled={isAnalyzing}
-                    className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors border border-slate-700 ${isAnalyzing
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors border ${isAnalyzing
                         ? 'opacity-50 cursor-not-allowed text-slate-500 border-slate-800'
                         : activeSection === 'configurazioni'
-                            ? 'bg-slate-700 text-white'
-                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                            ? 'bg-amber-500 text-slate-900 border-amber-500' // Active state
+                            : 'text-amber-500 hover:bg-slate-800 hover:text-amber-400 border-amber-500/20 bg-amber-500/5' // Default state (Assistant style)
                         }`}
                 >
                     <Settings className="h-4 w-4" />
@@ -160,15 +163,15 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                 <button
                     onClick={() => !isAnalyzing && onSectionClick?.('archivio')}
                     disabled={isAnalyzing}
-                    className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors border border-slate-700 ${isAnalyzing
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors border ${isAnalyzing
                         ? 'opacity-50 cursor-not-allowed text-slate-500 border-slate-800'
                         : activeSection === 'archivio'
-                            ? 'bg-slate-700 text-white'
-                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                            ? 'bg-amber-500 text-slate-900 border-amber-500' // Active state
+                            : 'text-amber-500 hover:bg-slate-800 hover:text-amber-400 border-amber-500/20 bg-amber-500/5' // Default state (Assistant style)
                         }`}
                 >
                     <Archive className="h-4 w-4" />
-                    Archivio
+                    Bid Digger Dashboard
                 </button>
 
                 <button
@@ -183,7 +186,7 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                 <button
                     onClick={onExport}
                     disabled={!data}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300 rounded-md hover:bg-slate-800 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed border border-transparent"
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-amber-500 rounded-md hover:bg-slate-800 hover:text-amber-400 disabled:opacity-50 disabled:cursor-not-allowed border border-amber-500/20 bg-amber-500/5"
                 >
                     <Download className="h-4 w-4" />
                     Esporta DOCX
@@ -191,8 +194,8 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
 
                 <button
                     onClick={onNewAnalysis}
-                    disabled={!data}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300 rounded-md hover:bg-slate-800 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed border border-transparent"
+                    disabled={isAnalyzing}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-amber-500 rounded-md hover:bg-slate-800 hover:text-amber-400 disabled:opacity-50 disabled:cursor-not-allowed border border-amber-500/20 bg-amber-500/5"
                 >
                     <FilePlus className="h-4 w-4" />
                     Nuova Analisi

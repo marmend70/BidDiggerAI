@@ -27,8 +27,6 @@ interface LayoutProps {
     onNewAnalysis?: () => void;
     onOpenContact?: () => void;
     onOpenChatAssistant?: () => void;
-    onOpenContact?: () => void;
-    onOpenChatAssistant?: () => void;
     isAdmin?: boolean;
 }
 
@@ -40,8 +38,6 @@ interface SidebarContentProps {
     isAnalyzing?: boolean;
     loadingBatches?: string[];
     onExport: () => void;
-    onNewAnalysis?: () => void;
-    onOpenChatAssistant?: () => void;
     onNewAnalysis?: () => void;
     onOpenChatAssistant?: () => void;
     isAdmin?: boolean;

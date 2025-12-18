@@ -11,7 +11,7 @@ import {
     Menu,
     X,
     Bot,
-    ShieldAlert
+    Zap
 } from 'lucide-react';
 import { Footer } from './Footer';
 import { SECTIONS_MAP, MENU_ORDER, SECTION_BATCH_MAP } from '@/constants';
@@ -27,7 +27,6 @@ interface LayoutProps {
     onNewAnalysis?: () => void;
     onOpenContact?: () => void;
     onOpenChatAssistant?: () => void;
-    isAdmin?: boolean;
 }
 
 interface SidebarContentProps {
@@ -40,10 +39,9 @@ interface SidebarContentProps {
     onExport: () => void;
     onNewAnalysis?: () => void;
     onOpenChatAssistant?: () => void;
-    isAdmin?: boolean;
 }
 
-function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant, isAdmin }: SidebarContentProps) {
+function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant }: SidebarContentProps) {
     return (
         <div className="flex flex-col h-full text-white">
             <div className="p-6 bg-slate-950 shadow-sm z-10">
@@ -69,12 +67,18 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                     const isLoading = batch && loadingBatches.includes(batch);
 
                     // Check if data is available for this section
+                    // Special case for Snapshot: it explicitly depends on other data but doesn't have its own key, 
+                    // so we consider it "hasData" if we have at least partial data (e.g. 3_sintesi) 
+                    // OR simply enable it if overall data is present.
                     const hasData = isSnapshot
                         ? (data && (data['3_sintesi'] || data['6_importi']))
                         : (data && data[sectionId as keyof AnalysisResult]);
 
                     // Disable logic:
-                    const isDisabled = isAnalyzing && (!hasData || isLoading || sectionId === 'faq');
+                    // For Snapshot (isSnapshot), we explicitly force disabled if isAnalyzing is true (user request: active ONLY at end of analysis).
+                    const isDisabled = isSnapshot
+                        ? (isAnalyzing || !hasData) // Snapshot: Disabled if analyzing OR no data
+                        : (isAnalyzing && (!hasData || isLoading || sectionId === 'faq')); // Others: Standard logic
 
                     // Determine if we need a header
                     let header: string | null = null;
@@ -107,6 +111,7 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                     buttonClass += (!isEnabled ? 'opacity-50 grayscale ' : '');
                     buttonClass += (isDisabled ? 'opacity-50 cursor-not-allowed ' : '');
 
+
                     return (
                         <React.Fragment key={sectionId}>
                             {header && (
@@ -131,6 +136,9 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                                 {!isLoading && hasData && !isSnapshot && (
                                     <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                                 )}
+                                {!isLoading && hasData && isSnapshot && (
+                                    <Zap className={`h-3.5 w-3.5 ${isActive ? 'text-white' : 'text-yellow-500'}`} />
+                                )}
                             </button>
                         </React.Fragment>
                     );
@@ -138,30 +146,14 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
             </nav>
 
             <div className="p-4 border-t border-slate-800 space-y-2 bg-slate-950 z-10">
-                {isAdmin && (
-                    <button
-                        onClick={() => !isAnalyzing && onSectionClick?.('admin')}
-                        disabled={isAnalyzing}
-                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors border border-red-900/30 ${isAnalyzing
-                            ? 'opacity-50 cursor-not-allowed text-slate-500 border-slate-800'
-                            : activeSection === 'admin'
-                                ? 'bg-red-900/20 text-red-400 border-red-900/50'
-                                : 'text-red-400 hover:bg-red-900/20 hover:text-red-300'
-                            }`}
-                    >
-                        <ShieldAlert className="h-4 w-4" />
-                        Amministrazione
-                    </button>
-                )}
-
                 <button
                     onClick={() => !isAnalyzing && onSectionClick?.('configurazioni')}
                     disabled={isAnalyzing}
-                    className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors border border-slate-700 ${isAnalyzing
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors border ${isAnalyzing
                         ? 'opacity-50 cursor-not-allowed text-slate-500 border-slate-800'
                         : activeSection === 'configurazioni'
-                            ? 'bg-slate-700 text-white'
-                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                            ? 'bg-amber-500 text-slate-900 border-amber-500' // Active state
+                            : 'text-amber-500 hover:bg-slate-800 hover:text-amber-400 border-amber-500/20 bg-amber-500/5' // Default state (Assistant style)
                         }`}
                 >
                     <Settings className="h-4 w-4" />
@@ -171,15 +163,15 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                 <button
                     onClick={() => !isAnalyzing && onSectionClick?.('archivio')}
                     disabled={isAnalyzing}
-                    className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors border border-slate-700 ${isAnalyzing
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors border ${isAnalyzing
                         ? 'opacity-50 cursor-not-allowed text-slate-500 border-slate-800'
                         : activeSection === 'archivio'
-                            ? 'bg-slate-700 text-white'
-                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                            ? 'bg-amber-500 text-slate-900 border-amber-500' // Active state
+                            : 'text-amber-500 hover:bg-slate-800 hover:text-amber-400 border-amber-500/20 bg-amber-500/5' // Default state (Assistant style)
                         }`}
                 >
                     <Archive className="h-4 w-4" />
-                    Archivio
+                    Bid Digger Dashboard
                 </button>
 
                 <button
@@ -194,7 +186,7 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                 <button
                     onClick={onExport}
                     disabled={!data}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300 rounded-md hover:bg-slate-800 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed border border-transparent"
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-amber-500 rounded-md hover:bg-slate-800 hover:text-amber-400 disabled:opacity-50 disabled:cursor-not-allowed border border-amber-500/20 bg-amber-500/5"
                 >
                     <Download className="h-4 w-4" />
                     Esporta DOCX
@@ -202,8 +194,8 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
 
                 <button
                     onClick={onNewAnalysis}
-                    disabled={!data}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300 rounded-md hover:bg-slate-800 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed border border-transparent"
+                    disabled={isAnalyzing}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-amber-500 rounded-md hover:bg-slate-800 hover:text-amber-400 disabled:opacity-50 disabled:cursor-not-allowed border border-amber-500/20 bg-amber-500/5"
                 >
                     <FilePlus className="h-4 w-4" />
                     Nuova Analisi
@@ -224,7 +216,7 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
 }
 
 export function Layout(props: LayoutProps) {
-    const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onOpenContact, onOpenChatAssistant, isAdmin } = props;
+    const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onOpenContact, onOpenChatAssistant } = props;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
     const handleExport = async () => {
@@ -251,7 +243,6 @@ export function Layout(props: LayoutProps) {
                     onExport={handleExport}
                     onNewAnalysis={props.onNewAnalysis}
                     onOpenChatAssistant={onOpenChatAssistant}
-                    isAdmin={isAdmin}
                 />
             </aside>
 
@@ -307,7 +298,6 @@ export function Layout(props: LayoutProps) {
                                 onOpenChatAssistant?.();
                                 setIsMobileMenuOpen(false);
                             }}
-                            isAdmin={isAdmin}
                         />
                     </div>
                 </div>

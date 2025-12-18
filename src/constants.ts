@@ -13,8 +13,8 @@ import {
     Info,
     HelpCircle,
     ClipboardCheck,
-    Zap,
-    Briefcase
+    Briefcase,
+    Zap
 } from 'lucide-react';
 
 export const SECTIONS_MAP: Record<string, { label: string; icon: any; isSpecial?: boolean; isConfig?: boolean; isSnapshot?: boolean }> = {

@@ -1,13 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Trash2, FileText, Download, Search, Loader2, Archive } from 'lucide-react';
-import type { AnalysisResult } from '@/types';
+import type { AnalysisResult, UserPreferences } from '@/types';
 import { SummaryModal } from './SummaryModal';
 import { exportToDocx } from '@/lib/exportUtils';
+import { Document, Packer, Paragraph, Table, TableCell, TableRow, WidthType, TextRun, HeadingLevel, BorderStyle } from 'docx';
+import { saveAs } from 'file-saver';
+import { ArchiveTimeline, type TimelineItem } from './ArchiveTimeline';
+import { User, CheckCircle2, XCircle, Clock, Send } from 'lucide-react'; // Added icons for status visualization
 
 interface ArchivePageProps {
     userId: string;
     onLoadAnalysis: (data: AnalysisResult) => void;
+    userPreferences?: UserPreferences;
 }
 
 interface ArchivedAnalysis {
@@ -17,10 +22,23 @@ interface ArchivedAnalysis {
     result_json: AnalysisResult;
     tenders: {
         title: string;
+        tender_status: string;
+        owner: string;
+
+        numeric_id: number;
+        notes: string;
     };
 }
 
-export function ArchivePage({ userId, onLoadAnalysis }: ArchivePageProps) {
+const TENDER_STATUSES = [
+    'In valutazione',
+    'Decisa: Go',
+    'Decisa: No Go',
+    'Assegnata',
+    'Presentata'
+];
+
+export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: ArchivePageProps) {
     const [analyses, setAnalyses] = useState<ArchivedAnalysis[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedAnalysis, setSelectedAnalysis] = useState<AnalysisResult | null>(null);
@@ -40,10 +58,16 @@ export function ArchivePage({ userId, onLoadAnalysis }: ArchivePageProps) {
           tender_id,
           created_at,
           result_json,
-          tenders!inner (
-            title,
-            user_id
-          )
+            tenders!inner (
+              title,
+              user_id,
+
+              tender_status,
+              owner,
+
+              numeric_id,
+              notes
+            )
         `)
                 .eq('tenders.user_id', userId)
                 .order('created_at', { ascending: false });
@@ -108,6 +132,73 @@ export function ArchivePage({ userId, onLoadAnalysis }: ArchivePageProps) {
         }
     };
 
+    const handleUpdateStatus = async (tenderId: string, newStatus: string) => {
+        try {
+            // Logic check for Owner configuration warning
+            if (newStatus === 'Assegnata') {
+                if (!userPreferences?.owners || userPreferences.owners.length === 0) {
+                    alert("ATTENZIONE: La lista dei Responsabili è vuota. Vai in Configurazioni per aggiungere i nominativi.");
+                    // We allow setting the status, but user will be reminded.
+                }
+            }
+
+            const { error } = await supabase
+                .from('tenders')
+                .update({ tender_status: newStatus })
+                .eq('id', tenderId);
+
+            if (error) throw error;
+
+            setAnalyses(prev => prev.map(a =>
+                a.tender_id === tenderId
+                    ? { ...a, tenders: { ...a.tenders, tender_status: newStatus } }
+                    : a
+            ));
+        } catch (error) {
+            console.error('Error updating status:', error);
+            alert('Errore nell\'aggiornamento dello stato');
+        }
+    };
+
+    const handleUpdateOwner = async (tenderId: string, newOwner: string) => {
+        try {
+            const { error } = await supabase
+                .from('tenders')
+                .update({ owner: newOwner })
+                .eq('id', tenderId);
+
+            if (error) throw error;
+
+            setAnalyses(prev => prev.map(a =>
+                a.tender_id === tenderId
+                    ? { ...a, tenders: { ...a.tenders, owner: newOwner } }
+                    : a
+            ));
+        } catch (error) {
+            console.error('Error updating owner:', error);
+            alert("Errore durante l'assegnazione del responsabile. Riprova.");
+        }
+    };
+
+    const handleUpdateNotes = async (tenderId: string, newNotes: string) => {
+        try {
+            const { error } = await supabase
+                .from('tenders')
+                .update({ notes: newNotes })
+                .eq('id', tenderId);
+
+            if (error) throw error;
+
+            setAnalyses(prev => prev.map(a =>
+                a.tender_id === tenderId
+                    ? { ...a, tenders: { ...a.tenders, notes: newNotes } }
+                    : a
+            ));
+        } catch (error) {
+            console.error('Error updating notes:', error);
+        }
+    };
+
     const handleSummary = (e: React.MouseEvent, analysis: AnalysisResult) => {
         e.stopPropagation();
         setSelectedAnalysis(analysis);
@@ -122,6 +213,7 @@ export function ArchivePage({ userId, onLoadAnalysis }: ArchivePageProps) {
 
     const handleDeleteAll = async () => {
         if (!confirm('ATTENZIONE: Sei sicuro di voler eliminare TUTTE le analisi in archivio? Questa azione è irreversibile e cancellerà tutti i dati.')) return;
+        if (!confirm('Confermi definitivamente l\'eliminazione TOTALE dell\'archivio?')) return;
 
         try {
             // Delete all tenders for this user (cascade deletes analyses)
@@ -136,6 +228,109 @@ export function ArchivePage({ userId, onLoadAnalysis }: ArchivePageProps) {
         } catch (error) {
             console.error('Error deleting all analyses:', error);
             alert('Errore durante l\'eliminazione di tutte le analisi');
+        }
+    };
+
+    const handleDownloadReport = async () => {
+        try {
+            const tableRows = [
+                // Header Row
+                new TableRow({
+                    children: [
+                        new TableCell({
+                            children: [new Paragraph({ children: [new TextRun({ text: "ID Gara", bold: true })] })],
+                            width: { size: 10, type: WidthType.PERCENTAGE },
+                            shading: { fill: "EEEEEE" }
+                        }),
+                        new TableCell({
+                            children: [new Paragraph({ children: [new TextRun({ text: "Oggetto", bold: true })] })],
+                            width: { size: 30, type: WidthType.PERCENTAGE },
+                            shading: { fill: "EEEEEE" }
+                        }),
+                        new TableCell({
+                            children: [new Paragraph({ children: [new TextRun({ text: "Ente / Stazione Appaltante", bold: true })] })],
+                            width: { size: 20, type: WidthType.PERCENTAGE },
+                            shading: { fill: "EEEEEE" }
+                        }),
+                        new TableCell({
+                            children: [new Paragraph({ children: [new TextRun({ text: "Scadenza Offerta", bold: true })] })],
+                            width: { size: 15, type: WidthType.PERCENTAGE },
+                            shading: { fill: "EEEEEE" }
+                        }),
+                        new TableCell({
+                            children: [new Paragraph({ children: [new TextRun({ text: "Stato", bold: true })] })],
+                            width: { size: 10, type: WidthType.PERCENTAGE },
+                            shading: { fill: "EEEEEE" }
+                        }),
+                        new TableCell({
+                            children: [new Paragraph({ children: [new TextRun({ text: "Responsabile", bold: true })] })],
+                            width: { size: 15, type: WidthType.PERCENTAGE },
+                            shading: { fill: "EEEEEE" }
+                        }),
+                        new TableCell({
+                            children: [new Paragraph({ children: [new TextRun({ text: "Note", bold: true })] })],
+                            width: { size: 10, type: WidthType.PERCENTAGE },
+                            shading: { fill: "EEEEEE" }
+                        }),
+                    ],
+                }),
+                // Data Rows
+                ...filteredAnalyses.map(a => {
+                    const deadline = getOfferDeadline(a.result_json) || "N/D";
+                    const object = a.result_json['3_sintesi']?.oggetto || a.tenders.title || "N/D";
+                    const entity = a.result_json['3_sintesi']?.stazione_appaltante || a.result_json['3_sintesi']?.ente || "N/D";
+                    const status = a.tenders.tender_status || "In valutazione";
+                    const owner = a.tenders.owner || "-";
+                    const id = a.tenders.numeric_id ? `#${a.tenders.numeric_id}` : "N/D";
+                    const notes = a.tenders.notes || "-";
+
+                    return new TableRow({
+                        children: [
+                            new TableCell({ children: [new Paragraph({ text: String(id) })] }),
+                            new TableCell({ children: [new Paragraph({ text: object })] }),
+                            new TableCell({ children: [new Paragraph({ text: entity })] }),
+                            new TableCell({ children: [new Paragraph({ text: deadline })] }),
+                            new TableCell({ children: [new Paragraph({ text: status })] }),
+                            new TableCell({ children: [new Paragraph({ text: owner })] }),
+                            new TableCell({ children: [new Paragraph({ text: notes })] }),
+                        ],
+                    });
+                })
+            ];
+
+            const doc = new Document({
+                sections: [{
+                    properties: {
+                        page: {
+                            size: {
+                                orientation: "landscape",
+                            },
+                        },
+                    },
+                    children: [
+                        new Paragraph({
+                            text: "Report Sintetico Gare",
+                            heading: HeadingLevel.HEADING_1,
+                            spacing: { after: 200 }
+                        }),
+                        new Paragraph({
+                            text: `Generato il: ${new Date().toLocaleDateString('it-IT')}`,
+                            spacing: { after: 400 }
+                        }),
+                        new Table({
+                            rows: tableRows,
+                            width: { size: 100, type: WidthType.PERCENTAGE },
+                        })
+                    ]
+                }]
+            });
+
+            const blob = await Packer.toBlob(doc);
+            saveAs(blob, `Report_Gare_BidDigger_${new Date().toISOString().split('T')[0]}.docx`);
+
+        } catch (error) {
+            console.error('Error generating report:', error);
+            alert("Errore durante la generazione del report.");
         }
     };
 
@@ -165,19 +360,28 @@ export function ArchivePage({ userId, onLoadAnalysis }: ArchivePageProps) {
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                         <Archive className="h-6 w-6 text-amber-500" />
-                        Archivio Analisi
+                        Bid Digger Dashboard
                     </h1>
                     <p className="text-slate-500 mt-1">Gestisci e consulta le tue analisi passate</p>
                 </div>
                 <div className="flex items-center gap-4">
                     {analyses.length > 0 && (
-                        <button
-                            onClick={handleDeleteAll}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200"
-                        >
-                            <Trash2 className="h-4 w-4" />
-                            Elimina tutto
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handleDownloadReport}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200"
+                            >
+                                <FileText className="h-4 w-4" />
+                                Report Sintetico
+                            </button>
+                            <button
+                                onClick={handleDeleteAll}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                                Elimina tutto
+                            </button>
+                        </div>
                     )}
                     <div className="relative w-64">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -192,6 +396,48 @@ export function ArchivePage({ userId, onLoadAnalysis }: ArchivePageProps) {
                 </div>
             </div>
 
+            {/* TIMELINE SECTION */}
+            {
+                analyses.length > 0 && (
+                    <ArchiveTimeline
+                        items={analyses.map(a => {
+                            const deadline = getOfferDeadline(a.result_json);
+                            let daysRemaining: number | null = null;
+                            if (deadline) {
+                                // Try to parse DD/MM/YYYY or YYYY-MM-DD
+                                const parts = deadline.split(/[\/\-]/);
+                                let d: Date | null = null;
+                                if (parts.length === 3) {
+                                    // Assume DD/MM/YYYY if first part is day (heuristic needed ideally, but usually DD/MM/YYYY in IT)
+                                    // or try standard parsing.
+                                    // Let's simplify: if we can parse it:
+                                    // Typically "DD/MM/YYYY" in Italy
+                                    if (parts[2].length === 4) d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+                                    else d = new Date(deadline);
+                                }
+
+                                if (d && !isNaN(d.getTime())) {
+                                    const diffTime = d.getTime() - new Date().getTime();
+                                    daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                }
+                            }
+
+                            const ente = a.result_json['3_sintesi']?.stazione_appaltante || a.result_json['3_sintesi']?.ente;
+
+                            return {
+                                id: a.id,
+                                numericId: a.tenders?.numeric_id || 0,
+                                title: ente || a.tenders?.title || "Senza titolo", // Changed: prioritize Ente
+                                deadline: deadline,
+                                owner: a.tenders?.owner,
+                                daysRemaining: daysRemaining,
+                                status: a.tenders?.tender_status || 'In valutazione'
+                            };
+                        })}
+                    />
+                )
+            }
+
             <div className="grid gap-4">
                 {filteredAnalyses.length === 0 ? (
                     <div className="text-center py-12 bg-slate-50 rounded-lg border border-dashed border-slate-300">
@@ -200,6 +446,12 @@ export function ArchivePage({ userId, onLoadAnalysis }: ArchivePageProps) {
                 ) : (
                     filteredAnalyses.map((item) => {
                         const offerDeadline = getOfferDeadline(item.result_json);
+                        const ente = item.result_json['3_sintesi']?.stazione_appaltante || item.result_json['3_sintesi']?.ente;
+                        // Use Ente as main title if available, otherwise fallback to filename title
+                        const displayTitle = ente || item.tenders?.title || "Senza titolo";
+                        // If we have an Ente, display the original filename title smaller below
+                        const subTitle = ente ? item.tenders?.title : null;
+
                         return (
                             <div
                                 key={item.id}
@@ -213,8 +465,15 @@ export function ArchivePage({ userId, onLoadAnalysis }: ArchivePageProps) {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex flex-wrap items-center gap-3 mb-2">
                                             <h3 className="font-semibold text-lg text-slate-900 truncate mr-2">
-                                                {item.tenders?.title || "Senza titolo"}
+                                                {displayTitle}
                                             </h3>
+
+                                            {/* Numeric ID Tag (New) */}
+                                            {item.tenders?.numeric_id && (
+                                                <span className="text-xs font-bold px-2 py-1 bg-amber-100 text-amber-800 rounded-md border border-amber-200">
+                                                    #{item.tenders.numeric_id}
+                                                </span>
+                                            )}
 
                                             {/* Analysis Date Tag */}
                                             <span className="text-xs font-medium px-2 py-1 bg-slate-100 text-slate-600 rounded-full border border-slate-200 whitespace-nowrap">
@@ -238,6 +497,67 @@ export function ArchivePage({ userId, onLoadAnalysis }: ArchivePageProps) {
                                         <p className="text-slate-600 text-sm line-clamp-2">
                                             {item.result_json['3_sintesi']?.oggetto || "Nessun oggetto estratto"}
                                         </p>
+
+                                        {subTitle && (
+                                            <p className="text-slate-400 text-xs mt-1 flex items-center gap-1">
+                                                <FileText className="h-3 w-3" />
+                                                {subTitle}
+                                            </p>
+                                        )}
+
+                                        {/* STATUS & OWNER CONTROLS */}
+                                        <div className="mt-4 flex flex-wrap items-center gap-4" onClick={(e) => e.stopPropagation()}>
+                                            {/* Status Selector */}
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm font-medium text-slate-500">Stato:</span>
+                                                <select
+                                                    value={item.tenders?.tender_status || 'In valutazione'}
+                                                    onChange={(e) => handleUpdateStatus(item.tender_id, e.target.value)}
+                                                    className="text-sm border-slate-200 rounded-lg py-1 px-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-slate-50"
+                                                >
+                                                    {TENDER_STATUSES.map(s => (
+                                                        <option key={s} value={s}>{s}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            {/* Owner Input - Visible only if 'Assegnata' */}
+                                            {item.tenders?.tender_status === 'Assegnata' && (
+                                                <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-4 duration-300">
+                                                    <span className="text-sm font-medium text-slate-500">Responsabile:</span>
+                                                    <div className="relative">
+                                                        <User className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+                                                        <select
+                                                            value={item.tenders?.owner || ''}
+                                                            onChange={(e) => handleUpdateOwner(item.tender_id, e.target.value)}
+                                                            className="text-sm pl-8 pr-3 py-1 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent w-48 bg-white appearance-none"
+                                                            onClick={(e) => {
+                                                                if (!userPreferences?.owners || userPreferences.owners.length === 0) {
+                                                                    alert("Nessun responsabile configurato. Vai nella sezione Configurazioni per aggiungere i nominativi.");
+                                                                }
+                                                            }}
+                                                        >
+                                                            <option value="" disabled>Seleziona...</option>
+                                                            {userPreferences?.owners?.map((owner, idx) => (
+                                                                <option key={idx} value={owner}>{owner}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Notes Section */}
+                                        <div className="mt-3">
+                                            <textarea
+                                                className="w-full text-xs text-slate-600 border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-slate-50 resize-y min-h-[60px]"
+                                                placeholder="Aggiungi note personali (max 300 caratteri)..."
+                                                maxLength={300}
+                                                defaultValue={item.tenders?.notes || ''}
+                                                onBlur={(e) => handleUpdateNotes(item.tender_id, e.target.value)}
+                                                onClick={(e) => e.stopPropagation()} // Prevent card click
+                                            />
+                                        </div>
                                     </div>
 
                                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -268,15 +588,17 @@ export function ArchivePage({ userId, onLoadAnalysis }: ArchivePageProps) {
                         );
                     })
                 )}
-            </div>
+            </div >
 
-            {selectedAnalysis && (
-                <SummaryModal
-                    isOpen={!!selectedAnalysis}
-                    onClose={() => setSelectedAnalysis(null)}
-                    data={selectedAnalysis}
-                />
-            )}
-        </div>
+            {
+                selectedAnalysis && (
+                    <SummaryModal
+                        isOpen={!!selectedAnalysis}
+                        onClose={() => setSelectedAnalysis(null)}
+                        data={selectedAnalysis!}
+                    />
+                )
+            }
+        </div >
     );
 }

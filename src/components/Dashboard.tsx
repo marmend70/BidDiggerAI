@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { DeepDive } from './DeepDive';
 import { SECTIONS_MAP, MENU_ORDER, DEEP_DIVE_EXAMPLES, SECTION_BATCH_MAP, AVAILABLE_MODELS } from '@/constants';
+import { supabase } from '@/lib/supabase';
 
 interface DashboardProps {
     data: AnalysisResult;
@@ -67,6 +68,7 @@ const SemanticAnalysisBlock = ({ data, sectionId }: { data?: { semantic_analysis
 
 export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading, userPreferences, onUpdatePreferences, loadingBatches = [] }: DashboardProps) {
     const [editingFaqIndex, setEditingFaqIndex] = React.useState<number | null>(null);
+    const [editingOwnerIndex, setEditingOwnerIndex] = React.useState<number | null>(null);
 
     const renderContent = () => {
         // DEBUG BANNER
@@ -1361,8 +1363,14 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                         <input
                                                             type="checkbox"
                                                             className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                                                            checked={MENU_ORDER.every(id => {
+                                                            checked={MENU_ORDER.filter(id => id !== '0_snapshot').every(id => {
                                                                 const isRequired = id === '14_note_importanti' || id === '17_ambiguita_punti_da_chiarire';
+                                                                // If analysis is disabled for this section, we shouldn't count it towards the "All Selected" state
+                                                                // because we can't select it anyway.
+                                                                const isAnalysisActive = userPreferences?.analysis_sections?.[id] !== false;
+
+                                                                if (!isRequired && !isAnalysisActive) return true; // Ignore disabled sections
+
                                                                 return isRequired || userPreferences?.semantic_analysis_sections?.[id] === true;
                                                             })}
                                                             onChange={(e) => {
@@ -1373,8 +1381,11 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                                 MENU_ORDER.forEach(id => {
                                                                     const isRequired = id === '14_note_importanti' || id === '17_ambiguita_punti_da_chiarire';
                                                                     const isAnalysisActive = userPreferences.analysis_sections?.[id] !== false;
-                                                                    if (!isRequired && isAnalysisActive) {
+                                                                    // Explicitly exclude 0_snapshot from "Select All" logic for Genius Mode
+                                                                    if (!isRequired && isAnalysisActive && id !== '0_snapshot') {
                                                                         newSemantic[id] = checked;
+                                                                    } else if (id === '0_snapshot') {
+                                                                        newSemantic[id] = false; // Always ensure false for snapshot
                                                                     }
                                                                 });
                                                                 onUpdatePreferences({ ...userPreferences, semantic_analysis_sections: newSemantic });
@@ -1388,15 +1399,29 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                         <input
                                                             type="checkbox"
                                                             className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                            checked={MENU_ORDER.every(id => userPreferences?.export_sections?.[id] !== false)}
+                                                            checked={MENU_ORDER.filter(id => id !== '0_snapshot').every(id => {
+                                                                // If analysis is disabled (and not FAQ), ignore this section in the check
+                                                                if (id !== 'faq' && userPreferences?.analysis_sections?.[id] === false) return true;
+
+                                                                return userPreferences?.export_sections?.[id] !== false;
+                                                            })}
                                                             onChange={(e) => {
                                                                 if (!onUpdatePreferences || !userPreferences) return;
                                                                 const checked = e.target.checked;
                                                                 const newExport = { ...userPreferences.export_sections };
 
                                                                 MENU_ORDER.forEach(id => {
-                                                                    if (id !== 'faq' && userPreferences.analysis_sections?.[id] !== false) {
-                                                                        newExport[id] = checked;
+                                                                    // Check if item is eligible for export toggling:
+                                                                    // 1. It must NOT be snapshot (handled separately as always false)
+                                                                    // 2. Either it is FAQ (always valid) OR it has analysis enabled.
+                                                                    const canUpdate = id === 'faq' || userPreferences.analysis_sections?.[id] !== false;
+
+                                                                    if (canUpdate) {
+                                                                        if (id === '0_snapshot') {
+                                                                            newExport[id] = false;
+                                                                        } else {
+                                                                            newExport[id] = checked;
+                                                                        }
                                                                     }
                                                                 });
                                                                 onUpdatePreferences({ ...userPreferences, export_sections: newExport });
@@ -1437,9 +1462,18 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                             </TableRow>
                                                         )}
                                                         <TableRow>
-                                                            <TableCell className="font-medium flex items-center gap-2">
-                                                                {React.createElement(section.icon, { className: "h-4 w-4 text-slate-500" })}
-                                                                {section.label}
+                                                            <TableCell className="font-medium">
+                                                                <div className="flex flex-col">
+                                                                    <div className="flex items-center gap-2">
+                                                                        {React.createElement(section.icon, { className: "h-4 w-4 text-slate-500" })}
+                                                                        {section.label}
+                                                                    </div>
+                                                                    {sectionId === '0_snapshot' && (
+                                                                        <p className="text-[10px] text-amber-600 mt-1 ml-6 leading-tight max-w-[250px]">
+                                                                            * Se attivata, saranno avviate anche le analisi delle sezioni necessarie per il quadro sintetico.
+                                                                        </p>
+                                                                    )}
+                                                                </div>
                                                             </TableCell>
                                                             <TableCell className="text-center">
                                                                 <input
@@ -1496,7 +1530,8 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                                         !isAnalysisEnabled ||
                                                                         isFaq ||
                                                                         sectionId === '14_note_importanti' ||
-                                                                        sectionId === '17_ambiguita_punti_da_chiarire'
+                                                                        sectionId === '17_ambiguita_punti_da_chiarire' ||
+                                                                        sectionId === '0_snapshot'
                                                                     }
                                                                     onChange={(e) => {
                                                                         if (sectionId === '14_note_importanti' || sectionId === '17_ambiguita_punti_da_chiarire') return;
@@ -1518,7 +1553,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={isExportEnabled}
-                                                                    disabled={(!isAnalysisEnabled && !isFaq)}
+                                                                    disabled={(!isAnalysisEnabled && !isFaq) || sectionId === '0_snapshot'}
                                                                     onChange={(e) => {
                                                                         if (onUpdatePreferences && userPreferences) {
                                                                             onUpdatePreferences({
@@ -1647,6 +1682,174 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </div>
                             </CardContent>
                         </Card >
+
+                        {/* Data Retention Configuration */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Clock className="h-5 w-5 text-orange-500" />
+                                    Data Retention (GDPR)
+                                </CardTitle>
+                                <CardDescription>Gestisci il periodo di conservazione dei documenti caricati.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="font-medium text-slate-700">Conservazione Documenti (giorni)</span>
+                                        <span className="font-bold text-slate-900 bg-slate-100 px-2 py-1 rounded">
+                                            {userPreferences?.retention_days || 60} giorni
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="1"
+                                        max="60"
+                                        step="1"
+                                        value={userPreferences?.retention_days || 60}
+                                        onChange={(e) => {
+                                            if (onUpdatePreferences && userPreferences) {
+                                                onUpdatePreferences({
+                                                    ...userPreferences,
+                                                    retention_days: parseInt(e.target.value)
+                                                });
+                                            }
+                                        }}
+                                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                                    />
+                                    <p className="text-xs text-slate-500">
+                                        Nota: I documenti salvati nello storage non possono essere conservati per oltre 60 giorni.
+                                        Verranno eliminati <span className="font-semibold text-orange-600">AUTOMATICAMENTE</span> dall'archivio e dal database dopo il periodo selezionato (calcolato dalla data di caricamento).
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Owners Management - Gestione Responsabili */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Gestione Responsabili</CardTitle>
+                                <CardDescription>Aggiungi o rimuovi i nominativi dei responsabili di gara (per stato "Assegnata").</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        id="new-owner"
+                                        placeholder="Nuovo responsabile..."
+                                        className="flex-1 px-3 py-2 border rounded-md text-sm"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                const input = e.currentTarget;
+                                                const val = input.value.trim();
+                                                if (val && onUpdatePreferences && userPreferences) {
+                                                    const currentOwners = userPreferences.owners || [];
+                                                    onUpdatePreferences({
+                                                        ...userPreferences,
+                                                        owners: [...currentOwners, val]
+                                                    });
+                                                    input.value = '';
+                                                }
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700"
+                                        onClick={() => {
+                                            const input = document.getElementById('new-owner') as HTMLInputElement;
+                                            const val = input.value.trim();
+                                            if (val && onUpdatePreferences && userPreferences) {
+                                                const currentOwners = userPreferences.owners || [];
+                                                onUpdatePreferences({
+                                                    ...userPreferences,
+                                                    owners: [...currentOwners, val]
+                                                });
+                                                input.value = '';
+                                            }
+                                        }}
+                                    >
+                                        Aggiungi
+                                    </button>
+                                </div>
+                                <div className="space-y-2">
+                                    {(userPreferences?.owners || []).length === 0 && (
+                                        <p className="text-sm text-slate-500 italic">Nessun responsabile configurato.</p>
+                                    )}
+                                    {(userPreferences?.owners || []).map((owner, i) => (
+                                        <div key={i} className="flex items-center justify-between bg-slate-50 p-3 rounded border">
+                                            {editingOwnerIndex === i ? (
+                                                <input
+                                                    type="text"
+                                                    defaultValue={owner}
+                                                    className="flex-1 px-2 py-1 border rounded text-sm mr-2"
+                                                    autoFocus
+                                                    onKeyDown={async (e) => {
+                                                        if (e.key === 'Enter') {
+                                                            const newVal = e.currentTarget.value.trim();
+                                                            if (newVal && newVal !== owner && onUpdatePreferences && userPreferences) {
+                                                                // 1. Update Preferences
+                                                                const newOwners = [...(userPreferences.owners || [])];
+                                                                newOwners[i] = newVal;
+                                                                onUpdatePreferences({
+                                                                    ...userPreferences,
+                                                                    owners: newOwners
+                                                                });
+
+                                                                // 2. Propagate to DB (Tenders)
+                                                                try {
+                                                                    const { error } = await supabase
+                                                                        .from('tenders')
+                                                                        .update({ owner: newVal })
+                                                                        .eq('owner', owner);
+
+                                                                    if (error) throw error;
+                                                                    console.log(`Updated owner from '${owner}' to '${newVal}'`);
+                                                                } catch (err) {
+                                                                    console.error("Failed to propagate owner rename:", err);
+                                                                    alert("Attenzione: Il nome è stato aggiornato nelle impostazioni, ma potrebbe non essere stato salvato su tutte le gare in archivio.");
+                                                                }
+                                                                setEditingOwnerIndex(null);
+                                                            } else if (newVal === owner) {
+                                                                setEditingOwnerIndex(null);
+                                                            }
+                                                        } else if (e.key === 'Escape') {
+                                                            setEditingOwnerIndex(null);
+                                                        }
+                                                    }}
+                                                    onBlur={() => setEditingOwnerIndex(null)}
+                                                />
+                                            ) : (
+                                                <span className="text-sm text-slate-700 flex-1">{owner}</span>
+                                            )}
+
+                                            <div className="flex gap-2">
+                                                <button
+                                                    className="text-blue-500 hover:text-blue-700"
+                                                    onClick={() => setEditingOwnerIndex(i)}
+                                                >
+                                                    <FileCode className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    className="text-red-500 hover:text-red-700"
+                                                    onClick={() => {
+                                                        if (onUpdatePreferences && userPreferences) {
+                                                            const newOwners = [...(userPreferences.owners || [])];
+                                                            newOwners.splice(i, 1);
+                                                            onUpdatePreferences({
+                                                                ...userPreferences,
+                                                                owners: newOwners
+                                                            });
+                                                        }
+                                                    }}
+                                                >
+                                                    <Ban className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+
                     </div >
                 );
 

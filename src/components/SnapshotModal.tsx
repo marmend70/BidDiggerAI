@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { X, Zap, Building2, Calendar, Coins, Clock, ScrollText } from 'lucide-react';
+import { X, Zap, Building2, DollarSign, Clock, ScrollText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { AnalysisResult } from '@/types';
@@ -26,24 +27,22 @@ export const SnapshotModal: React.FC<SnapshotModalProps> = ({ isOpen, onClose, d
     const hasManpowerInfo = manpowerCost > 0 && baseAmount > 0;
     const manpowerPercentage = hasManpowerInfo ? ((manpowerCost / baseAmount) * 100).toFixed(2) : null;
 
-    // Helper: Find Deadline
+    // Helper: Find Deadline (Termine Presentazione Offerte)
     const deadlineEvent = snapshotScadenze?.timeline?.find(t =>
-        t && t.evento && (
-            t.evento.toLowerCase().includes('presentazione') ||
-            t.evento.toLowerCase().includes('scadenza') ||
-            t.evento.toLowerCase().includes('termine')
-        )
+        t.evento.toLowerCase().includes('presentazione') ||
+        t.evento.toLowerCase().includes('scadenza') ||
+        t.evento.toLowerCase().includes('termine')
     );
     const deadlineDate = deadlineEvent?.data || snapshotScadenze?.timeline?.[0]?.data;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-hidden animate-in fade-in duration-200">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl relative flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl relative animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-t-xl flex-shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-white/80 rounded-lg shadow-sm border border-yellow-100">
-                            <Zap className="h-6 w-6 text-yellow-500" />
+                            <Zap className="h-6 w-6 text-yellow-500 fill-yellow-500" />
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-slate-900">Snapshot di Gara</h2>
@@ -54,7 +53,7 @@ export const SnapshotModal: React.FC<SnapshotModalProps> = ({ isOpen, onClose, d
                         onClick={onClose}
                         className="p-2 hover:bg-white/50 rounded-full transition-colors text-slate-500 hover:text-slate-700"
                     >
-                        <X className="h-5 w-5" />
+                        <X className="w-6 h-6" />
                     </button>
                 </div>
 
@@ -101,7 +100,7 @@ export const SnapshotModal: React.FC<SnapshotModalProps> = ({ isOpen, onClose, d
                         <Card className="shadow-sm">
                             <CardHeader className="pb-4 border-b bg-slate-50/50">
                                 <CardTitle className="flex items-center gap-2 text-slate-800 text-lg">
-                                    <Coins className="h-5 w-5 text-amber-500" />
+                                    <DollarSign className="h-5 w-5 text-green-600" />
                                     Valore Economico
                                 </CardTitle>
                             </CardHeader>
@@ -149,7 +148,7 @@ export const SnapshotModal: React.FC<SnapshotModalProps> = ({ isOpen, onClose, d
                             <Card className="shadow-sm">
                                 <CardHeader className="pb-4 border-b bg-slate-50/50">
                                     <CardTitle className="flex items-center gap-2 text-slate-800 text-lg">
-                                        <Calendar className="h-5 w-5 text-blue-500" />
+                                        <Clock className="h-5 w-5 text-blue-600" />
                                         Durata e Tempistiche
                                     </CardTitle>
                                 </CardHeader>
@@ -174,7 +173,7 @@ export const SnapshotModal: React.FC<SnapshotModalProps> = ({ isOpen, onClose, d
                             <Card className="shadow-sm border-l-4 border-l-orange-500">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="flex items-center gap-2 text-slate-800 text-lg">
-                                        <ScrollText className="h-5 w-5 text-orange-500" />
+                                        <ScrollText className="h-5 w-5 text-orange-600" />
                                         CCNL Applicato
                                     </CardTitle>
                                 </CardHeader>

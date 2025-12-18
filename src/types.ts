@@ -202,6 +202,8 @@ export interface UserPreferences {
     semantic_analysis_sections: {
         [key: string]: boolean;
     };
+    owners?: string[];
+    retention_days?: number;
 }
 
 export interface UserProfile {
@@ -210,6 +212,5 @@ export interface UserProfile {
     full_name?: string;
     credits: number; // Added for credit system
     preferences?: UserPreferences;
-    role?: string; // Professional role (e.g. Bid Manager)
-    app_role?: string; // System role (e.g. admin)
+    role?: string; // Added for admin functionality
 }

@@ -3,8 +3,8 @@ import { Layout } from '@/components/Layout';
 import { Upload } from '@/components/Upload';
 import { Dashboard } from '@/components/Dashboard';
 import { Login } from '@/components/Login';
-import { ArchivePage } from '@/components/ArchivePage';
 import { AdminPage } from '@/components/AdminPage';
+import { ArchivePage } from '@/components/ArchivePage';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,8 +37,11 @@ const DEFAULT_PREFERENCES: UserPreferences = {
     "Descrivimi lo scenario dei sistemi tecnologici, infrastrutturale software, sistemi informatici",
     "Approfondisci il fabbisogno del personale impiegato in termini di giorni e/o ore richieste",
     "Quali sono le principali figure di responsabilità, gestione, coordinamento?",
+    "Quali sono le principali figure di responsabilità, gestione, coordinamento?",
     "Quali sono i report e la documentazione di rendicontazione periodica da produrre nel corso del servizio a cura del fornitore?"
   ],
+  owners: [],
+  retention_days: 60,
   export_sections: {
     "1_requisiti_partecipazione": true,
     "3_sintesi": true,
@@ -57,7 +60,8 @@ const DEFAULT_PREFERENCES: UserPreferences = {
     "17_ambiguita_punti_da_chiarire": true,
     "15_remunerazione": true,
     "16_sla_penali": true,
-    "faq": true
+    "faq": true,
+    "0_snapshot": false
   },
   analysis_sections: {
     "1_requisiti_partecipazione": true,
@@ -76,7 +80,9 @@ const DEFAULT_PREFERENCES: UserPreferences = {
     "14_note_importanti": true,
     "17_ambiguita_punti_da_chiarire": true,
     "15_remunerazione": true,
-    "16_sla_penali": true
+    "16_sla_penali": true,
+    "faq": true,
+    "0_snapshot": true
   },
   semantic_analysis_sections: {
     "1_requisiti_partecipazione": false,
@@ -95,7 +101,9 @@ const DEFAULT_PREFERENCES: UserPreferences = {
     "14_note_importanti": false,
     "17_ambiguita_punti_da_chiarire": false,
     "15_remunerazione": false,
-    "16_sla_penali": false
+    "16_sla_penali": false,
+    "faq": true,
+    "0_snapshot": false
   }
 };
 
@@ -116,7 +124,6 @@ function App() {
   const [userPreferences, setUserPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
 
   // Trial & Logic State
-  const [userRole, setUserRole] = useState<string | null>(null);
   const [userPlan, setUserPlan] = useState<'trial' | 'pro'>('trial');
   const [userCredits, setUserCredits] = useState<number>(0); // Credits state
   const [tenderCount, setTenderCount] = useState(0);
@@ -128,11 +135,44 @@ function App() {
   const [pendingRetryParams, setPendingRetryParams] = useState<{ sectionId: string, question: string } | null>(null);
   const [showChatAssistant, setShowChatAssistant] = useState(false);
 
+  // Cleanup Expired Tenders Function
+  const cleanupExpiredTenders = async (userId: string, retentionDays: number) => {
+    try {
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() - retentionDays);
+
+      const { error, count } = await supabase
+        .from('tenders')
+        .delete({ count: 'exact' })
+        .eq('user_id', userId)
+        .lt('created_at', expirationDate.toISOString());
+
+      if (error) {
+        console.error("Cleanup failed:", error);
+      } else if (count && count > 0) {
+        console.log(`[Retention Policy] Auto-deleted ${count} expired tenders (older than ${retentionDays} days).`);
+      }
+    } catch (e) {
+      console.error("Cleanup exception:", e);
+    }
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
         fetchUserData(session.user.id);
+        // Load prefs to get retention policy for immediate cleanup
+        supabase
+          .from('user_profiles') // Note: Make sure table name matches your schema, usually 'user_profiles' or 'profiles'
+          .select('preferences')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data }) => {
+            const prefs = data?.preferences as UserPreferences;
+            const retention = prefs?.retention_days || 60;
+            cleanupExpiredTenders(session.user.id, retention);
+          });
       }
     });
 
@@ -153,14 +193,19 @@ function App() {
       // 1. Fetch Preferences & Plan
       const { data: profile } = await supabase
         .from('profiles')
-        .select('preferences, plan_type, credits, app_role')
+        .select('preferences, plan_type, credits')
         .eq('id', userId)
         .single();
 
       if (profile) {
+        console.log("Fetched Profile:", profile); // Debug
         if (profile.plan_type) setUserPlan(profile.plan_type as 'trial' | 'pro');
-        if (profile.app_role) setUserRole(profile.app_role);
-        if (typeof profile.credits === 'number') setUserCredits(profile.credits);
+        if (typeof profile.credits === 'number') {
+          console.log("Setting credits to:", profile.credits); // Debug
+          setUserCredits(profile.credits);
+        } else {
+          console.warn("Credits not found or not a number:", profile.credits);
+        }
 
         if (profile.preferences) {
           setUserPreferences({
@@ -565,7 +610,7 @@ function App() {
       const req = Object.keys(currentPreferences.analysis_sections).filter(k => currentPreferences.analysis_sections[k]);
       const got = Object.keys(finalJson);
       // Exclude 'faq' as it's not a standard analysis section
-      const missing = req.filter(k => k !== 'faq' && !got.includes(k) && !finalJson[k]); // Check both existence and truthiness
+      const missing = req.filter(k => k !== 'faq' && k !== '0_snapshot' && !got.includes(k) && !finalJson[k]); // Check both existence and truthiness
 
       if (missing.length > 0) {
         console.warn("Analysis incomplete. Missing:", missing);
@@ -639,6 +684,27 @@ function App() {
 
   const startAnalysis = async (files: File[], structuredModelId: string, semanticModelId: string) => {
     if (!session?.user) return;
+
+    // RULE: If '0_snapshot' is active, we MUST ensure its dependencies are active.
+    // Dependencies: 3_sintesi, 5_scadenze, 6_importi, 7_durata, 8_ccnl
+    if (userPreferences.analysis_sections['0_snapshot']) {
+      const requiredSections = ['3_sintesi', '5_scadenze', '6_importi', '7_durata', '8_ccnl'];
+      const missingDeps = requiredSections.filter(k => !userPreferences.analysis_sections[k]);
+
+      if (missingDeps.length > 0) {
+        console.log("Auto-enabling dependencies for Snapshot:", missingDeps);
+        setUserPreferences(prev => {
+          const updated = { ...prev.analysis_sections };
+          missingDeps.forEach(k => updated[k] = true);
+          return { ...prev, analysis_sections: updated };
+        });
+        // Note: The state update above is async, but for the immediate 'startAnalysis' run
+        // we need to patch the preferences object used locally or rely on the updated state if we re-read it.
+        // However, userPreferences is a const in this closure. 
+        // We should patch it locally for the current execution flow.
+        missingDeps.forEach(k => userPreferences.analysis_sections[k] = true);
+      }
+    }
     setIsUploading(true);
     setElapsedTime(0);
     setProgressMessage(`Avvio analisi (Standard: ${structuredModelId})...`);
@@ -997,7 +1063,6 @@ function App() {
       onNewAnalysis={handleNewAnalysis}
       onOpenContact={() => setContactModalOpen(true)}
       onOpenChatAssistant={() => setShowChatAssistant(true)}
-      isAdmin={userRole === 'admin'}
     >
       <UpgradeModal
         isOpen={showUpgradeModal}
@@ -1084,7 +1149,7 @@ function App() {
         defaultStructuredModelId={userPreferences.structured_model}
         defaultSemanticModelId={userPreferences.semantic_model}
       />
-      {!analysisData && activeSection !== 'configurazioni' && activeSection !== 'archivio' && activeSection !== 'admin' ? (
+      {!analysisData && activeSection !== 'configurazioni' && activeSection !== 'archivio' ? (
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-center mb-8 relative">
             <div className="inline-block mb-4 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-full text-sm font-semibold border border-indigo-100 flex items-center gap-2">
@@ -1148,13 +1213,12 @@ function App() {
       ) : activeSection === 'archivio' ? (
         <ArchivePage
           userId={session.user.id}
+          userPreferences={userPreferences}
           onLoadAnalysis={(data) => {
             setAnalysisData(data);
             setActiveSection('3_sintesi');
           }}
         />
-      ) : activeSection === 'admin' ? (
-        <AdminPage />
       ) : (
         <Dashboard
           data={analysisData || {} as AnalysisResult}

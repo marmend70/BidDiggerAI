@@ -158,27 +158,7 @@ function App() {
     }
   };
 
-  // Cleanup Expired Tenders Function
-  const cleanupExpiredTenders = async (userId: string, retentionDays: number) => {
-    try {
-      const expirationDate = new Date();
-      expirationDate.setDate(expirationDate.getDate() - retentionDays);
 
-      const { error, count } = await supabase
-        .from('tenders')
-        .delete({ count: 'exact' })
-        .eq('user_id', userId)
-        .lt('created_at', expirationDate.toISOString());
-
-      if (error) {
-        console.error("Cleanup failed:", error);
-      } else if (count && count > 0) {
-        console.log(`[Retention Policy] Auto-deleted ${count} expired tenders (older than ${retentionDays} days).`);
-      }
-    } catch (e) {
-      console.error("Cleanup exception:", e);
-    }
-  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {

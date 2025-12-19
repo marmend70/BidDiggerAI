@@ -221,6 +221,9 @@ export interface UserPreferences {
         [key: string]: boolean;
     };
     owners?: string[];
+    owners_tech?: string[];
+    owners_admin?: string[];
+    owners_comm?: string[];
     retention_days?: number;
     sector?: string; // NEW
 }

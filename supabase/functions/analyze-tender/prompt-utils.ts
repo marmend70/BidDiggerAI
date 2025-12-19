@@ -33,12 +33,19 @@ REGOLE GENERALI:
 
   if (activeSemanticKeys.length > 0) {
     prompts.push(`
-    *** ATTENZIONE: GENIUS MODE(ANALISI SEMANTICA) ATTIVO PER LE SEZIONI: ${activeSemanticKeys.join(', ')} ***
+    *** ATTENZIONE: GENIUS MODE (ANALISI SEMANTICA) ATTIVO PER LE SEZIONI: ${activeSemanticKeys.join(', ')} ***
 
-      PER QUESTE SPECIFICHE SEZIONI, IL TUO OUTPUT JSON DEVE INCLUDERE(Allo stesso livello di "structured" e "analysis") I SEGUENTI CAMPI:
+      PER QUESTE SPECIFICHE SEZIONI, IL TUO OUTPUT JSON DEVE INCLUDERE (Allo stesso livello di "structured" e "analysis") I SEGUENTI CAMPI:
   1. "semantic_analysis": "Analisi critica approfondita. Vai dritto al punto: evidenzia insidie, opportunità nascoste e consigli strategici senza premesse."
   2. "rischi_rilevati": [{ "rischio": "...", "livello": "ALTO/MEDIO/BASSO", "fonte": "..." }]
-  3. "suggerimenti": [{ "azione": "Suggerimento condizionale (es. 'Si suggerisce di...')", "motivazione": "Perché è importante", "target": "Rischio o Opportunità collegata" }]
+  3. "suggerimenti": [{ "azione": "Suggerimento Operativo Concreto", "motivazione": "Razionale operativo (Perché è importante)", "target": "Rischio/Opportunità" }]
+
+  GUIDA AI SUGGERIMENTI OPERATIVI (array "suggerimenti"):
+  - Ogni suggerimento deve essere PRATICO, CONCRETO e ARGOMENTATO (2-3 righe).
+  - Spiega il "PERCHÉ" operativo e "COME" applicarlo concretamente.
+  - Includi esempi pratici o casi tipici.
+  - Evita frasi vaghe, slogan o ovvietà.
+  - Se non puoi essere concreto, NON generare il suggerimento.
     `);
   }
 
@@ -383,8 +390,15 @@ JSON SCHEMA:
   ${semanticPreferences['12_offerta_tecnica'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['12_offerta_tecnica']}` : ''}
   ${(sector && sector !== 'Generale') ? `
   *** CONTESTUALIZZAZIONE SETTORIALE ATTIVA: ${sector} ***
-  ISTRUZIONI AGGIUNTIVE: Genera "suggerimenti_progettuali_offerta" (Array) seguendo lo schema.
-  - Proponi modelli di servizio, assetti organizzativi e soluzioni tecniche coerenti con il settore "${sector}".
+  ISTRUZIONI "suggerimenti_progettuali_offerta":
+  Genera suggerimenti progettuali orientati al punteggio e coerenti con il settore "${sector}".
+  
+  GUIDA AI SUGGERIMENTI PROGETTUALI:
+  - Ogni suggerimento deve essere di 2-3 righe discorsive.
+  - Spiega il RATIONALE PROGETTUALE e l'IMPATTO SUL PUNTEGGIO.
+  - Indica come tradurlo in contenuto di offerta tecnica (concreta).
+  - Includi esempi applicativi e collegamenti ai criteri di valutazione.
+  - Evita slogan o indicazioni commerciali non tecniche.
   - Distingui tra Baseline (coerente) e Value Added (migliorativa).
   ` : ''}
 JSON SCHEMA:
@@ -437,9 +451,15 @@ JSON SCHEMA:
   ${semanticPreferences['10_punteggi'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['10_punteggi']}` : ''}
   ${(sector && sector !== 'Generale') ? `
   *** CONTESTUALIZZAZIONE SETTORIALE ATTIVA: ${sector} ***
-  ISTRUZIONI AGGIUNTIVE: Genera "suggerimenti_progettuali_punteggio" (Array) seguendo lo schema.
-  - Interpreta i criteri di valutazione come leve progettuali.
-  - Individua possibili scelte coerenti con il settore "${sector}".
+  ISTRUZIONI "suggerimenti_progettuali_punteggio":
+  Genera suggerimenti per massimizzare il punteggio tecnico, coerenti con il settore "${sector}".
+
+  GUIDA AI SUGGERIMENTI PROGETTUALI (Score-Oriented):
+  - Ogni suggerimento deve essere di 2-3 righe discorsive.
+  - Spiega la SCELTA PROGETTUALE e il TRADE-OFF per massimizzare i punti.
+  - Collega esplicitamente la scelta al criterio valutativo (es. Innovazione, Organizzazione, Qualità).
+  - Indica cosa potrebbe penalizzare il punteggio.
+  - Evita generalizzazioni. Sii specifico sulle leve di punteggio.
   ` : ''}
 JSON SCHEMA:
   "10_punteggi": {

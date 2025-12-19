@@ -24,6 +24,10 @@ interface ArchivedAnalysis {
         title: string;
         tender_status: string;
         owner: string;
+        owner_tech?: string;
+        owner_admin?: string;
+        owner_comm?: string;
+        status_updated_at?: string;
 
         numeric_id: number;
         notes: string;
@@ -64,6 +68,10 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
 
               tender_status,
               owner,
+              owner_tech,
+              owner_admin,
+              owner_comm,
+              status_updated_at,
 
               numeric_id,
               notes
@@ -134,24 +142,20 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
 
     const handleUpdateStatus = async (tenderId: string, newStatus: string) => {
         try {
-            // Logic check for Owner configuration warning
-            if (newStatus === 'Assegnata') {
-                if (!userPreferences?.owners || userPreferences.owners.length === 0) {
-                    alert("ATTENZIONE: La lista dei Responsabili è vuota. Vai in Configurazioni per aggiungere i nominativi.");
-                    // We allow setting the status, but user will be reminded.
-                }
-            }
-
+            const now = new Date().toISOString();
             const { error } = await supabase
                 .from('tenders')
-                .update({ tender_status: newStatus })
+                .update({
+                    tender_status: newStatus,
+                    status_updated_at: now
+                })
                 .eq('id', tenderId);
 
             if (error) throw error;
 
             setAnalyses(prev => prev.map(a =>
                 a.tender_id === tenderId
-                    ? { ...a, tenders: { ...a.tenders, tender_status: newStatus } }
+                    ? { ...a, tenders: { ...a.tenders, tender_status: newStatus, status_updated_at: now } }
                     : a
             ));
         } catch (error) {
@@ -160,23 +164,23 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
         }
     };
 
-    const handleUpdateOwner = async (tenderId: string, newOwner: string) => {
+    const handleUpdateOwnerField = async (tenderId: string, field: 'owner_tech' | 'owner_admin' | 'owner_comm', newValue: string) => {
         try {
             const { error } = await supabase
                 .from('tenders')
-                .update({ owner: newOwner })
+                .update({ [field]: newValue })
                 .eq('id', tenderId);
 
             if (error) throw error;
 
             setAnalyses(prev => prev.map(a =>
                 a.tender_id === tenderId
-                    ? { ...a, tenders: { ...a.tenders, owner: newOwner } }
+                    ? { ...a, tenders: { ...a.tenders, [field]: newValue } }
                     : a
             ));
         } catch (error) {
-            console.error('Error updating owner:', error);
-            alert("Errore durante l'assegnazione del responsabile. Riprova.");
+            console.error(`Error updating ${field}:`, error);
+            alert("Errore durante l'assegnazione. Riprova.");
         }
     };
 
@@ -653,41 +657,76 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
                                         )}
 
                                         {/* STATUS & OWNER CONTROLS */}
-                                        <div className="mt-4 flex flex-wrap items-center gap-4" onClick={(e) => e.stopPropagation()}>
-                                            {/* Status Selector */}
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm font-medium text-slate-500">Stato:</span>
-                                                <select
-                                                    value={item.tenders?.tender_status || 'In valutazione'}
-                                                    onChange={(e) => handleUpdateStatus(item.tender_id, e.target.value)}
-                                                    className="text-sm border-slate-200 rounded-lg py-1 px-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-slate-50"
-                                                >
-                                                    {TENDER_STATUSES.map(s => (
-                                                        <option key={s} value={s}>{s}</option>
-                                                    ))}
-                                                </select>
+                                        <div className="mt-4 space-y-3" onClick={(e) => e.stopPropagation()}>
+                                            {/* Status Selector & Timestamp */}
+                                            <div className="flex flex-wrap items-center gap-3">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-medium text-slate-500">Stato:</span>
+                                                    <select
+                                                        value={item.tenders?.tender_status || 'In valutazione'}
+                                                        onChange={(e) => handleUpdateStatus(item.tender_id, e.target.value)}
+                                                        className="text-sm border-slate-200 rounded-lg py-1 px-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-slate-50"
+                                                    >
+                                                        {TENDER_STATUSES.map(s => (
+                                                            <option key={s} value={s}>{s}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                {/* Status Timestamp Tag */}
+                                                {item.tenders?.status_updated_at && (
+                                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-slate-100 rounded text-xs text-slate-500 border border-slate-200">
+                                                        <Clock className="w-3 h-3" />
+                                                        <span>{item.tenders.tender_status.split(':')[0]} il: {new Date(item.tenders.status_updated_at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                                                    </div>
+                                                )}
                                             </div>
 
-                                            {/* Owner Input - Visible only if 'Assegnata' */}
+                                            {/* Owner Inputs - Visible only if 'Assegnata' */}
                                             {item.tenders?.tender_status === 'Assegnata' && (
-                                                <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-4 duration-300">
-                                                    <span className="text-sm font-medium text-slate-500">Responsabile:</span>
-                                                    <div className="relative">
-                                                        <User className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 animate-in fade-in slide-in-from-top-2 duration-300 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                                    {/* Technical Owner */}
+                                                    <div className="space-y-1">
+                                                        <label className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                                                            <User className="h-3 w-3" /> Resp. Tecnico
+                                                        </label>
                                                         <select
-                                                            value={item.tenders?.owner || ''}
-                                                            onChange={(e) => handleUpdateOwner(item.tender_id, e.target.value)}
-                                                            className="text-sm pl-8 pr-3 py-1 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent w-48 bg-white appearance-none"
-                                                            onClick={(e) => {
-                                                                if (!userPreferences?.owners || userPreferences.owners.length === 0) {
-                                                                    alert("Nessun responsabile configurato. Vai nella sezione Configurazioni per aggiungere i nominativi.");
-                                                                }
-                                                            }}
+                                                            value={item.tenders?.owner_tech || ''}
+                                                            onChange={(e) => handleUpdateOwnerField(item.tender_id, 'owner_tech', e.target.value)}
+                                                            className="w-full text-sm py-1 px-2 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                                                         >
-                                                            <option value="">-- Nessun Responsabile --</option>
-                                                            {userPreferences?.owners?.map((owner, idx) => (
-                                                                <option key={idx} value={owner}>{owner}</option>
-                                                            ))}
+                                                            <option value="">-- Seleziona --</option>
+                                                            {userPreferences?.owners_tech?.map((o, i) => <option key={i} value={o}>{o}</option>)}
+                                                        </select>
+                                                    </div>
+
+                                                    {/* Administrative Owner */}
+                                                    <div className="space-y-1">
+                                                        <label className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                                                            <User className="h-3 w-3" /> Resp. Amministrativo
+                                                        </label>
+                                                        <select
+                                                            value={item.tenders?.owner_admin || ''}
+                                                            onChange={(e) => handleUpdateOwnerField(item.tender_id, 'owner_admin', e.target.value)}
+                                                            className="w-full text-sm py-1 px-2 border border-slate-200 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                                                        >
+                                                            <option value="">-- Seleziona --</option>
+                                                            {userPreferences?.owners_admin?.map((o, i) => <option key={i} value={o}>{o}</option>)}
+                                                        </select>
+                                                    </div>
+
+                                                    {/* Commercial Owner */}
+                                                    <div className="space-y-1">
+                                                        <label className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                                                            <User className="h-3 w-3" /> Resp. Commerciale
+                                                        </label>
+                                                        <select
+                                                            value={item.tenders?.owner_comm || ''}
+                                                            onChange={(e) => handleUpdateOwnerField(item.tender_id, 'owner_comm', e.target.value)}
+                                                            className="w-full text-sm py-1 px-2 border border-slate-200 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white"
+                                                        >
+                                                            <option value="">-- Seleziona --</option>
+                                                            {userPreferences?.owners_comm?.map((o, i) => <option key={i} value={o}>{o}</option>)}
                                                         </select>
                                                     </div>
                                                 </div>

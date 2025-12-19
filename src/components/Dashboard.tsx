@@ -28,7 +28,7 @@ interface DashboardProps {
     loadingBatches?: string[];
 }
 
-const SemanticAnalysisBlock = ({ data, sectionId }: { data?: { semantic_analysis?: string, rischi_rilevati?: any[] | any, suggerimenti?: any[] | any } | any, sectionId: string }) => {
+const SemanticAnalysisBlock = ({ data, sectionId, children }: { data?: { semantic_analysis?: string, rischi_rilevati?: any[] | any, suggerimenti?: any[] | any } | any, sectionId: string, children?: React.ReactNode }) => {
     if (!data) return null;
     // EXCLUSION: Don't show Genius Card for these sections (inherent logic)
     if (sectionId === '14_note_importanti' || sectionId === '17_ambiguita_punti_da_chiarire') return null;
@@ -54,7 +54,7 @@ const SemanticAnalysisBlock = ({ data, sectionId }: { data?: { semantic_analysis
         risksContent: risks
     });
 
-    if (!semantic_analysis && (!risks || risks.length === 0) && (!suggestions || suggestions.length === 0)) return null;
+    if (!semantic_analysis && (!risks || risks.length === 0) && (!suggestions || suggestions.length === 0) && !children) return null;
 
     return (
         <Card className="bg-purple-50 border-purple-200 mb-6 shadow-sm">
@@ -150,6 +150,7 @@ const SemanticAnalysisBlock = ({ data, sectionId }: { data?: { semantic_analysis
                         </div>
                     </div>
                 )}
+                {children}
             </CardContent>
         </Card>
     );
@@ -286,7 +287,7 @@ const SuggerimentiOffertaBlock = ({ suggestions }: { suggestions?: Array<{ propo
 
 export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading, userPreferences, onUpdatePreferences, loadingBatches = [] }: DashboardProps) {
     const [editingFaqIndex, setEditingFaqIndex] = React.useState<number | null>(null);
-    const [editingOwnerIndex, setEditingOwnerIndex] = React.useState<number | null>(null);
+    const [editingOwnerState, setEditingOwnerState] = React.useState<{ list: 'owners_tech' | 'owners_admin' | 'owners_comm', index: number } | null>(null);
 
     const renderContent = () => {
         // DEBUG BANNER
@@ -1090,8 +1091,9 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <p className="text-slate-700">{data['10_punteggi'][0]?.note_economiche}</p>
                             </CardContent>
                         </Card>
-                        <SuggerimentiPunteggioBlock tips={data['10_punteggi'][0]?.suggerimenti_progettuali_punteggio} />
-                        <SemanticAnalysisBlock data={data['10_punteggi'][0]} sectionId="10_punteggi" />
+                        <SemanticAnalysisBlock data={data['10_punteggi'][0]} sectionId="10_punteggi">
+                            <SuggerimentiPunteggioBlock tips={data['10_punteggi'][0]?.suggerimenti_progettuali_punteggio} />
+                        </SemanticAnalysisBlock>
                         <DeepDive
                             sectionId="10_punteggi"
                             existingQA={data.deep_dives?.['10_punteggi']}
@@ -1162,8 +1164,9 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <p className="text-slate-700 whitespace-pre-line">{data['12_offerta_tecnica'][0]?.formattazione_modalita}</p>
                             </CardContent>
                         </Card>
-                        <SuggerimentiOffertaBlock suggestions={data['12_offerta_tecnica'][0]?.suggerimenti_progettuali_offerta} />
-                        <SemanticAnalysisBlock data={data['12_offerta_tecnica'][0]} sectionId="12_offerta_tecnica" />
+                        <SemanticAnalysisBlock data={data['12_offerta_tecnica'][0]} sectionId="12_offerta_tecnica">
+                            <SuggerimentiOffertaBlock suggestions={data['12_offerta_tecnica'][0]?.suggerimenti_progettuali_offerta} />
+                        </SemanticAnalysisBlock>
                         <DeepDive
                             sectionId="12_offerta_tecnica"
                             existingQA={data.deep_dives?.['12_offerta_tecnica']}
@@ -1988,131 +1991,143 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardContent>
                         </Card>
 
-                        {/* Owners Management - Gestione Responsabili */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Gestione Responsabili</CardTitle>
-                                <CardDescription>Aggiungi o rimuovi i nominativi dei responsabili di gara (per stato "Assegnata").</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        id="new-owner"
-                                        placeholder="Nuovo responsabile..."
-                                        className="flex-1 px-3 py-2 border rounded-md text-sm"
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                                const input = e.currentTarget;
-                                                const val = input.value.trim();
-                                                if (val && onUpdatePreferences && userPreferences) {
-                                                    const currentOwners = userPreferences.owners || [];
-                                                    onUpdatePreferences({
-                                                        ...userPreferences,
-                                                        owners: [...currentOwners, val]
-                                                    });
-                                                    input.value = '';
-                                                }
-                                            }
-                                        }}
-                                    />
-                                    <button
-                                        className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700"
-                                        onClick={() => {
-                                            const input = document.getElementById('new-owner') as HTMLInputElement;
-                                            const val = input.value.trim();
-                                            if (val && onUpdatePreferences && userPreferences) {
-                                                const currentOwners = userPreferences.owners || [];
-                                                onUpdatePreferences({
-                                                    ...userPreferences,
-                                                    owners: [...currentOwners, val]
-                                                });
-                                                input.value = '';
-                                            }
-                                        }}
-                                    >
-                                        Aggiungi
-                                    </button>
-                                </div>
-                                <div className="space-y-2">
-                                    {(userPreferences?.owners || []).length === 0 && (
-                                        <p className="text-sm text-slate-500 italic">Nessun responsabile configurato.</p>
-                                    )}
-                                    {(userPreferences?.owners || []).map((owner, i) => (
-                                        <div key={i} className="flex items-center justify-between bg-slate-50 p-3 rounded border">
-                                            {editingOwnerIndex === i ? (
-                                                <input
-                                                    type="text"
-                                                    defaultValue={owner}
-                                                    className="flex-1 px-2 py-1 border rounded text-sm mr-2"
-                                                    autoFocus
-                                                    onKeyDown={async (e) => {
-                                                        if (e.key === 'Enter') {
-                                                            const newVal = e.currentTarget.value.trim();
-                                                            if (newVal && newVal !== owner && onUpdatePreferences && userPreferences) {
-                                                                // 1. Update Preferences
-                                                                const newOwners = [...(userPreferences.owners || [])];
-                                                                newOwners[i] = newVal;
-                                                                onUpdatePreferences({
-                                                                    ...userPreferences,
-                                                                    owners: newOwners
-                                                                });
+                        {/* Helper function to render Owner Management Cards */}
+                        {[
+                            { title: "Responsabili Tecnici", key: 'owners_tech', dbColumn: 'owner_tech', desc: "Gestisci l'elenco dei Responsabili Tecnici." },
+                            { title: "Responsabili Amministrativi", key: 'owners_admin', dbColumn: 'owner_admin', desc: "Gestisci l'elenco dei Responsabili Amministrativi." },
+                            { title: "Responsabili Commerciali", key: 'owners_comm', dbColumn: 'owner_comm', desc: "Gestisci l'elenco dei Responsabili Commerciali." }
+                        ].map((roleConfig) => {
+                            const listKey = roleConfig.key as 'owners_tech' | 'owners_admin' | 'owners_comm';
+                            const dbCol = roleConfig.dbColumn;
+                            const ownersList = userPreferences?.[listKey] || [];
 
-                                                                // 2. Propagate to DB (Tenders)
-                                                                try {
-                                                                    const { error } = await supabase
-                                                                        .from('tenders')
-                                                                        .update({ owner: newVal })
-                                                                        .eq('owner', owner);
-
-                                                                    if (error) throw error;
-                                                                    console.log(`Updated owner from '${owner}' to '${newVal}'`);
-                                                                } catch (err) {
-                                                                    console.error("Failed to propagate owner rename:", err);
-                                                                    alert("Attenzione: Il nome è stato aggiornato nelle impostazioni, ma potrebbe non essere stato salvato su tutte le gare in archivio.");
-                                                                }
-                                                                setEditingOwnerIndex(null);
-                                                            } else if (newVal === owner) {
-                                                                setEditingOwnerIndex(null);
-                                                            }
-                                                        } else if (e.key === 'Escape') {
-                                                            setEditingOwnerIndex(null);
-                                                        }
-                                                    }}
-                                                    onBlur={() => setEditingOwnerIndex(null)}
-                                                />
-                                            ) : (
-                                                <span className="text-sm text-slate-700 flex-1">{owner}</span>
-                                            )}
-
-                                            <div className="flex gap-2">
-                                                <button
-                                                    className="text-blue-500 hover:text-blue-700"
-                                                    onClick={() => setEditingOwnerIndex(i)}
-                                                >
-                                                    <FileCode className="h-4 w-4" />
-                                                </button>
-                                                <button
-                                                    className="text-red-500 hover:text-red-700"
-                                                    onClick={() => {
-                                                        if (onUpdatePreferences && userPreferences) {
-                                                            const newOwners = [...(userPreferences.owners || [])];
-                                                            newOwners.splice(i, 1);
+                            return (
+                                <Card key={listKey}>
+                                    <CardHeader>
+                                        <CardTitle>{roleConfig.title}</CardTitle>
+                                        <CardDescription>{roleConfig.desc}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                id={`new-${listKey}`}
+                                                placeholder={`Nuovo ${roleConfig.title}...`}
+                                                className="flex-1 px-3 py-2 border rounded-md text-sm"
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        const input = e.currentTarget;
+                                                        const val = input.value.trim();
+                                                        if (val && onUpdatePreferences && userPreferences) {
+                                                            const currentOwners = userPreferences[listKey] || [];
                                                             onUpdatePreferences({
                                                                 ...userPreferences,
-                                                                owners: newOwners
+                                                                [listKey]: [...currentOwners, val]
                                                             });
+                                                            input.value = '';
                                                         }
-                                                    }}
-                                                >
-                                                    <Ban className="h-4 w-4" />
-                                                </button>
-                                            </div>
+                                                    }
+                                                }}
+                                            />
+                                            <button
+                                                className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700"
+                                                onClick={() => {
+                                                    const input = document.getElementById(`new-${listKey}`) as HTMLInputElement;
+                                                    const val = input.value.trim();
+                                                    if (val && onUpdatePreferences && userPreferences) {
+                                                        const currentOwners = userPreferences[listKey] || [];
+                                                        onUpdatePreferences({
+                                                            ...userPreferences,
+                                                            [listKey]: [...currentOwners, val]
+                                                        });
+                                                        input.value = '';
+                                                    }
+                                                }}
+                                            >
+                                                Aggiungi
+                                            </button>
                                         </div>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
+                                        <div className="space-y-2">
+                                            {ownersList.length === 0 && (
+                                                <p className="text-sm text-slate-500 italic">Nessun nominativo configurato.</p>
+                                            )}
+                                            {ownersList.map((owner, i) => (
+                                                <div key={i} className="flex items-center justify-between bg-slate-50 p-3 rounded border">
+                                                    {(editingOwnerState?.list === listKey && editingOwnerState?.index === i) ? (
+                                                        <input
+                                                            type="text"
+                                                            defaultValue={owner}
+                                                            className="flex-1 px-2 py-1 border rounded text-sm mr-2"
+                                                            autoFocus
+                                                            onKeyDown={async (e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    const newVal = e.currentTarget.value.trim();
+                                                                    if (newVal && newVal !== owner && onUpdatePreferences && userPreferences) {
+                                                                        // 1. Update Preferences
+                                                                        const newOwners = [...(userPreferences[listKey] || [])];
+                                                                        newOwners[i] = newVal;
+                                                                        onUpdatePreferences({
+                                                                            ...userPreferences,
+                                                                            [listKey]: newOwners
+                                                                        });
+
+                                                                        // 2. Propagate to DB (Tenders)
+                                                                        try {
+                                                                            const { error } = await supabase
+                                                                                .from('tenders')
+                                                                                .update({ [dbCol]: newVal })
+                                                                                .eq(dbCol, owner);
+
+                                                                            if (error) throw error;
+                                                                            console.log(`Updated ${dbCol} from '${owner}' to '${newVal}'`);
+                                                                        } catch (err) {
+                                                                            console.error("Failed to propagate owner rename:", err);
+                                                                            alert("Attenzione: Il nome è stato aggiornato nelle impostazioni, ma potrebbe non essere stato salvato su tutte le gare in archivio.");
+                                                                        }
+                                                                        setEditingOwnerState(null);
+                                                                    } else if (newVal === owner) {
+                                                                        setEditingOwnerState(null);
+                                                                    }
+                                                                } else if (e.key === 'Escape') {
+                                                                    setEditingOwnerState(null);
+                                                                }
+                                                            }}
+                                                            onBlur={() => setEditingOwnerState(null)}
+                                                        />
+                                                    ) : (
+                                                        <span className="text-sm text-slate-700 flex-1">{owner}</span>
+                                                    )}
+
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            className="text-blue-500 hover:text-blue-700"
+                                                            onClick={() => setEditingOwnerState({ list: listKey, index: i })}
+                                                        >
+                                                            <FileCode className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                            className="text-red-500 hover:text-red-700"
+                                                            onClick={() => {
+                                                                if (onUpdatePreferences && userPreferences) {
+                                                                    const newOwners = [...(userPreferences[listKey] || [])];
+                                                                    newOwners.splice(i, 1);
+                                                                    onUpdatePreferences({
+                                                                        ...userPreferences,
+                                                                        [listKey]: newOwners
+                                                                    });
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Ban className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
 
                     </div >
                 );

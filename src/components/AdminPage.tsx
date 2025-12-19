@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Loader2, ArrowLeft, ShieldAlert, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Loader2, ArrowLeft, ShieldAlert, ToggleLeft, ToggleRight, Clock } from 'lucide-react';
 
 export function AdminPage() {
     const [loading, setLoading] = useState(true);
@@ -11,6 +11,9 @@ export function AdminPage() {
     const [registrationActive, setRegistrationActive] = useState<boolean | null>(null);
     const [updating, setUpdating] = useState(false);
 
+    // Configure Timeout State
+    const [timeoutSeconds, setTimeoutSeconds] = useState<number>(240);
+    const [updatingTimeout, setUpdatingTimeout] = useState(false);
     useEffect(() => {
         checkAdminStatus();
     }, []);
@@ -26,11 +29,15 @@ export function AdminPage() {
 
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('app_role')
+                .select('*') // Select * to assume robustness against schema variations
                 .eq('id', session.user.id)
                 .single();
 
-            if (profile?.app_role !== 'admin') {
+            // Robust check: 'role' OR 'app_role'
+            const userRole = profile?.role || profile?.app_role;
+
+            if (userRole !== 'admin') {
+                console.warn("Access denied. User role:", userRole);
                 window.location.href = '/'; // Redirect non-admins
                 return;
             }
@@ -47,19 +54,30 @@ export function AdminPage() {
 
     const fetchSettings = async () => {
         try {
-            const { data, error } = await supabase
+            // Fetch Registration Setting
+            const { data: regData, error: regError } = await supabase
                 .from('app_settings')
                 .select('value')
                 .eq('key', 'registrazione_attiva')
                 .single();
 
-            if (error) throw error;
-            if (data) {
-                setRegistrationActive(data.value);
+            if (regData) {
+                setRegistrationActive(regData.value);
             } else {
-                // If setting doesn't exist, assume true or create it? 
-                // Creating defaults is safer in SQL, but let's assume true if missing for UI
                 setRegistrationActive(true);
+            }
+
+            // Fetch Timeout Setting
+            const { data: timeData, error: timeError } = await supabase
+                .from('app_settings')
+                .select('value')
+                .eq('key', 'analysis_timeout_seconds')
+                .single();
+
+            if (timeData) {
+                setTimeoutSeconds(Number(timeData.value));
+            } else {
+                setTimeoutSeconds(240); // Default
             }
         } catch (error) {
             console.error('Error fetching settings:', error);
@@ -86,6 +104,22 @@ export function AdminPage() {
         }
     };
 
+    const saveTimeoutSettings = async () => {
+        setUpdatingTimeout(true);
+        try {
+            const { error } = await supabase
+                .from('app_settings')
+                .upsert({ key: 'analysis_timeout_seconds', value: timeoutSeconds });
+
+            if (error) throw error;
+            alert("Timeout aggiornato con successo!");
+        } catch (error: any) {
+            console.error('Error updating timeout:', error);
+            alert(`Errore aggiornamento: ${error.message}`);
+        } finally {
+            setUpdatingTimeout(false);
+        }
+    };
     if (loading) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-slate-50">
@@ -147,7 +181,46 @@ export function AdminPage() {
                         </CardContent>
                     </Card>
                 </div>
-            </div>
-        </div>
+                <div className="grid gap-6">
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center gap-2">
+                                <Clock className="h-5 w-5 text-indigo-600" />
+                                <CardTitle>Impostazioni Sistema</CardTitle>
+                            </div>
+                            <CardDescription>
+                                Parametri tecnici globali del sistema.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    Timeout Analisi (secondi)
+                                </label>
+                                <div className="flex gap-4 items-center">
+                                    <input
+                                        type="number"
+                                        value={timeoutSeconds}
+                                        onChange={(e) => setTimeoutSeconds(parseInt(e.target.value) || 0)}
+                                        className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 max-w-[200px]"
+                                    />
+                                    <Button
+                                        onClick={saveTimeoutSettings}
+                                        disabled={updatingTimeout}
+                                        className="bg-indigo-600 hover:bg-indigo-700"
+                                    >
+                                        {updatingTimeout ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                        Salva
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-slate-500 mt-2">
+                                    Tempo di attesa prima che appaia il modale di "Analisi lenta" all'utente (default: 240s).
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div >
+        </div >
     );
 }

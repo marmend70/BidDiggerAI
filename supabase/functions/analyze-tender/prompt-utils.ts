@@ -1,14 +1,12 @@
 import { GENIUS_RULES_MAP } from './genius-rules.ts';
 
-export const generateAnalysisPrompt = (preferences: Record<string, boolean>, batchName: string, semanticPreferences: Record<string, boolean> = {}): string => {
-
-
+export const generateAnalysisPrompt = (preferences: Record<string, boolean>, batchName: string, semanticPreferences: Record<string, boolean> = {}, sector: string = 'Generale'): string => {
 
   const prompts: string[] = [];
   prompts.push(`
   OBIETTIVO: Analisi Multi - Livello(Structured + Semantic Analysis) di documenti di gara.
     OUTPUT: Unico oggetto JSON. 
-Ogni sezione attivata deve avere la struttura:
+  Ogni sezione attivata deve avere la struttura:
   "Key": {
     "structured": ... (Vedi Schema),
     "analysis": { ... },
@@ -35,12 +33,48 @@ REGOLE GENERALI:
 
   if (activeSemanticKeys.length > 0) {
     prompts.push(`
-    *** ATTENZIONE: GENIUS MODE(ANALISI SEMANTICA) ATTIVO PER LE SEZIONI: ${activeSemanticKeys.join(', ')} ***
+    *** ATTENZIONE: GENIUS MODE (ANALISI SEMANTICA) ATTIVO PER LE SEZIONI: ${activeSemanticKeys.join(', ')} ***
 
-      PER QUESTE SPECIFICHE SEZIONI, IL TUO OUTPUT JSON DEVE INCLUDERE(Allo stesso livello di "structured" e "analysis") I SEGUENTI CAMPI:
+      PER QUESTE SPECIFICHE SEZIONI, IL TUO OUTPUT JSON DEVE INCLUDERE (Allo stesso livello di "structured" e "analysis") I SEGUENTI CAMPI:
   1. "semantic_analysis": "Analisi critica approfondita. Vai dritto al punto: evidenzia insidie, opportunità nascoste e consigli strategici senza premesse."
   2. "rischi_rilevati": [{ "rischio": "...", "livello": "ALTO/MEDIO/BASSO", "fonte": "..." }]
-  3. "suggerimenti": [{ "azione": "Suggerimento condizionale (es. 'Si suggerisce di...')", "motivazione": "Perché è importante", "target": "Rischio o Opportunità collegata" }]
+  3. "suggerimenti": [{ "azione": "Suggerimento Operativo Concreto", "motivazione": "Razionale operativo (Perché è importante)", "target": "Rischio/Opportunità" }]
+
+  GUIDA AI SUGGERIMENTI OPERATIVI (array "suggerimenti"):
+  - Ogni suggerimento deve essere PRATICO, CONCRETO e ARGOMENTATO (2-3 righe).
+  - Spiega il "PERCHÉ" operativo e "COME" applicarlo concretamente.
+  - Includi esempi pratici o casi tipici.
+  - Evita frasi vaghe, slogan o ovvietà.
+  - Se non puoi essere concreto, NON generare il suggerimento.
+    `);
+  }
+
+  // --- SECTORIAL CONTEXTUALIZATION LOGIC ---
+  if (sector && sector !== 'Generale') {
+    prompts.push(`
+    *** CONTESTUALIZZAZIONE SETTORIALE ATTIVA: ${sector} ***
+    
+    Nota di senso e limiti:
+    - La contestualizzazione è basata su prassi ricorrenti di settore.
+    - Non sostituisce la lettura puntuale.
+    
+    Selezionando questo settore, devi generare:
+    1. Una sezione "inquadramento_settoriale" (Vedi schema sotto).
+    2. Suggerimenti progettuali specifici nelle sezioni "10_punteggi" e "12_offerta_tecnica".
+    `);
+
+    // Add Inquadramento Section Prompt ONLY if explicit sector is set
+    prompts.push(`
+    Chiave: "inquadramento_settoriale"
+    ISTRUZIONI: Fornisci una cornice interpretativa generale basata sul settore "${sector}".
+    Contenuti: Caretteristiche progettuali tipiche, criticità ricorrenti, aspetti rilevanti per le S.A.
+    JSON SCHEMA:
+    "inquadramento_settoriale": {
+        "descrizione_settore": "Descrizione caratteristiche tipiche...",
+        "criticita_ricorrenti": "...",
+        "leve_progettuali": "...",
+        "aspetti_rilevanti": "..."
+    }
     `);
   }
 
@@ -354,6 +388,19 @@ JSON SCHEMA:
   Chiave: "12_offerta_tecnica"
   ISTRUZIONI: Offerta Tecnica.
   ${semanticPreferences['12_offerta_tecnica'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['12_offerta_tecnica']}` : ''}
+  ${(sector && sector !== 'Generale') ? `
+  *** CONTESTUALIZZAZIONE SETTORIALE ATTIVA: ${sector} ***
+  ISTRUZIONI "suggerimenti_progettuali_offerta":
+  Genera suggerimenti progettuali orientati al punteggio e coerenti con il settore "${sector}".
+  
+  GUIDA AI SUGGERIMENTI PROGETTUALI:
+  - Ogni suggerimento deve essere di 2-3 righe discorsive.
+  - Spiega il RATIONALE PROGETTUALE e l'IMPATTO SUL PUNTEGGIO.
+  - Indica come tradurlo in contenuto di offerta tecnica (concreta).
+  - Includi esempi applicativi e collegamenti ai criteri di valutazione.
+  - Evita slogan o indicazioni commerciali non tecniche.
+  - Distingui tra Baseline (coerente) e Value Added (migliorativa).
+  ` : ''}
 JSON SCHEMA:
   "12_offerta_tecnica": {
     "structured": [
@@ -361,7 +408,10 @@ JSON SCHEMA:
         "documenti": ["doc1 (stringa)", "doc2"],
         "formattazione_modalita": "...",
         "limiti": "...",
-        "criteri_formali": "..."
+        "criteri_formali": "...",
+        ${(sector && sector !== 'Generale') ? `"suggerimenti_progettuali_offerta": [
+             { "proposta": "Soluzione tecnica/organizzativa", "tipo": "Baseline/Value Added", "obiettivi": "...", "limiti": "..." }
+        ],` : ''}
       }
     ],
       "analysis": {
@@ -399,6 +449,18 @@ JSON SCHEMA:
   Chiave: "10_punteggi"
   ISTRUZIONI: Punteggi e Criteri.
   ${semanticPreferences['10_punteggi'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['10_punteggi']}` : ''}
+  ${(sector && sector !== 'Generale') ? `
+  *** CONTESTUALIZZAZIONE SETTORIALE ATTIVA: ${sector} ***
+  ISTRUZIONI "suggerimenti_progettuali_punteggio":
+  Genera suggerimenti per massimizzare il punteggio tecnico, coerenti con il settore "${sector}".
+
+  GUIDA AI SUGGERIMENTI PROGETTUALI (Score-Oriented):
+  - Ogni suggerimento deve essere di 2-3 righe discorsive.
+  - Spiega la SCELTA PROGETTUALE e il TRADE-OFF per massimizzare i punti.
+  - Collega esplicitamente la scelta al criterio valutativo (es. Innovazione, Organizzazione, Qualità).
+  - Indica cosa potrebbe penalizzare il punteggio.
+  - Evita generalizzazioni. Sii specifico sulle leve di punteggio.
+  ` : ''}
 JSON SCHEMA:
   "10_punteggi": {
     "structured": [
@@ -419,7 +481,10 @@ JSON SCHEMA:
           "parametri_legenda": "...",
           "modalita_calcolo": "..."
         },
-        "note_economiche": "..."
+        "note_economiche": "...",
+        ${(sector && sector !== 'Generale') ? `"suggerimenti_progettuali_punteggio": [
+             { "scelta": "Scelta progettuale", "priorita": "Alta/Media/Bassa", "trade_off": "..." }
+        ],` : ''}
       }
     ],
       "analysis": {

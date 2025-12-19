@@ -169,7 +169,23 @@ export const AVAILABLE_MODELS = [
 ];
 
 export const LEMON_SQUEEZY_URLS = {
-    STARTER: "https://biddigger.lemonsqueezy.com/buy/35ed83e3-8cf3-4f30-b532-9b9f270647a6",
-    PRO: "https://biddigger.lemonsqueezy.com/buy/93698d97-8778-4a25-87c1-c9c98a1557a5",
+    STARTER: "https://biddigger.lemonsqueezy.com/buy/placeholder-starter",
+    PRO: "https://biddigger.lemonsqueezy.com/buy/placeholder-pro",
     AGENCY: "https://biddigger.lemonsqueezy.com/buy/69aa6cca-70fb-406c-b1d5-f8c633e4e719"
 };
+
+export const SECTORS = [
+    "Generale",
+    "ICT e servizi informatici",
+    "Call center / Contact center",
+    "CUP e servizi di prenotazione sanitaria",
+    "Sanità e sociosanitario",
+    "Facility management",
+    "Manutenzione (impianti, immobili, infrastrutture)",
+    "Pulizie e servizi integrati",
+    "Servizi educativi e sociali",
+    "Logistica e magazzino",
+    "Servizi energetici",
+    "Vigilanza e sicurezza",
+    "Altri servizi continuativi complessi"
+];

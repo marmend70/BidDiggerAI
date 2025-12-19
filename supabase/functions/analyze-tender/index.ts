@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
 
 
       // --- HELPER: Native Analysis with Fallback ---
-      const performAnalysisNative = async (primaryModelId: string, fallbackModelId: string, userPrompt: string, googleFiles: GoogleFileResult[], systemPrompt: string, responseMimeType: string = "application/json") => {
+      const performAnalysisNative = async (primaryModelId: string, fallbackModelId: string, userPrompt: string, googleFiles: GoogleFileResult[], systemPrompt: string, responseMimeType: string = "application/json", temperature: number = 0.1) => {
          console.log(`[Analysis] Starting Native with Primary: ${primaryModelId} (Output: ${responseMimeType})`);
 
          const callAI = async (modelId: string) => {
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
             // We append SYSTEM_PROMPT to userPrompt because native API 'systemInstruction' is optional/beta.
             // Concatenating is safer for now.
             const fullPrompt = systemPrompt + "\n\n" + userPrompt;
-            return await generateContentGoogle(modelId, fullPrompt, googleFiles, geminiKey, responseMimeType);
+            return await generateContentGoogle(modelId, fullPrompt, googleFiles, geminiKey, responseMimeType, temperature);
          };
 
          try {
@@ -179,8 +179,11 @@ Deno.serve(async (req) => {
                const googleFiles = await prepareFilesForGoogle(pathsToProcess);
                if (googleFiles.length === 0) throw new Error("No files could be prepared for Google AI.");
 
+
                // 2. Generate Prompt
-               const activePrompt = prompt || generateAnalysisPrompt(analysisPreferences, batchName || 'default', semanticPreferences);
+               // Extract sector from body, default to 'Generale' if not present
+               const sector = body.sector || 'Generale';
+               const activePrompt = prompt || generateAnalysisPrompt(analysisPreferences, batchName || 'default', semanticPreferences, sector);
 
                // Logic for Temperature:
                // If Semantic Analysis (Genius Mode) is active for any section, bump temperature to 0.3 for better creativity.

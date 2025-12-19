@@ -27,7 +27,7 @@ interface LayoutProps {
     onNewAnalysis?: () => void;
     onOpenContact?: () => void;
     onOpenChatAssistant?: () => void;
-    isAdmin?: boolean;
+    userRole?: string;
 }
 
 interface SidebarContentProps {
@@ -40,10 +40,10 @@ interface SidebarContentProps {
     onExport: () => void;
     onNewAnalysis?: () => void;
     onOpenChatAssistant?: () => void;
-    isAdmin?: boolean;
+    userRole?: string;
 }
 
-function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant, isAdmin }: SidebarContentProps) {
+function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant, userRole }: SidebarContentProps) {
     return (
         <div className="flex flex-col h-full text-white">
             <div className="p-6 bg-slate-950 shadow-sm z-10">
@@ -224,10 +224,14 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                     Esci
                 </button>
 
-                {isAdmin && (
+                {userRole === 'admin' && (
                     <button
-                        onClick={() => window.location.href = '/admin'}
-                        className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-400 rounded-md hover:bg-slate-800 hover:text-red-300 border border-red-900/30 bg-red-900/10 mt-2"
+                        onClick={() => !isAnalyzing && onSectionClick?.('admin')}
+                        disabled={isAnalyzing}
+                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors border mt-4 ${activeSection === 'admin'
+                            ? 'bg-red-500/10 text-red-400 border-red-500/20' // Active
+                            : 'text-red-400 hover:bg-slate-800 hover:text-red-300 border-transparent' // Default
+                            } ${isAnalyzing ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                         <Settings className="h-4 w-4" />
                         Amministrazione
@@ -239,7 +243,7 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
 }
 
 export function Layout(props: LayoutProps) {
-    const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onOpenContact, onOpenChatAssistant, isAdmin } = props;
+    const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onOpenContact, onOpenChatAssistant, userRole } = props;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
     const handleExport = async () => {
@@ -266,7 +270,7 @@ export function Layout(props: LayoutProps) {
                     onExport={handleExport}
                     onNewAnalysis={props.onNewAnalysis}
                     onOpenChatAssistant={onOpenChatAssistant}
-                    isAdmin={props.isAdmin}
+                    userRole={userRole}
                 />
             </aside>
 
@@ -321,9 +325,8 @@ export function Layout(props: LayoutProps) {
                             onOpenChatAssistant={() => {
                                 onOpenChatAssistant?.();
                                 setIsMobileMenuOpen(false);
-                                setIsMobileMenuOpen(false);
                             }}
-                            isAdmin={isAdmin}
+                            userRole={userRole}
                         />
                     </div>
                 </div>

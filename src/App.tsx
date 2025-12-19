@@ -126,6 +126,7 @@ function App() {
   // Trial & Logic State
   const [userPlan, setUserPlan] = useState<'trial' | 'pro'>('trial');
   const [userCredits, setUserCredits] = useState<number>(0); // Credits state
+  const [userRole, setUserRole] = useState<string>('user'); // Store role
   const [tenderCount, setTenderCount] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showPricingModal, setShowPricingModal] = useState(false);
@@ -133,8 +134,9 @@ function App() {
   const MAX_TRIAL_TENDERS = 2;
   const [showScanRetryModal, setShowScanRetryModal] = useState(false);
   const [pendingRetryParams, setPendingRetryParams] = useState<{ sectionId: string, question: string } | null>(null);
+  // Timeouts
+  const [timeoutSettings, setTimeoutSettings] = useState<number>(240); // Default 4 minutes
   const [showChatAssistant, setShowChatAssistant] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   // Cleanup Expired Tenders Function
   const cleanupExpiredTenders = async (userId: string, retentionDays: number) => {
@@ -157,8 +159,6 @@ function App() {
       console.error("Cleanup exception:", e);
     }
   };
-
-
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -193,14 +193,18 @@ function App() {
 
   const fetchUserData = async (userId: string) => {
     try {
-      // 1. Fetch Preferences & Plan
+      // 1. Fetch Preferences & Plan & Role
+      // 1. Fetch Preferences & Plan & Role (Robust Fetch with *)
       const { data: profile } = await supabase
         .from('profiles')
-        .select('preferences, plan_type, credits, app_role')
+        .select('*') // Select all columns to avoid errors if a specific column is missing
         .eq('id', userId)
         .single();
 
       if (profile) {
+        // Support both 'role' and 'app_role' (legacy support)
+        const userRole = profile.role || profile.app_role;
+        if (userRole) setUserRole(userRole);
         console.log("Fetched Profile:", profile); // Debug
         if (profile.plan_type) setUserPlan(profile.plan_type as 'trial' | 'pro');
         if (typeof profile.credits === 'number') {
@@ -208,10 +212,6 @@ function App() {
           setUserCredits(profile.credits);
         } else {
           console.warn("Credits not found or not a number:", profile.credits);
-        }
-
-        if (profile.app_role === 'admin') {
-          setIsAdmin(true);
         }
 
         if (profile.preferences) {
@@ -243,6 +243,21 @@ function App() {
 
       if (!countError && count !== null) {
         setTenderCount(count);
+      }
+
+      if (!countError && count !== null) {
+        setTenderCount(count);
+      }
+
+      // 3. Fetch System Settings (Timeout)
+      const { data: timeoutData } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'analysis_timeout_seconds')
+        .single();
+
+      if (timeoutData && timeoutData.value) {
+        setTimeoutSettings(Number(timeoutData.value));
       }
 
     } catch (err) {
@@ -321,6 +336,7 @@ function App() {
 
   const [showTimeoutModal, setShowTimeoutModal] = useState(false);
   const timeoutResolvers = useRef<((decision: 'continue' | 'terminate') => void)[]>([]);
+  const hasWarnedTimeout = useRef(false);
 
   const handleTimeoutDecision = (decision: 'continue' | 'terminate') => {
     setShowTimeoutModal(false);
@@ -482,7 +498,8 @@ function App() {
             semanticModel: semModel,
             action: 'analyze',
             batchName: batchName,
-            allowDirectUpload: false
+            allowDirectUpload: false,
+            sector: currentPreferences.sector || 'Generale'
           }
         });
 
@@ -509,6 +526,35 @@ function App() {
           // Check failure
           const { data: tCheck } = await supabase.from('tenders').select('status').eq('id', tenderId).single();
           if (tCheck?.status === 'failed') throw new Error("Analysis marked as failed");
+          if (tCheck?.status === 'failed') throw new Error("Analysis marked as failed");
+
+          // TIMEOUT CHECK
+          // Using timeoutSettings (seconds) * 1000 = ms
+          const WARNING_THRESHOLD = timeoutSettings * 1000;
+
+          if (elapsed > WARNING_THRESHOLD && !hasWarnedTimeout.current) {
+            console.warn(`[Analysis] Batch ${batchName} exceeded ${timeoutSettings}s. showing modal.`);
+            hasWarnedTimeout.current = true; // Prevent multiple triggers per batch (though we have multiple batches running...)
+            // Issue: if multiple batches run, they all hit this. We should only show one modal.
+            // But strict mode might trigger twice.
+            // We use a promise to pause.
+
+            setShowTimeoutModal(true);
+            const decision = await new Promise<'continue' | 'terminate'>((resolve) => {
+              timeoutResolvers.current.push(resolve);
+            });
+
+            if (decision === 'terminate') {
+              setLoadingBatches(prev => prev.filter(b => b !== batchName));
+              // Return what we have or empty
+              return {}; // We choose to abort this batch
+            } else {
+              // Reset warning to warn again after another interval? Or just let it run.
+              // Let's reset elapsed relative to check? No, just let it run until MAX_POLL_TIME.
+              // Typically we just want to warn once.
+              // We could increase MAX_POLL_TIME if user says continue.
+            }
+          }
         }
         throw new Error("Timeout polling partial result");
       } catch (e: any) {
@@ -1112,9 +1158,9 @@ function App() {
       isAnalyzing={isUploading}
       loadingBatches={loadingBatches}
       onNewAnalysis={handleNewAnalysis}
-      isAdmin={isAdmin}
       onOpenContact={() => setContactModalOpen(true)}
       onOpenChatAssistant={() => setShowChatAssistant(true)}
+      userRole={userRole}
     >
       <UpgradeModal
         isOpen={showUpgradeModal}
@@ -1201,7 +1247,7 @@ function App() {
         defaultStructuredModelId={userPreferences.structured_model}
         defaultSemanticModelId={userPreferences.semantic_model}
       />
-      {!analysisData && activeSection !== 'configurazioni' && activeSection !== 'archivio' ? (
+      {!analysisData && activeSection !== 'configurazioni' && activeSection !== 'archivio' && activeSection !== 'admin' ? (
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-center mb-8 relative">
             <div className="inline-block mb-4 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-full text-sm font-semibold border border-indigo-100 flex items-center gap-2">
@@ -1271,6 +1317,8 @@ function App() {
             setActiveSection('3_sintesi');
           }}
         />
+      ) : activeSection === 'admin' ? (
+        <AdminPage />
       ) : (
         <Dashboard
           data={analysisData || {} as AnalysisResult}

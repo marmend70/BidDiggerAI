@@ -593,8 +593,8 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
                                         console.log("[Archive] VERIFY CHECKLIST INJECTION:", {
                                             isArray: Array.isArray(debugChecklist),
                                             hasRisksContainer: !!(debugChecklist as any).rischi_rilevati,
-                                            hasRisksItem0: !!(Array.isArray(debugChecklist) && debugChecklist[0]?.rischi_rilevati),
-                                            risksValue: (Array.isArray(debugChecklist) ? debugChecklist[0]?.rischi_rilevati : (debugChecklist as any).rischi_rilevati)
+                                            hasRisksItem0: !!(Array.isArray(debugChecklist) && (debugChecklist[0] as any)?.rischi_rilevati),
+                                            risksValue: (Array.isArray(debugChecklist) ? (debugChecklist[0] as any)?.rischi_rilevati : (debugChecklist as any).rischi_rilevati)
                                         });
                                     }
 

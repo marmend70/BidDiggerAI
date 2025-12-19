@@ -111,6 +111,11 @@ export interface AnalysisResult {
         };
         note_economiche: string;
         ref: string;
+        suggerimenti_progettuali_punteggio?: Array<{ // NEW
+            scelta: string;
+            priorita: string;
+            trade_off: string;
+        }>;
     }> & GeniusData;
     "11_pena_esclusione": Array<{
         lotto: string;
@@ -124,6 +129,12 @@ export interface AnalysisResult {
         documenti: string[];
         formattazione_modalita: string;
         ref: string;
+        suggerimenti_progettuali_offerta?: Array<{ // NEW
+            proposta: string;
+            tipo: string; // Baseline / Value Added
+            obiettivi: string;
+            limiti: string;
+        }>;
     }> & GeniusData;
     "13_offerta_economica": Array<{
         lotto: string;
@@ -177,6 +188,12 @@ export interface AnalysisResult {
             timestamp: string;
         }>;
     };
+    inquadramento_settoriale?: { // NEW
+        descrizione_settore: string;
+        criticita_ricorrenti: string;
+        leve_progettuali: string;
+        aspetti_rilevanti: string;
+    };
     semantic_analysis_data?: {
         [sectionId: string]: {
             semantic_analysis: string;
@@ -205,6 +222,7 @@ export interface UserPreferences {
     };
     owners?: string[];
     retention_days?: number;
+    sector?: string; // NEW
 }
 
 export interface UserProfile {

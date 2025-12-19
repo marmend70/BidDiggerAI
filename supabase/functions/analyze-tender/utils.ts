@@ -75,7 +75,8 @@ export async function generateContentGoogle(
     prompt: string,
     fileUris: GoogleFileResult[],
     apiKey: string,
-    responseMimeType: string = "application/json" // Default to JSON for backward combatibility
+    responseMimeType: string = "application/json", // Default to JSON for backward combatibility
+    temperature: number = 0.1
 ): Promise<string> {
 
     // Construct Content
@@ -106,7 +107,7 @@ export async function generateContentGoogle(
         body: JSON.stringify({
             contents: contents,
             generationConfig: {
-                temperature: 0.1, // Structured
+                temperature: temperature, // Use passed temperature
                 responseMimeType: responseMimeType // Use dynamic mime type
             }
         })

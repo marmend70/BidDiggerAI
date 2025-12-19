@@ -1,14 +1,12 @@
 import { GENIUS_RULES_MAP } from './genius-rules.ts';
 
-export const generateAnalysisPrompt = (preferences: Record<string, boolean>, batchName: string, semanticPreferences: Record<string, boolean> = {}): string => {
-
-
+export const generateAnalysisPrompt = (preferences: Record<string, boolean>, batchName: string, semanticPreferences: Record<string, boolean> = {}, sector: string = 'Generale'): string => {
 
   const prompts: string[] = [];
   prompts.push(`
   OBIETTIVO: Analisi Multi - Livello(Structured + Semantic Analysis) di documenti di gara.
     OUTPUT: Unico oggetto JSON. 
-Ogni sezione attivata deve avere la struttura:
+  Ogni sezione attivata deve avere la struttura:
   "Key": {
     "structured": ... (Vedi Schema),
     "analysis": { ... },
@@ -41,6 +39,35 @@ REGOLE GENERALI:
   1. "semantic_analysis": "Analisi critica approfondita. Vai dritto al punto: evidenzia insidie, opportunità nascoste e consigli strategici senza premesse."
   2. "rischi_rilevati": [{ "rischio": "...", "livello": "ALTO/MEDIO/BASSO", "fonte": "..." }]
   3. "suggerimenti": [{ "azione": "Suggerimento condizionale (es. 'Si suggerisce di...')", "motivazione": "Perché è importante", "target": "Rischio o Opportunità collegata" }]
+    `);
+  }
+
+  // --- SECTORIAL CONTEXTUALIZATION LOGIC ---
+  if (sector && sector !== 'Generale') {
+    prompts.push(`
+    *** CONTESTUALIZZAZIONE SETTORIALE ATTIVA: ${sector} ***
+    
+    Nota di senso e limiti:
+    - La contestualizzazione è basata su prassi ricorrenti di settore.
+    - Non sostituisce la lettura puntuale.
+    
+    Selezionando questo settore, devi generare:
+    1. Una sezione "inquadramento_settoriale" (Vedi schema sotto).
+    2. Suggerimenti progettuali specifici nelle sezioni "10_punteggi" e "12_offerta_tecnica".
+    `);
+
+    // Add Inquadramento Section Prompt ONLY if explicit sector is set
+    prompts.push(`
+    Chiave: "inquadramento_settoriale"
+    ISTRUZIONI: Fornisci una cornice interpretativa generale basata sul settore "${sector}".
+    Contenuti: Caretteristiche progettuali tipiche, criticità ricorrenti, aspetti rilevanti per le S.A.
+    JSON SCHEMA:
+    "inquadramento_settoriale": {
+        "descrizione_settore": "Descrizione caratteristiche tipiche...",
+        "criticita_ricorrenti": "...",
+        "leve_progettuali": "...",
+        "aspetti_rilevanti": "..."
+    }
     `);
   }
 
@@ -354,6 +381,12 @@ JSON SCHEMA:
   Chiave: "12_offerta_tecnica"
   ISTRUZIONI: Offerta Tecnica.
   ${semanticPreferences['12_offerta_tecnica'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['12_offerta_tecnica']}` : ''}
+  ${(sector && sector !== 'Generale') ? `
+  *** CONTESTUALIZZAZIONE SETTORIALE ATTIVA: ${sector} ***
+  ISTRUZIONI AGGIUNTIVE: Genera "suggerimenti_progettuali_offerta" (Array) seguendo lo schema.
+  - Proponi modelli di servizio, assetti organizzativi e soluzioni tecniche coerenti con il settore "${sector}".
+  - Distingui tra Baseline (coerente) e Value Added (migliorativa).
+  ` : ''}
 JSON SCHEMA:
   "12_offerta_tecnica": {
     "structured": [
@@ -361,7 +394,10 @@ JSON SCHEMA:
         "documenti": ["doc1 (stringa)", "doc2"],
         "formattazione_modalita": "...",
         "limiti": "...",
-        "criteri_formali": "..."
+        "criteri_formali": "...",
+        ${(sector && sector !== 'Generale') ? `"suggerimenti_progettuali_offerta": [
+             { "proposta": "Soluzione tecnica/organizzativa", "tipo": "Baseline/Value Added", "obiettivi": "...", "limiti": "..." }
+        ],` : ''}
       }
     ],
       "analysis": {
@@ -399,6 +435,12 @@ JSON SCHEMA:
   Chiave: "10_punteggi"
   ISTRUZIONI: Punteggi e Criteri.
   ${semanticPreferences['10_punteggi'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['10_punteggi']}` : ''}
+  ${(sector && sector !== 'Generale') ? `
+  *** CONTESTUALIZZAZIONE SETTORIALE ATTIVA: ${sector} ***
+  ISTRUZIONI AGGIUNTIVE: Genera "suggerimenti_progettuali_punteggio" (Array) seguendo lo schema.
+  - Interpreta i criteri di valutazione come leve progettuali.
+  - Individua possibili scelte coerenti con il settore "${sector}".
+  ` : ''}
 JSON SCHEMA:
   "10_punteggi": {
     "structured": [
@@ -419,7 +461,10 @@ JSON SCHEMA:
           "parametri_legenda": "...",
           "modalita_calcolo": "..."
         },
-        "note_economiche": "..."
+        "note_economiche": "...",
+        ${(sector && sector !== 'Generale') ? `"suggerimenti_progettuali_punteggio": [
+             { "scelta": "Scelta progettuale", "priorita": "Alta/Media/Bassa", "trade_off": "..." }
+        ],` : ''}
       }
     ],
       "analysis": {

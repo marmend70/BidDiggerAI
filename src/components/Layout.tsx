@@ -27,6 +27,7 @@ interface LayoutProps {
     onNewAnalysis?: () => void;
     onOpenContact?: () => void;
     onOpenChatAssistant?: () => void;
+    userRole?: string;
 }
 
 interface SidebarContentProps {
@@ -39,9 +40,10 @@ interface SidebarContentProps {
     onExport: () => void;
     onNewAnalysis?: () => void;
     onOpenChatAssistant?: () => void;
+    userRole?: string;
 }
 
-function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant }: SidebarContentProps) {
+function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant, userRole }: SidebarContentProps) {
     return (
         <div className="flex flex-col h-full text-white">
             <div className="p-6 bg-slate-950 shadow-sm z-10">
@@ -221,13 +223,23 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                 >
                     Esci
                 </button>
+
+                {userRole === 'admin' && (
+                    <button
+                        onClick={() => window.location.href = '/admin'}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-400 rounded-md hover:bg-slate-800 hover:text-red-300 border border-transparent mt-4"
+                    >
+                        <Settings className="h-4 w-4" />
+                        Amministrazione
+                    </button>
+                )}
             </div>
         </div>
     );
 }
 
 export function Layout(props: LayoutProps) {
-    const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onOpenContact, onOpenChatAssistant } = props;
+    const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onOpenContact, onOpenChatAssistant, userRole } = props;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
     const handleExport = async () => {
@@ -254,6 +266,7 @@ export function Layout(props: LayoutProps) {
                     onExport={handleExport}
                     onNewAnalysis={props.onNewAnalysis}
                     onOpenChatAssistant={onOpenChatAssistant}
+                    userRole={userRole}
                 />
             </aside>
 
@@ -309,6 +322,7 @@ export function Layout(props: LayoutProps) {
                                 onOpenChatAssistant?.();
                                 setIsMobileMenuOpen(false);
                             }}
+                            userRole={userRole}
                         />
                     </div>
                 </div>

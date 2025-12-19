@@ -12,10 +12,10 @@ import {
     Award, Users, MapPin, Target, Settings, Zap, Box, Calendar, Clock, AlertCircle,
     TrendingUp, Hourglass, RefreshCw, PlayCircle, BookOpen, Scale, Wallet, Building, Building2,
     Calculator, Percent, Ban, FileCode, Banknote, Lightbulb, CreditCard, Activity, Gavel,
-    Bot, MessageSquare, HelpCircle, ClipboardCheck, Database, BrainCircuit, Sparkles
+    Bot, MessageSquare, HelpCircle, ClipboardCheck, Database, BrainCircuit, Sparkles, Star
 } from 'lucide-react';
 import { DeepDive } from './DeepDive';
-import { SECTIONS_MAP, MENU_ORDER, DEEP_DIVE_EXAMPLES, SECTION_BATCH_MAP, AVAILABLE_MODELS } from '@/constants';
+import { SECTIONS_MAP, MENU_ORDER, DEEP_DIVE_EXAMPLES, SECTION_BATCH_MAP, AVAILABLE_MODELS, SECTORS } from '@/constants';
 import { supabase } from '@/lib/supabase';
 
 interface DashboardProps {
@@ -28,7 +28,7 @@ interface DashboardProps {
     loadingBatches?: string[];
 }
 
-const SemanticAnalysisBlock = ({ data, sectionId }: { data?: { semantic_analysis?: string, rischi_rilevati?: any[], suggerimenti?: any[] }, sectionId: string }) => {
+const SemanticAnalysisBlock = ({ data, sectionId }: { data?: { semantic_analysis?: string, rischi_rilevati?: any[] | any, suggerimenti?: any[] | any } | any, sectionId: string }) => {
     if (!data) return null;
     // EXCLUSION: Don't show Genius Card for these sections (inherent logic)
     if (sectionId === '14_note_importanti' || sectionId === '17_ambiguita_punti_da_chiarire') return null;
@@ -154,6 +154,135 @@ const SemanticAnalysisBlock = ({ data, sectionId }: { data?: { semantic_analysis
         </Card>
     );
 };
+
+const InquadramentoBlock = ({ data }: { data?: { descrizione_settore: string, criticita_ricorrenti: string, leve_progettuali: string, aspetti_rilevanti: string } }) => {
+    if (!data) return null;
+    return (
+        <Card className="bg-indigo-50 border-indigo-200 mb-8 shadow-sm">
+            <CardHeader className="pb-3 border-b border-indigo-100">
+                <CardTitle className="flex items-center gap-2 text-indigo-900">
+                    <Building className="h-5 w-5 text-indigo-600" />
+                    Inquadramento Settoriale
+                </CardTitle>
+                <CardDescription className="text-indigo-700/80">
+                    Contestualizzazione e Modelli di Riferimento
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-4">
+                <div className="bg-white/60 p-4 rounded-lg border border-indigo-100">
+                    <p className="text-indigo-900/90 leading-relaxed text-sm">
+                        {data.descrizione_settore}
+                    </p>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <h4 className="font-semibold text-indigo-800 mb-2 flex items-center gap-2 text-sm">
+                            <AlertTriangle className="h-4 w-4" /> Criticità Ricorrenti
+                        </h4>
+                        <p className="text-sm text-slate-700 bg-white p-3 rounded border border-indigo-50 leading-relaxed">
+                            {data.criticita_ricorrenti}
+                        </p>
+                    </div>
+                    <div>
+                        <h4 className="font-semibold text-indigo-800 mb-2 flex items-center gap-2 text-sm">
+                            <Target className="h-4 w-4" /> Leve Progettuali
+                        </h4>
+                        <p className="text-sm text-slate-700 bg-white p-3 rounded border border-indigo-50 leading-relaxed">
+                            {data.leve_progettuali}
+                        </p>
+                    </div>
+                </div>
+                {data.aspetti_rilevanti && (
+                    <div>
+                        <h4 className="font-semibold text-indigo-800 mb-2 flex items-center gap-2 text-sm">
+                            <Star className="h-4 w-4" /> Aspetti Rilevanti per la S.A.
+                        </h4>
+                        <p className="text-sm text-slate-700 bg-white p-3 rounded border border-indigo-50 leading-relaxed">
+                            {data.aspetti_rilevanti}
+                        </p>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
+
+const SuggerimentiPunteggioBlock = ({ tips }: { tips?: Array<{ scelta: string, priorita: string, trade_off: string }> }) => {
+    if (!tips || tips.length === 0) return null;
+    return (
+        <Card className="bg-sky-50 border-sky-200 mt-6 shadow-sm">
+            <CardHeader className="pb-3 border-b border-sky-100">
+                <CardTitle className="flex items-center gap-2 text-sky-900 text-lg">
+                    <Lightbulb className="h-5 w-5 text-sky-600" />
+                    Suggerimenti Progettuali (Orientati al Punteggio)
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-4">
+                {tips.map((tip, i) => (
+                    <div key={i} className="bg-white p-4 rounded-lg border border-sky-100 shadow-sm relative overflow-hidden">
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-sky-400" />
+                        <h5 className="font-bold text-sky-900 mb-1">{tip.scelta}</h5>
+                        <div className="flex flex-wrap gap-4 mt-2 text-sm">
+                            <div className="flex items-center gap-1.5 text-sky-700">
+                                <Target className="h-3 w-3" />
+                                <span className="font-medium">Priorità:</span> {tip.priorita}
+                            </div>
+                            {tip.trade_off && (
+                                <div className="flex items-center gap-1.5 text-slate-600">
+                                    <Scale className="h-3 w-3" />
+                                    <span className="font-medium">Trade-off:</span> {tip.trade_off}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+    );
+};
+
+const SuggerimentiOffertaBlock = ({ suggestions }: { suggestions?: Array<{ proposta: string, tipo: string, obiettivi: string, limiti: string }> }) => {
+    if (!suggestions || suggestions.length === 0) return null;
+    return (
+        <Card className="bg-teal-50 border-teal-200 mt-6 shadow-sm">
+            <CardHeader className="pb-3 border-b border-teal-100">
+                <CardTitle className="flex items-center gap-2 text-teal-900 text-lg">
+                    <Box className="h-5 w-5 text-teal-600" />
+                    Suggerimenti per Offerta Tecnica
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-4">
+                {suggestions.map((sugg, i) => (
+                    <div key={i} className="bg-white p-4 rounded-lg border border-teal-100 shadow-sm relative overflow-hidden">
+                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${sugg.tipo?.toLowerCase().includes('value') ? 'bg-purple-400' : 'bg-teal-400'}`} />
+                        <div className="flex justify-between items-start mb-1">
+                            <h5 className="font-bold text-teal-900 pr-2">{sugg.proposta}</h5>
+                            <Badge variant="outline" className={`text-[10px] uppercase tracking-wider flex-shrink-0 ${sugg.tipo?.toLowerCase().includes('value') ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
+                                {sugg.tipo}
+                            </Badge>
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-3 mt-3 text-sm">
+                            <div className="text-slate-700">
+                                <span className="font-medium text-teal-800 block mb-0.5">Obiettivi:</span>
+                                {sugg.obiettivi}
+                            </div>
+                            <div className="text-slate-500">
+                                <span className="font-medium text-slate-600 block mb-0.5">Limiti/Impatti:</span>
+                                {sugg.limiti}
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+    );
+};
+
+// Need access to Lucide 'Star' which wasn't imported. I'll stick to 'Award' or 'Sparkles' if Star is missing, but let's check imports.
+// Assuming 'Star' is not imported, I will use 'Sparkles' or add Star to imports.
+// Checked import on line 11, 'Star' is NOT there. I will add it or use 'Award'.
+// I'll add 'Star' to the imports first block if I can, but I only edited constants import.
+// I will use 'Award' for 'Aspetti Rilevanti' essentially as a proxy for Star.
 
 export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading, userPreferences, onUpdatePreferences, loadingBatches = [] }: DashboardProps) {
     const [editingFaqIndex, setEditingFaqIndex] = React.useState<number | null>(null);
@@ -312,6 +441,9 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             <FileText className="h-8 w-8 text-amber-500" />
                             Sintesi Gara
                         </h2>
+
+                        {/* INQUADRAMENTO SETTORIALE (Available on Dashboard root or Sintesi) */}
+                        <InquadramentoBlock data={data.inquadramento_settoriale} />
 
                         {/* STAZIONE APPALTANTE CARD */}
                         <Card className="bg-slate-50 border-slate-200">
@@ -958,7 +1090,8 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <p className="text-slate-700">{data['10_punteggi'][0]?.note_economiche}</p>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data['10_punteggi']} sectionId="10_punteggi" />
+                        <SuggerimentiPunteggioBlock tips={data['10_punteggi'][0]?.suggerimenti_progettuali_punteggio} />
+                        <SemanticAnalysisBlock data={data['10_punteggi'][0]} sectionId="10_punteggi" />
                         <DeepDive
                             sectionId="10_punteggi"
                             existingQA={data.deep_dives?.['10_punteggi']}
@@ -1029,7 +1162,8 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <p className="text-slate-700 whitespace-pre-line">{data['12_offerta_tecnica'][0]?.formattazione_modalita}</p>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data['12_offerta_tecnica']} sectionId="12_offerta_tecnica" />
+                        <SuggerimentiOffertaBlock suggestions={data['12_offerta_tecnica'][0]?.suggerimenti_progettuali_offerta} />
+                        <SemanticAnalysisBlock data={data['12_offerta_tecnica'][0]} sectionId="12_offerta_tecnica" />
                         <DeepDive
                             sectionId="12_offerta_tecnica"
                             existingQA={data.deep_dives?.['12_offerta_tecnica']}
@@ -1417,9 +1551,39 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     <Info className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
                                     <div className="text-sm text-amber-800">
                                         <span className="font-semibold block mb-1">Nota sull'Analisi Semantica</span>
-                                        L'analisi semantica (Bid Digger - Genius Mode) permette di avere un approfondimento sulle informazioni della sezione, tuttavia si evidenzia che maggiore sarà l'utilizzo dell'analisi semantica, maggiore sarà il tempo richiesto per l'analisi.
+                                        L'analisi semantica (Bid Digger - Genius Mode) permette di avere un approfondimento sulle informazioni della sezione.
                                     </div>
                                 </div>
+
+                                <Card className="mb-6 border-slate-200">
+                                    <CardHeader className="pb-3 bg-slate-50/50">
+                                        <CardTitle className="text-base font-semibold text-slate-800 flex items-center gap-2">
+                                            <Building className="h-4 w-4 text-blue-600" />
+                                            Contestualizzazione Settoriale
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="pt-4">
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-sm font-medium text-slate-700">Settore di Gara</label>
+                                            <select
+                                                className="w-full p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                                                value={userPreferences?.sector || "Generale"}
+                                                onChange={(e) => {
+                                                    if (onUpdatePreferences && userPreferences) {
+                                                        onUpdatePreferences({ ...userPreferences, sector: e.target.value });
+                                                    }
+                                                }}
+                                            >
+                                                {SECTORS.map(sector => (
+                                                    <option key={sector} value={sector}>{sector}</option>
+                                                ))}
+                                            </select>
+                                            <p className="text-xs text-slate-500 mt-1">
+                                                Selezionando un settore specifico, l'analisi fornirà un <strong>inquadramento dedicato</strong> e <strong>suggerimenti progettuali contestualizzati</strong>.
+                                            </p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
 
                                 <div className="rounded-md border">
                                     <Table>

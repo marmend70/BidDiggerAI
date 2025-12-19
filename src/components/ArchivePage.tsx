@@ -456,7 +456,154 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
                             <div
                                 key={item.id}
                                 onClick={() => {
-                                    onLoadAnalysis({ ...item.result_json, tender_id: item.tender_id });
+                                    // ADAPTER LOGIC FOR ARCHIVED DATA
+                                    const rawData = { ...item.result_json, tender_id: item.tender_id };
+
+                                    Object.keys(rawData).forEach(key => {
+                                        const section = rawData[key];
+                                        if (section && typeof section === 'object') {
+                                            // GENIUS RECOVERY STRATEGY:
+                                            // 1. Try internal prop (if section is object wrapper)
+                                            // 2. Try 'semantic_analysis_data' map at root (New Architecture)
+                                            // Cast to any to access the sibling property safely
+                                            const globalGeniusMap = (rawData as any).semantic_analysis_data;
+                                            let globalGenius = globalGeniusMap ? globalGeniusMap[key] : undefined;
+
+                                            // ALIAS RECOVERY FOR REQUISITI
+                                            if (!globalGenius && key === '1_requisiti_partecipazione' && globalGeniusMap) {
+                                                console.log("[Archive] Attempting alias lookup for 1_requisiti...");
+                                                globalGenius = globalGeniusMap['1_requisiti'];
+                                                if (globalGenius) console.log("[Archive] FOUND VIA ALIAS: 1_requisiti");
+                                            }
+
+                                            // DEBUG KEY INSPECTION
+                                            if (key === '3b_checklist_amministrativa' || key === '1_requisiti_partecipazione') {
+                                                console.log(`[Archive] Inspecting GlobalGenius for ${key}:`, globalGenius ? JSON.stringify(globalGenius).substring(0, 200) : "UNDEFINED");
+                                                if (globalGeniusMap && !globalGenius) {
+                                                    console.log(`[Archive] Available Keys in Map:`, Object.keys(globalGeniusMap));
+                                                }
+                                            }
+
+                                            // ALIAS & LEGACY LOOKUP
+                                            // 1. Try Global Map (Best Source)
+                                            // 2. Try Section Prop (if object)
+                                            // 3. Try Section[0] Prop (if array - Legacy)
+
+                                            const geniusAnalysis = globalGenius?.semantic_analysis
+                                                || globalGenius?.analisi_semantica
+                                                || globalGenius?.analisi
+                                                || section.semantic_analysis
+                                                || (Array.isArray(section) && section[0]?.semantic_analysis);
+
+                                            const geniusRisks = globalGenius?.rischi_rilevati
+                                                || globalGenius?.rischi_formali
+                                                || globalGenius?.rischi
+                                                || section.rischi_rilevati
+                                                || (Array.isArray(section) && section[0]?.rischi_rilevati);
+
+                                            const geniusSuggestions = globalGenius?.suggerimenti
+                                                || globalGenius?.suggerimenti_operativi
+                                                || globalGenius?.azioni_consigliate
+                                                || section.suggerimenti
+                                                || (Array.isArray(section) && section[0]?.suggerimenti);
+
+                                            // Determine data content (unwrap structured if present)
+                                            // If structured is missing, we assume 'section' ITSELF is the data (Array or Legacy Object)
+                                            let innerData = ('structured' in section) ? section.structured : section;
+
+                                            // SAFETY UNWRAP:
+                                            // Some sections are expected to be Objects by Dashboard (e.g. 3_sintesi), 
+                                            // but the extractor might return them as a single-item Array in 'structured'.
+                                            // (Already assigned to innerData above)
+
+                                            // List of sections that MUST be objects (singletons)
+                                            // Added 10_punteggi just in case, though dashboard seems to handle array[0] for it.
+                                            // SINGLETONS HANDLING
+                                            // WARNING: ONLY 3_sintesi is treated as a singleton object in Dashboard. 
+                                            // The rest (scadenze, importi, etc.) are accessed as Arrays [0] in Dashboard.
+                                            const SINGLETONS = ['3_sintesi', '_debug_info'];
+                                            if (SINGLETONS.includes(key)) {
+                                                if (Array.isArray(innerData)) {
+                                                    if (innerData.length > 0) {
+                                                        innerData = innerData[0];
+                                                    } else {
+                                                        innerData = {};
+                                                    }
+                                                }
+                                            }
+
+                                            // COPY for Mutability: Ensure we can attach properties
+                                            // If it's an array, spread it. If it's an object, spread it.
+                                            if (Array.isArray(innerData)) {
+                                                innerData = [...innerData];
+                                                // FALLBACK HOIST: If genius data is missing on container, check inside first element
+                                                if (!geniusAnalysis && innerData.length > 0 && innerData[0].semantic_analysis) {
+                                                    // It seems genius data is inside. Let's extract it for the container props.
+                                                    // (Note: const variables above are read-only, we create new temp vars if needed, 
+                                                    // but here we just pass the inner value if outer is missing)
+                                                }
+                                            } else if (innerData && typeof innerData === 'object') {
+                                                innerData = { ...innerData };
+                                            }
+
+                                            rawData[key] = innerData;
+
+                                            // If rawData[key] ends up undefined (e.g. missing structured), set empty to hold Genius props
+                                            if (!rawData[key]) rawData[key] = {};
+
+                                            if (rawData[key] && typeof rawData[key] === 'object') {
+                                                // Fallback logic: Use container prop OR prop from first element (legacy/mixed format)
+                                                const finalAnalysis = geniusAnalysis || (Array.isArray(section.structured) && section.structured[0]?.semantic_analysis);
+                                                const finalRisks = geniusRisks || (Array.isArray(section.structured) && section.structured[0]?.rischi_rilevati);
+                                                const finalSuggestions = geniusSuggestions || (Array.isArray(section.structured) && section.structured[0]?.suggerimenti);
+
+                                                console.log(`[Archive] Genius Check for ${key}:`, { hasAnalysis: !!finalAnalysis, hasRisks: !!finalRisks });
+
+                                                if (finalAnalysis) {
+                                                    console.log(`[Archive] Injecting Semantic Analysis into ${key}`, finalAnalysis?.substring(0, 30));
+                                                    rawData[key].semantic_analysis = finalAnalysis;
+                                                    // ALSO INJECT into first element if it's an array (for Dashboard compatibility)
+                                                    if (Array.isArray(rawData[key]) && rawData[key].length > 0) {
+                                                        // We already shallow copied the array, but we need to shallow copy the first element to mutate it safely
+                                                        rawData[key][0] = { ...rawData[key][0], semantic_analysis: finalAnalysis };
+                                                        console.log(`[Archive] Injected Semantic Analysis into Array[0] of ${key}`);
+                                                    }
+                                                }
+                                                if (finalRisks) {
+                                                    rawData[key].rischi_rilevati = finalRisks;
+                                                    if (Array.isArray(rawData[key]) && rawData[key].length > 0) {
+                                                        rawData[key][0] = { ...rawData[key][0], rischi_rilevati: finalRisks };
+                                                    }
+                                                }
+                                                if (finalSuggestions) {
+                                                    rawData[key].suggerimenti = finalSuggestions;
+                                                    if (Array.isArray(rawData[key]) && rawData[key].length > 0) {
+                                                        rawData[key][0] = { ...rawData[key][0], suggerimenti: finalSuggestions };
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    });
+
+                                    console.log("Archive Adapter - Final Data:", rawData);
+
+                                    // VERIFY INJECTION (Debug)
+                                    const debugChecklist = rawData['3b_checklist_amministrativa'];
+                                    if (debugChecklist) {
+                                        console.log("[Archive] VERIFY CHECKLIST INJECTION:", {
+                                            isArray: Array.isArray(debugChecklist),
+                                            hasRisksContainer: !!(debugChecklist as any).rischi_rilevati,
+                                            hasRisksItem0: !!(Array.isArray(debugChecklist) && debugChecklist[0]?.rischi_rilevati),
+                                            risksValue: (Array.isArray(debugChecklist) ? debugChecklist[0]?.rischi_rilevati : (debugChecklist as any).rischi_rilevati)
+                                        });
+                                    }
+
+                                    // Validation check
+                                    if (Array.isArray(rawData['3_sintesi'])) {
+                                        console.warn("WARNING: 3_sintesi is an Array! Dashboard might crash.");
+                                    }
+
+                                    onLoadAnalysis(rawData);
                                     alert("Analisi caricata correttamente! Ora puoi navigare nelle sezioni.");
                                 }}
                                 className="group bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-200 transition-all cursor-pointer"
@@ -537,7 +684,7 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
                                                                 }
                                                             }}
                                                         >
-                                                            <option value="" disabled>Seleziona...</option>
+                                                            <option value="">-- Nessun Responsabile --</option>
                                                             {userPreferences?.owners?.map((owner, idx) => (
                                                                 <option key={idx} value={owner}>{owner}</option>
                                                             ))}

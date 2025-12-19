@@ -12,13 +12,16 @@ Ogni sezione attivata deve avere la struttura:
   "Key": {
     "structured": ... (Vedi Schema),
     "analysis": { ... },
-    "semantic_analysis": "..."(Opzionale: Solo se richiesto),
-      "rischi_rilevati": [...](Opzionale)
+    "semantic_analysis": "..." (Opzionale: Solo se Genius Mode attivo),
+    "rischi_rilevati": [...] (Opzionale: Solo se Genius Mode attivo),
+    "suggerimenti": [...] (Opzionale: Solo se Genius Mode attivo)
   }
   `);
 
   // GENIUS MODE LOGIC
   const activeSemanticKeys = Object.keys(semanticPreferences).filter(k => semanticPreferences[k]);
+
+  const geniusFields = `,\n    "semantic_analysis": "...",\n    "rischi_rilevati": [{ "rischio": "...", "livello": "ALTO/MEDIO/BASSO", "fonte": "..." }],\n    "suggerimenti": [{ "azione": "...", "motivazione": "...", "target": "..." }]`;
 
   const rules = `
 REGOLE GENERALI:
@@ -26,6 +29,8 @@ REGOLE GENERALI:
 - Se un dato manca, usa null o[].Non inventare.
 - Normalizza date in YYYY - MM - DD.
 - "structured" DEVE seguire rigorosamente lo schema indicato(Spesso è un ARRAY di 1 elemento).
+- IMPORTANTE: Per ogni sezione, DEVI restituire un OGGETTO contenitore con le chiavi "structured", "analysis", ecc.
+- NON restituire MAI l'array "structured" direttamente come valore della chiave di sezione. Usa sempre il wrapper.
 `;
 
   if (activeSemanticKeys.length > 0) {
@@ -34,7 +39,8 @@ REGOLE GENERALI:
 
       PER QUESTE SPECIFICHE SEZIONI, IL TUO OUTPUT JSON DEVE INCLUDERE(Allo stesso livello di "structured" e "analysis") I SEGUENTI CAMPI:
   1. "semantic_analysis": "Analisi critica approfondita. Vai dritto al punto: evidenzia insidie, opportunità nascoste e consigli strategici senza premesse."
-  2. "rischi_rilevati": ["Elenco rischi specifici rilevati in questa sezione"]
+  2. "rischi_rilevati": [{ "rischio": "...", "livello": "ALTO/MEDIO/BASSO", "fonte": "..." }]
+  3. "suggerimenti": [{ "azione": "Suggerimento condizionale (es. 'Si suggerisce di...')", "motivazione": "Perché è importante", "target": "Rischio o Opportunità collegata" }]
     `);
   }
 
@@ -61,7 +67,7 @@ JSON SCHEMA:
       "sintesi_procedura": "Quadro generale",
         "obiettivi_strategici": "...",
           "contest_operativo": "..."
-    }
+    }${semanticPreferences['3_sintesi'] ? geniusFields : ''}
   } `);
 
   // --- 2. CHECKLIST (3b_checklist_amministrativa) ---
@@ -91,7 +97,7 @@ JSON SCHEMA:
       "analysis": {
       "rischi_formali": "...",
         "punti_attenzione": "..."
-    }
+    }${semanticPreferences['3b_checklist_amministrativa'] ? geniusFields : ''}
   }
   Nota: "structured" è un ARRAY di 1 oggetto.`);
 
@@ -137,7 +143,7 @@ JSON SCHEMA:
       "analysis": {
       "requisiti_restrittivi": "...",
         "ambiguita": "..."
-    }
+    }${semanticPreferences['1_requisiti_partecipazione'] ? geniusFields : ''}
   }
   Nota: "structured" è un ARRAY.Mappa tutte le 6 categorie tassonomiche nei 4 array sopra.`);
 
@@ -164,7 +170,7 @@ JSON SCHEMA:
       "analysis": {
       "timeline_critica": "...",
         "rischi_scadenze": "..."
-    }
+    }${semanticPreferences['5_scadenze'] ? geniusFields : ''}
   } `);
 
   // --- 5. IMPORTI (6_importi) ---
@@ -187,7 +193,7 @@ JSON SCHEMA:
       "analysis": {
       "rischi_economici": "...",
         "redditivita_commento": "..."
-    }
+    }${semanticPreferences['6_importi'] ? geniusFields : ''}
   }
   Nota: Importi numerici float(no stringhe valuta).`);
 
@@ -209,7 +215,7 @@ JSON SCHEMA:
       "analysis": {
       "impatto_costo_lavoro": "...",
         "rigidita_gestione": "..."
-    }
+    }${semanticPreferences['8_ccnl'] ? geniusFields : ''}
   } `);
 
   // --- 7. SERVIZI (4_servizi) ---
@@ -230,7 +236,7 @@ JSON SCHEMA:
       "analysis": {
       "complessita_operativa": "...",
         "punti_critici_tecnici": "..."
-    }
+    }${semanticPreferences['4_servizi'] ? geniusFields : ''}
   } `);
 
   // --- 8. DURATA (7_durata) ---
@@ -251,7 +257,7 @@ JSON SCHEMA:
       "analysis": {
       "rischi_avvio": "...",
         "rigidita_cronoprogramma": "..."
-    }
+    }${semanticPreferences['7_durata'] ? geniusFields : ''}
   } `);
 
   // --- 9. ONERI (9_oneri) ---
@@ -268,7 +274,7 @@ JSON SCHEMA:
         "carico_stazione": ["Voce 1"]
       }
     ],
-      "analysis": { "costi_occulti_o_rischi": "..." }
+    "analysis": { "costi_occulti_o_rischi": "..." }${semanticPreferences['9_oneri'] ? geniusFields : ''}
   } `);
 
   // --- 10. REMUNERAZIONE (15_remunerazione) ---
@@ -286,7 +292,7 @@ JSON SCHEMA:
         "clausole": "..."
       }
     ],
-      "analysis": { "sostenibilita_finanziaria": "..." }
+      "analysis": { "sostenibilita_finanziaria": "..." }${semanticPreferences['15_remunerazione'] ? geniusFields : ''}
   } `);
 
   // --- 11. SLA (16_sla_penali) ---
@@ -338,7 +344,7 @@ JSON SCHEMA:
       "analysis": {
       "severita_penali": "...",
       "ambiguita_sla": "..."
-    }
+    }${semanticPreferences['16_sla_penali'] ? geniusFields : ''}
   }
   Nota: "structured" è un ARRAY contenente un oggetto con liste di SLA e Penali.`);
 
@@ -361,7 +367,7 @@ JSON SCHEMA:
       "analysis": {
       "fattori_successo": "...",
         "strategia_redazione": "..."
-    }
+    }${semanticPreferences['12_offerta_tecnica'] ? geniusFields : ''}
   }
   Nota: "documenti" DEVE essere un array di stringhe, NON oggetti.`);
 
@@ -383,7 +389,7 @@ JSON SCHEMA:
     ],
       "analysis": {
       "rischi_errore": "..."
-    }
+    }${semanticPreferences['13_offerta_economica'] ? geniusFields : ''}
   }
   Nota: "documenti" DEVE essere un array di stringhe, NON oggetti.`);
 
@@ -419,7 +425,7 @@ JSON SCHEMA:
       "analysis": {
       "discrezionalita": "...",
         "ambiguita_valutazione": "..."
-    }
+    }${semanticPreferences['10_punteggi'] ? geniusFields : ''}
   } `);
 
   // --- 15. ESCLUSIONE (11_pena_esclusione) ---
@@ -435,7 +441,7 @@ JSON SCHEMA:
         "elementi": [{ "descrizione": "...", "ref": "..." }]
       }
     ],
-      "analysis": { "rischi_critici": "..." }
+      "analysis": { "rischi_critici": "..." }${semanticPreferences['11_pena_esclusione'] ? geniusFields : ''}
   } `);
 
   // --- 16. NOTE (14_note_importanti) ---
@@ -451,7 +457,7 @@ JSON SCHEMA:
         "note": [{ "nota": "...", "ref": "..." }]
       }
     ],
-      "analysis": { "impatti_operativi": "..." }
+      "analysis": { "impatti_operativi": "..." }${semanticPreferences['14_note_importanti'] ? geniusFields : ''}
   } `);
 
   // --- 17. AMBIGUITA (17_ambiguita_punti_da_chiarire) ---
@@ -487,7 +493,7 @@ JSON SCHEMA:
         ]
       }
     ],
-      "analysis": { "quesiti_da_porre": "Sintesi generale strategia quesiti" }
+    "analysis": { "quesiti_da_porre": "Sintesi generale strategia quesiti" }${semanticPreferences['17_ambiguita_punti_da_chiarire'] ? geniusFields : ''}
   } `);
 
   return prompts.join("\n\n");

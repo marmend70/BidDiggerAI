@@ -158,6 +158,28 @@ function App() {
     }
   };
 
+  // Cleanup Expired Tenders Function
+  const cleanupExpiredTenders = async (userId: string, retentionDays: number) => {
+    try {
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() - retentionDays);
+
+      const { error, count } = await supabase
+        .from('tenders')
+        .delete({ count: 'exact' })
+        .eq('user_id', userId)
+        .lt('created_at', expirationDate.toISOString());
+
+      if (error) {
+        console.error("Cleanup failed:", error);
+      } else if (count && count > 0) {
+        console.log(`[Retention Policy] Auto-deleted ${count} expired tenders (older than ${retentionDays} days).`);
+      }
+    } catch (e) {
+      console.error("Cleanup exception:", e);
+    }
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -394,10 +416,22 @@ function App() {
             }
             const geniusAnalysis = data[key].semantic_analysis;
             const geniusRisks = data[key].rischi_rilevati;
+            const geniusSuggestions = data[key].suggerimenti;
+
             data[key] = data[key].structured;
-            if (data[key] && (geniusAnalysis || geniusRisks)) {
-              if (geniusAnalysis) data[key].semantic_analysis = geniusAnalysis;
-              if (geniusRisks) data[key].rischi_rilevati = geniusRisks;
+
+            // Re-attach Genius Fields to the section data
+            if (data[key]) {
+              // FIX: If it's an array, attach to the first element to ensure JSON persistence
+              if (Array.isArray(data[key]) && data[key].length > 0) {
+                if (geniusAnalysis) data[key][0].semantic_analysis = geniusAnalysis;
+                if (geniusRisks) data[key][0].rischi_rilevati = geniusRisks;
+                if (geniusSuggestions) data[key][0].suggerimenti = geniusSuggestions;
+              } else {
+                if (geniusAnalysis) data[key].semantic_analysis = geniusAnalysis;
+                if (geniusRisks) data[key].rischi_rilevati = geniusRisks;
+                if (geniusSuggestions) data[key].suggerimenti = geniusSuggestions;
+              }
             }
           }
         });
@@ -713,7 +747,39 @@ function App() {
     setIsUploading(true);
     setElapsedTime(0);
     setProgressMessage(`Avvio analisi (Standard: ${structuredModelId})...`);
-    setLoadingBatches(['batch_1', 'batch_1b', 'batch_2', 'batch_2b', 'batch_2c', 'batch_3', 'batch_3b', 'batch_4']);
+
+    // PREPARE PREFERENCES WITH FORCED SECTIONS
+    // Requirement: "5_scadenze" must ALWAYS be analyzed (for timeline/archive), even if user disabled it.
+    const forcedPreferences = {
+      ...userPreferences,
+      analysis_sections: {
+        ...userPreferences.analysis_sections,
+        "5_scadenze": true
+      }
+    };
+
+    // CALCULATE ACTIVE BATCHES FOR SPINNER STATE based on FORCED preferences
+    const BATCH_1 = { '3_sintesi': true, '3b_checklist_amministrativa': true, '5_scadenze': true };
+    const BATCH_1B = { '1_requisiti_partecipazione': true, '6_importi': true, '8_ccnl': true };
+    const BATCH_2 = { '4_servizi': true, '7_durata': true };
+    const BATCH_2B = { '9_oneri': true, '15_remunerazione': true };
+    const BATCH_2C = { '16_sla_penali': true };
+    const BATCH_3 = { '12_offerta_tecnica': true };
+    const BATCH_3B = { '13_offerta_economica': true, '10_punteggi': true, '11_pena_esclusione': true };
+    const BATCH_4 = { '14_note_importanti': true, '17_ambiguita_punti_da_chiarire': true };
+
+    const allBatches = [
+      { name: 'batch_1', prefs: BATCH_1 }, { name: 'batch_1b', prefs: BATCH_1B },
+      { name: 'batch_2', prefs: BATCH_2 }, { name: 'batch_2b', prefs: BATCH_2B }, { name: 'batch_2c', prefs: BATCH_2C },
+      { name: 'batch_3', prefs: BATCH_3 }, { name: 'batch_3b', prefs: BATCH_3B }, { name: 'batch_4', prefs: BATCH_4 }
+    ];
+
+    const activeBatchNames = allBatches.filter(b => {
+      // A batch is active if AT LEAST ONE of its sections is selected in FORCED preferences
+      return Object.keys(b.prefs).some(k => forcedPreferences.analysis_sections[k]);
+    }).map(b => b.name);
+
+    setLoadingBatches(activeBatchNames);
     setAnalysisData(null); // Reset previous data
 
     try {
@@ -839,8 +905,8 @@ function App() {
 
       const partialRecordIds: string[] = [];
 
-      // CALL EXECUTE ANALYSIS
-      await executeAnalysis(tender.id, false, [], userPreferences, partialRecordIds);
+      // CALL EXECUTE ANALYSIS with FORCED PREFERENCES
+      await executeAnalysis(tender.id, false, [], forcedPreferences, partialRecordIds);
 
     } catch (error: any) {
       console.error('Error:', error);

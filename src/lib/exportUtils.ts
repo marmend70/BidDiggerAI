@@ -37,6 +37,11 @@ function safeText(text: any): string {
 function getList(data: any, nestedKey?: string): any[] {
     if (!data) return [];
 
+    // If it's the specific "Genius" structure { structured: [...], ... }
+    if (data.structured && Array.isArray(data.structured)) {
+        return data.structured;
+    }
+
     // If it's an array, return it
     if (Array.isArray(data)) return data;
 
@@ -167,14 +172,17 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                             ...(lotData.avvalimento ? [createKeyValueLine("Avvalimento", lotData.avvalimento)] : []),
                             ...(lotData.subappalto ? [createKeyValueLine("Subappalto", lotData.subappalto)] : []),
                         ]),
+                        ...createGeniusSection(data['1_requisiti_partecipazione']),
                         ...createDeepDiveSection(data.deep_dives?.['1_requisiti_partecipazione']),
                     ] : []),
 
                     // 3. Sintesi
                     ...(shouldInclude('3_sintesi') ? [
                         createHeading("2. Sintesi Gara"),
+                        new Paragraph({ text: safeText(data['3_sintesi']?.oggetto), spacing: { after: 200 } }), // Ensure oggetto is here too or just above
                         new Paragraph({ text: safeText(data['3_sintesi']?.scenario) }),
                         createKeyValueLine("Riferimento", data['3_sintesi']?.ref),
+                        ...createGeniusSection(data['3_sintesi']),
                         ...createDeepDiveSection(data.deep_dives?.['3_sintesi']),
                     ] : []),
 
@@ -207,6 +215,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                             createSubHeading("Elenco Documenti"),
                             ...createList(lotData.elenco_documenti, 'documento'),
                         ]),
+                        ...createGeniusSection(data['3b_checklist_amministrativa']),
                         ...createDeepDiveSection(data.deep_dives?.['3b_checklist_amministrativa']),
                     ] : []),
 
@@ -220,6 +229,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                             new Paragraph({ text: safeText(lotData.innovazioni) }),
                             createKeyValueLine("Fabbisogno", lotData.fabbisogno),
                         ]),
+                        ...createGeniusSection(data['4_servizi']),
                         ...createDeepDiveSection(data.deep_dives?.['4_servizi']),
                     ] : []),
 
@@ -234,6 +244,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                             createKeyValueLine("Modalità", lotData.sopralluogo?.modalita),
                             createKeyValueLine("Scadenze", lotData.sopralluogo?.scadenze),
                         ]),
+                        ...createGeniusSection(data['5_scadenze']),
                         ...createDeepDiveSection(data.deep_dives?.['5_scadenze']),
                     ] : []),
 
@@ -246,6 +257,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                             new Paragraph({ text: "", spacing: { after: 200 } }),
                             createTable(getList(lotData.dettaglio).map(d => [getText(d, 'voce'), formatCurrency(d.importo)])),
                         ]),
+                        ...createGeniusSection(data['6_importi']),
                         ...createDeepDiveSection(data.deep_dives?.['6_importi']),
                     ] : []),
 
@@ -257,6 +269,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                             createKeyValueLine("Proroghe", lotData.proroghe),
                             createKeyValueLine("Tempistiche Operative", lotData.tempistiche_operative),
                         ]),
+                        ...createGeniusSection(data['7_durata']),
                         ...createDeepDiveSection(data.deep_dives?.['7_durata']),
                     ] : []),
 
@@ -271,6 +284,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                             createSubHeading("Clausola Sociale"),
                             new Paragraph({ text: safeText(lotData.clausola_sociale) }),
                         ]),
+                        ...createGeniusSection(data['8_ccnl']),
                         ...createDeepDiveSection(data.deep_dives?.['8_ccnl']),
                     ] : []),
 
@@ -283,6 +297,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                             createSubHeading("A Carico Stazione Appaltante"),
                             ...createList(lotData.carico_stazione),
                         ]),
+                        ...createGeniusSection(data['9_oneri']),
                         ...createDeepDiveSection(data.deep_dives?.['9_oneri']),
                     ] : []),
 
@@ -313,6 +328,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                                 new Paragraph({ text: safeText(lotData.formula_economica) })
                             ]),
                         ]),
+                        ...createGeniusSection(data['10_punteggi']),
                         ...createDeepDiveSection(data.deep_dives?.['10_punteggi']),
                     ] : []),
 
@@ -322,6 +338,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         // This section is often just a flat list, or a list of lots.
                         // We use a generic renderer that handles both.
                         ...renderGenericListSection(data['11_pena_esclusione'], 'elementi', 'descrizione'),
+                        ...createGeniusSection(data['11_pena_esclusione']),
                         ...createDeepDiveSection(data.deep_dives?.['11_pena_esclusione']),
                     ] : []),
 
@@ -334,6 +351,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                             createSubHeading("Modalità e Formattazione"),
                             new Paragraph({ text: safeText(lotData.formattazione_modalita) }),
                         ]),
+                        ...createGeniusSection(data['12_offerta_tecnica']),
                         ...createDeepDiveSection(data.deep_dives?.['12_offerta_tecnica']),
                     ] : []),
 
@@ -346,6 +364,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                             createSubHeading("Modalità e Formattazione"),
                             new Paragraph({ text: safeText(lotData.formattazione_modalita) }),
                         ]),
+                        ...createGeniusSection(data['13_offerta_economica']),
                         ...createDeepDiveSection(data.deep_dives?.['13_offerta_economica']),
                     ] : []),
 
@@ -353,6 +372,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                     ...(shouldInclude('14_note_importanti') ? [
                         createHeading("13. Note Importanti AI"),
                         ...renderGenericListSection(data['14_note_importanti'], 'note', 'nota'),
+                        ...createGeniusSection(data['14_note_importanti']),
                         ...createDeepDiveSection(data.deep_dives?.['14_note_importanti']),
                     ] : []),
 
@@ -382,6 +402,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                                 }),
                             ]),
                         ]),
+                        ...createGeniusSection(data['17_ambiguita_punti_da_chiarire']),
                         ...createDeepDiveSection(data.deep_dives?.['17_ambiguita_punti_da_chiarire']),
                     ] : []),
 
@@ -393,6 +414,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                             createKeyValueLine("Pagamenti", lotData.pagamenti),
                             createKeyValueLine("Clausole", lotData.clausole),
                         ]),
+                        ...createGeniusSection(data['15_remunerazione']),
                         ...createDeepDiveSection(data.deep_dives?.['15_remunerazione']),
                     ] : []),
 
@@ -400,6 +422,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                     ...(shouldInclude('16_sla_penali') ? [
                         createHeading("15. SLA e Penali"),
                         ...renderSlaPenaliSection(data['16_sla_penali']),
+                        ...createGeniusSection(data['16_sla_penali']),
                         ...createDeepDiveSection(data.deep_dives?.['16_sla_penali']),
                     ] : []),
 
@@ -646,6 +669,83 @@ function createDeepDiveSection(qaList: { question: string, answer: string }[] | 
             })
         ])
     ];
+}
+
+function createGeniusSection(data: any) {
+    // Expecting data to potentially have: semantic_analysis, rischi_rilevati, suggerimenti
+    // These are usually at the root of the section object if flattened, OR inside an array if it's a list.
+    // However, our data structure in 'data' passed to exportToDocx relies on `data[sectionKey]`.
+    // FOR SINGLE LIST SECTIONS (like Sintesi): data['3_sintesi'] is an Array or Object.
+    // If it's an array, usually the first item holds the Genius props IF they were flattened.
+    // Let's handle generic object checking.
+
+    const geniusContent: any[] = [];
+
+    // Check both container (for adapter-hoisted props) and first item (legacy/fallback)
+    const semanticAnalysis = data?.semantic_analysis || (Array.isArray(data) && data.length > 0 ? data[0].semantic_analysis : undefined);
+    const risks = data?.rischi_rilevati || (Array.isArray(data) && data.length > 0 ? data[0].rischi_rilevati : undefined);
+    const suggestions = data?.suggerimenti || (Array.isArray(data) && data.length > 0 ? data[0].suggerimenti : undefined);
+
+    if (!data) return [];
+
+    // 1. Semantic Analysis
+    if (semanticAnalysis) {
+        geniusContent.push(
+            createSubHeading("Analisi Semantica (Genius Mode)"),
+            new Paragraph({
+                text: safeText(semanticAnalysis),
+                spacing: { after: 200 }
+            })
+        );
+    }
+
+    // 2. Risks
+    if (risks && Array.isArray(risks) && risks.length > 0) {
+        geniusContent.push(
+            createSubHeading("Rischi Rilevati"),
+            ...risks.flatMap((r: any) => [
+                new Paragraph({
+                    children: [
+                        new TextRun({ text: `[${r.livello?.toUpperCase() || 'INFO'}] `, bold: true, color: r.livello === 'alto' ? 'FF0000' : (r.livello === 'medio' ? 'FFA500' : '000000') }),
+                        new TextRun({ text: r.descrizione, bold: true })
+                    ],
+                    bullet: { level: 0 }
+                }),
+                new Paragraph({
+                    text: `Impatto: ${r.impatto || '-'} | Mitigazione: ${r.mitigazione || '-'}`,
+                    indent: { left: 720 }, // Indent explanation
+                    spacing: { after: 100 }
+                })
+            ])
+        );
+    }
+
+    // 3. Suggestions
+    if (suggestions && Array.isArray(suggestions) && suggestions.length > 0) {
+        geniusContent.push(
+            createSubHeading("Suggerimenti Operativi"),
+            ...suggestions.flatMap((s: any) => [
+                new Paragraph({
+                    children: [
+                        new TextRun({ text: s.azione, bold: true }),
+                    ],
+                    bullet: { level: 0 }
+                }),
+                new Paragraph({
+                    text: `Motivazione: ${s.motivazione}`,
+                    indent: { left: 720 },
+                    run: { italics: true }
+                }),
+                new Paragraph({
+                    text: `Target: ${s.target}`,
+                    indent: { left: 720 },
+                    spacing: { after: 100 }
+                })
+            ])
+        );
+    }
+
+    return geniusContent;
 }
 
 function formatCurrency(amount: number | undefined): string {

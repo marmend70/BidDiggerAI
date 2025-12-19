@@ -28,37 +28,126 @@ interface DashboardProps {
     loadingBatches?: string[];
 }
 
-const SemanticAnalysisBlock = ({ data, sectionId }: { data?: { semantic_analysis?: string, rischi_rilevati?: string[] }, sectionId: string }) => {
+const SemanticAnalysisBlock = ({ data, sectionId }: { data?: { semantic_analysis?: string, rischi_rilevati?: any[], suggerimenti?: any[] }, sectionId: string }) => {
     if (!data) return null;
     // EXCLUSION: Don't show Genius Card for these sections (inherent logic)
     if (sectionId === '14_note_importanti' || sectionId === '17_ambiguita_punti_da_chiarire') return null;
 
-    const { semantic_analysis, rischi_rilevati } = data;
-    if (!semantic_analysis && (!rischi_rilevati || rischi_rilevati.length === 0)) return null;
+    // DEBUG: Log incoming data for critical sections
+    if (sectionId === '3b_checklist_amministrativa' || sectionId === '1_requisiti_partecipazione') {
+        console.log(`[Dashboard] SemanticBlock for ${sectionId}:`, data);
+    }
+
+    // Fallback Extraction: Check if data is array and props are inside the first element (common in legacy/archived data)
+    let semantic_analysis = data.semantic_analysis || (Array.isArray(data) && data.length > 0 ? data[0].semantic_analysis : undefined);
+    let risks = data.rischi_rilevati || (Array.isArray(data) && data.length > 0 ? data[0].rischi_rilevati : undefined);
+    let suggestions = data.suggerimenti || (Array.isArray(data) && data.length > 0 ? data[0].suggerimenti : undefined);
+
+    // SAFETY NORMALIZE: Ensure risks/suggestions are arrays or undefined (handle string blobs)
+    if (risks && typeof risks === 'string') risks = [risks];
+    if (suggestions && typeof suggestions === 'string') suggestions = [suggestions];
+
+    console.log(`[Dashboard] Final Genius Data for ${sectionId}:`, {
+        hasSem: !!semantic_analysis,
+        hasRisks: !!(risks && risks.length),
+        hasSugg: !!(suggestions && suggestions.length),
+        risksContent: risks
+    });
+
+    if (!semantic_analysis && (!risks || risks.length === 0) && (!suggestions || suggestions.length === 0)) return null;
 
     return (
-        <Card className="bg-purple-50 border-purple-200 mb-6">
-            <CardHeader>
+        <Card className="bg-purple-50 border-purple-200 mb-6 shadow-sm">
+            <CardHeader className="pb-3 border-b border-purple-100">
                 <CardTitle className="flex items-center gap-2 text-purple-900">
-                    <Sparkles className="h-6 w-6 text-purple-600" />
+                    <Sparkles className="h-5 w-5 text-purple-600" />
                     Bid Digger - Genius Mode
                 </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6 pt-4">
+                {/* 1. ANALISI SEMANTICA */}
                 {semantic_analysis && (
-                    <div>
-                        <h4 className="font-semibold text-purple-900 mb-2">Analisi Approfondita</h4>
-                        <p className="text-purple-800 whitespace-pre-line leading-relaxed">{semantic_analysis}</p>
+                    <div className="bg-white/60 p-4 rounded-lg border border-purple-100">
+                        <h4 className="font-semibold text-purple-900 mb-2 flex items-center gap-2">
+                            <BrainCircuit className="h-4 w-4" />
+                            Analisi Approfondita
+                        </h4>
+                        <p className="text-purple-900/80 whitespace-pre-line leading-relaxed text-sm">
+                            {semantic_analysis}
+                        </p>
                     </div>
                 )}
-                {rischi_rilevati && rischi_rilevati.length > 0 && (
+
+                {/* 2. RISCHI RILEVATI */}
+                {risks && risks.length > 0 && (
                     <div>
-                        <h4 className="font-semibold text-purple-900 mb-2">Rischi Rilevati</h4>
-                        <ul className="list-disc pl-5 space-y-1">
-                            {rischi_rilevati.map((risk, i) => (
-                                <li key={i} className="text-purple-800">{risk}</li>
+                        <h4 className="font-semibold text-red-700 mb-3 flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4" />
+                            Rischi Rilevati
+                        </h4>
+                        <div className="grid gap-3">
+                            {risks.map((risk, i) => {
+                                // BACKWARD COMPATIBILITY: Handle old string format
+                                if (typeof risk === 'string') {
+                                    return (
+                                        <div key={i} className="flex items-start gap-3 p-3 bg-red-50/50 rounded border border-red-100">
+                                            <div className="mt-0.5 min-w-[6px] h-1.5 w-1.5 rounded-full bg-red-400" />
+                                            <p className="text-sm text-red-800">{risk}</p>
+                                        </div>
+                                    );
+                                }
+                                // NEW OBJECT FORMAT
+                                return (
+                                    <div key={i} className="flex items-start gap-3 p-3 bg-white rounded border border-red-100 shadow-sm">
+                                        <div className={`mt-0.5 px-1.5 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider
+                                            ${risk.livello === 'ALTO' ? 'bg-red-100 text-red-700' :
+                                                risk.livello === 'MEDIO' ? 'bg-orange-100 text-orange-700' :
+                                                    'bg-yellow-100 text-yellow-700'}`}>
+                                            {risk.livello || 'GENERICO'}
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-sm font-medium text-slate-800">{risk.rischio || risk.descrizione}</p>
+                                            {risk.fonte && <p className="text-xs text-slate-400 mt-1">Fonte: {risk.fonte}</p>}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* 3. SUGGERIMENTI (NEW) */}
+                {suggestions && suggestions.length > 0 && (
+                    <div>
+                        <h4 className="font-semibold text-emerald-700 mb-3 flex items-center gap-2">
+                            <Lightbulb className="h-4 w-4" />
+                            Suggerimenti Operativi
+                        </h4>
+                        <div className="space-y-3">
+                            {suggestions.map((sugg, i) => (
+                                <div key={i} className="bg-emerald-50/50 border border-emerald-100 rounded-lg p-3 hover:bg-emerald-50 transition-colors">
+                                    <div className="flex items-start gap-3">
+                                        <CheckSquare className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                                        <div>
+                                            <p className="text-sm font-medium text-emerald-900">{sugg.azione}</p>
+                                            {sugg.motivazione && (
+                                                <p className="text-xs text-emerald-700/80 mt-1 leading-snug">
+                                                    <span className="font-semibold">Perché:</span> {sugg.motivazione}
+                                                </p>
+                                            )}
+                                            {sugg.target && (
+                                                <div className="mt-2 flex items-center gap-1.5">
+                                                    <Target className="h-3 w-3 text-emerald-400" />
+                                                    <span className="text-[10px] text-emerald-600 uppercase font-semibold tracking-wide">
+                                                        Target: {sugg.target}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
                             ))}
-                        </ul>
+                        </div>
                     </div>
                 )}
             </CardContent>
@@ -76,15 +165,21 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             // console.log("Semantic Keys:", Object.keys(data.semantic_analysis_data || {}));
         }
 
-        // Check if section is disabled (except for 'configurazioni' and 'faq' which might be special)
-        if (activeSection !== 'configurazioni' && userPreferences?.analysis_sections?.[activeSection] === false) {
-            return (
-                <div className="flex flex-col items-center justify-center h-[50vh] text-center">
-                    <Ban className="h-16 w-16 text-slate-300 mb-4" />
-                    <h3 className="text-xl font-semibold text-slate-700">Sezione Esclusa dall'Analisi</h3>
-                    <p className="text-slate-500 mt-2">Questa sezione è stata disabilitata nelle configurazioni.</p>
-                </div>
-            );
+        // Check if section is disabled (except for 'configurazioni' and 'faq')
+        // BLOCKER FIX: If it is disabled BUT we have data for it (e.g. archive), we MUST render it.
+        // So we only show "Excluded" if it is disabled AND we do NOT have data.
+        const sectionHasData = data && data[activeSection as keyof AnalysisResult];
+
+        if (activeSection !== 'configurazioni' && activeSection !== 'faq') {
+            if (userPreferences?.analysis_sections?.[activeSection] === false && !sectionHasData) {
+                return (
+                    <div className="flex flex-col items-center justify-center h-[50vh] text-center">
+                        <Ban className="h-16 w-16 text-slate-300 mb-4" />
+                        <h3 className="text-xl font-semibold text-slate-700">Sezione Esclusa dall'Analisi</h3>
+                        <p className="text-slate-500 mt-2">Questa sezione è stata disabilitata nelle configurazioni.</p>
+                    </div>
+                );
+            }
         }
 
         // Check if the batch for this section is loading
@@ -199,7 +294,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </div>
                         </div>
 
-                        <SemanticAnalysisBlock data={data['1_requisiti_partecipazione']} sectionId="1_requisiti_partecipazione" />
+                        <SemanticAnalysisBlock data={data['1_requisiti_partecipazione'][0]} sectionId="1_requisiti_partecipazione" />
                         <DeepDive
                             sectionId="1_requisiti_partecipazione"
                             existingQA={data.deep_dives?.['1_requisiti_partecipazione']}
@@ -442,7 +537,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardContent>
                         </Card>
 
-                        <SemanticAnalysisBlock data={data['3b_checklist_amministrativa']} sectionId="3b_checklist_amministrativa" />
+                        <SemanticAnalysisBlock data={checklistData} sectionId="3b_checklist_amministrativa" />
                         <DeepDive
                             sectionId="3b_checklist_amministrativa"
                             existingQA={data.deep_dives?.['3b_checklist_amministrativa']}
@@ -1467,6 +1562,11 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                                     <div className="flex items-center gap-2">
                                                                         {React.createElement(section.icon, { className: "h-4 w-4 text-slate-500" })}
                                                                         {section.label}
+                                                                        {sectionId === '5_scadenze' && (
+                                                                            <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-100 ml-2">
+                                                                                Sempre verificata
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                     {sectionId === '0_snapshot' && (
                                                                         <p className="text-[10px] text-amber-600 mt-1 ml-6 leading-tight max-w-[250px]">

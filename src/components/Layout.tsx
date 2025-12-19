@@ -80,7 +80,10 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                     // For Snapshot (isSnapshot), we explicitly force disabled if isAnalyzing is true (user request: active ONLY at end of analysis).
                     const isDisabled = isSnapshot
                         ? (isAnalyzing || !hasData) // Snapshot: Disabled if analyzing OR no data
-                        : (isAnalyzing && (!hasData || isLoading || sectionId === 'faq')); // Others: Standard logic
+                        : (isAnalyzing
+                            ? (!hasData || (isLoading && isEnabled) || sectionId === 'faq') // Analyzing: standard restrict logic
+                            : !hasData // Not analyzing: Enabled ONLY if hasData (ignores userPreferences for view mode)
+                        );
 
                     // Determine if we need a header
                     let header: string | null = null;
@@ -107,11 +110,19 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                     } else {
                         buttonClass += isActive
                             ? 'bg-amber-500 text-slate-900 '
-                            : 'text-slate-300 hover:bg-slate-800 hover:text-white ';
+                            : 'text-white hover:bg-slate-800 ';
                     }
 
-                    buttonClass += (!isEnabled ? 'opacity-50 grayscale ' : '');
-                    buttonClass += (isDisabled ? 'opacity-50 cursor-not-allowed ' : '');
+                    // Visual Grayout: Always apply if disabled in prefs, regardless of data presence.
+                    // This satisfies "evidenzi sul menu le sezioni selezionate... e lasci in grigino quelle non selezionate"
+                    if (!isEnabled) {
+                        buttonClass += 'opacity-50 grayscale ';
+                    }
+
+                    // If it is disabled (e.g. no data), we DO NOT add opacity if it is enabled.
+                    // We only add cursor-not-allowed.
+                    // This ensures "white" text for selected sections even if analysis isn't ready.
+                    buttonClass += (isDisabled ? 'cursor-not-allowed ' : '');
 
 
                     return (
@@ -132,7 +143,7 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                                     <Icon className={`h-4 w-4 ${!isActive && isSnapshot ? 'text-yellow-500' : (!isActive && isSpecial ? 'text-purple-400' : '')}`} />
                                     {section.label}
                                 </div>
-                                {isLoading && (
+                                {isLoading && isEnabled && (
                                     <Loader2 className="h-4 w-4 animate-spin text-current opacity-70" />
                                 )}
                                 {!isLoading && hasData && !isSnapshot && (

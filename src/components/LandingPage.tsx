@@ -70,8 +70,115 @@ const ScanDemo = () => {
 };
 
 const ChatDemo = () => {
+    const [messages, setMessages] = useState<Array<{ role: 'user' | 'bot', content: React.ReactNode }>>([
+        { role: 'bot', content: "Ciao! Ho analizzato i documenti. Sono pronto a rispondere." }
+    ]);
+    const [isTyping, setIsTyping] = useState(false);
+    const [inputValue, setInputValue] = useState("");
+
+    useEffect(() => {
+        let mounted = true;
+        let timeout: NodeJS.Timeout;
+
+        const steps = [
+            { action: 'wait', ms: 1500 },
+            { action: 'type', text: "Quali sono i requisiti del Capoprogetto?" },
+            { action: 'send' },
+            { action: 'wait', ms: 500 },
+            { action: 'bot_type', val: true },
+            { action: 'wait', ms: 1500 },
+            { action: 'bot_type', val: false },
+            {
+                action: 'bot_msg', content: (
+                    <div>
+                        <p className="mb-2">Secondo il <span className="text-indigo-400 font-semibold border-b border-indigo-400/30">Disciplinare (Pag. 18)</span>:</p>
+                        <ul className="space-y-1 ml-4 list-disc marker:text-amber-500">
+                            <li>Laurea Magistrale in Ing. Informatica</li>
+                            <li>Certificazione <span className="text-amber-400 font-bold">PMP</span> o Prince2</li>
+                            <li>Almeno 5 anni di esperienza</li>
+                        </ul>
+                    </div>
+                )
+            },
+            { action: 'wait', ms: 3000 },
+            { action: 'type', text: "Ci sono penali?" },
+            { action: 'send' },
+            { action: 'wait', ms: 500 },
+            { action: 'bot_type', val: true },
+            { action: 'wait', ms: 1500 },
+            { action: 'bot_type', val: false },
+            { action: 'bot_msg', content: "Sì, l'Art. 9 prevede una penale dello 0.1‰ per ogni giorno di ritardo, fino a un massimo del 10%." },
+            { action: 'wait', ms: 4000 },
+            { action: 'reset' }
+        ];
+
+        let stepIndex = 0;
+
+        const executeStep = () => {
+            if (!mounted) return;
+            const step = steps[stepIndex];
+
+            if (step.action === 'wait') {
+                timeout = setTimeout(() => {
+                    stepIndex++;
+                    if (stepIndex < steps.length) executeStep();
+                }, step.ms);
+            } else if (step.action === 'type') {
+                let text = step.text as string;
+                let charIndex = 0;
+                const typeInterval = setInterval(() => {
+                    if (!mounted) return clearInterval(typeInterval);
+                    setInputValue(text.substring(0, charIndex + 1));
+                    charIndex++;
+                    if (charIndex === text.length) {
+                        clearInterval(typeInterval);
+                        setTimeout(() => {
+                            stepIndex++;
+                            if (stepIndex < steps.length) executeStep();
+                        }, 300);
+                    }
+                }, 40);
+            } else if (step.action === 'send') {
+                setInputValue("");
+                setMessages(prev => [...prev, { role: 'user', content: steps[stepIndex - 1].text }]); // Use text from prev step
+                stepIndex++;
+                executeStep();
+            } else if (step.action === 'bot_type') {
+                setIsTyping(Boolean(step.val));
+                stepIndex++;
+                executeStep();
+            } else if (step.action === 'bot_msg') {
+                setMessages(prev => [...prev, { role: 'bot', content: step.content }]);
+                stepIndex++;
+                executeStep();
+            } else if (step.action === 'reset') {
+                setMessages([{ role: 'bot', content: "Ciao! Ho analizzato i documenti. Sono pronto a rispondere." }]);
+                stepIndex = 0;
+                executeStep();
+            }
+        };
+
+        executeStep();
+
+        return () => {
+            mounted = false;
+            clearTimeout(timeout);
+        };
+    }, []);
+
+    const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTo({
+                top: scrollContainerRef.current.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+    }, [messages, isTyping]);
+
+
     return (
-        <div className="relative w-full max-w-lg mx-auto bg-slate-950 rounded-xl border border-slate-800 shadow-2xl p-4 flex flex-col gap-4 h-[300px]">
+        <div className="relative w-full max-w-lg mx-auto bg-slate-950 rounded-xl border border-slate-800 shadow-2xl p-4 flex flex-col gap-4 h-[400px]">
             {/* Header */}
             <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
                 <div className="w-8 h-8 rounded-full bg-indigo-600/20 flex items-center justify-center">
@@ -86,33 +193,45 @@ const ChatDemo = () => {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 space-y-4 overflow-hidden relative">
-                <div className="flex gap-3 justify-end animate-in fade-in slide-in-from-bottom-2 duration-500">
-                    <div className="bg-amber-600 px-4 py-2.5 rounded-2xl rounded-tr-sm text-sm text-white max-w-[85%] shadow-md">
-                        Quali sono i requisiti del Capoprogetto?
+            <div ref={scrollContainerRef} className="flex-1 space-y-4 overflow-y-auto w-full pr-2 scrollbar-thin scrollbar-thumb-slate-800">
+                {messages.map((msg, idx) => (
+                    <div key={idx} className={cn("flex gap-3 w-full", msg.role === 'user' ? "justify-end" : "justify-start")}>
+                        {msg.role === 'bot' && (
+                            <div className="w-8 h-8 rounded-full bg-indigo-600/20 flex-shrink-0 flex items-center justify-center mt-1">
+                                <MessageSquare className="w-4 h-4 text-indigo-400" />
+                            </div>
+                        )}
+                        <div className={cn(
+                            "px-4 py-3 rounded-2xl text-sm max-w-[90%] shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-300",
+                            msg.role === 'user'
+                                ? "bg-amber-600 text-white rounded-tr-sm"
+                                : "bg-slate-900 border border-slate-800 text-slate-300 rounded-tl-sm"
+                        )}>
+                            {msg.content}
+                        </div>
                     </div>
-                </div>
-
-                <div className="flex gap-3 justify-start animate-in fade-in slide-in-from-bottom-2 duration-500 delay-500 fill-mode-backwards">
-                    <div className="w-8 h-8 rounded-full bg-indigo-600/20 flex-shrink-0 flex items-center justify-center mt-1">
-                        <MessageSquare className="w-4 h-4 text-indigo-400" />
+                ))}
+                {isTyping && (
+                    <div className="flex gap-3 justify-start animate-in fade-in slide-in-from-bottom-2">
+                        <div className="w-8 h-8 rounded-full bg-indigo-600/20 flex-shrink-0 flex items-center justify-center mt-1">
+                            <MessageSquare className="w-4 h-4 text-indigo-400" />
+                        </div>
+                        <div className="bg-slate-900 border border-slate-800 px-4 py-3 rounded-2xl rounded-tl-sm text-sm text-slate-400 flex gap-1 items-center h-10">
+                            <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                            <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                            <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce"></span>
+                        </div>
                     </div>
-                    <div className="bg-slate-900 border border-slate-800 px-4 py-3 rounded-2xl rounded-tl-sm text-sm text-slate-300 max-w-[90%] shadow-sm">
-                        <p className="mb-2">Secondo il <span className="text-indigo-400 font-semibold cursor-pointer hover:underline">Disciplinare (Pag. 18)</span>, il Capoprogetto deve possedere:</p>
-                        <ul className="space-y-1 ml-4 list-disc marker:text-amber-500">
-                            <li>Laurea in Ingegneria o Informatica</li>
-                            <li>Certificazione PMP o Prince2</li>
-                            <li><span className="text-amber-400 font-bold">Almeno 5 anni</span> di esperienza documentata</li>
-                        </ul>
-                    </div>
-                </div>
+                )}
             </div>
 
             {/* Input */}
-            <div className="mt-auto relative">
-                <div className="h-10 bg-slate-900 rounded-lg border border-slate-800 flex items-center px-3 text-slate-500 text-sm">
-                    Chiedi dettagli sulle penali...
-                    <div className="absolute right-2 top-2 p-1 bg-amber-600 rounded-md text-white">
+            <div className="mt-auto pt-2 border-t border-slate-900">
+                <div className="h-10 bg-slate-900 rounded-lg border border-slate-800 flex items-center px-3 text-slate-300 text-sm relative">
+                    {inputValue}
+                    {!inputValue && <span className="text-slate-600 italic">Chiedi ai tuoi documenti...</span>}
+                    {inputValue && <span className="animate-pulse ml-0.5">|</span>}
+                    <div className={cn("absolute right-2 top-2 p-1 rounded-md text-white transition-all duration-300", inputValue ? "bg-amber-600" : "bg-slate-800 text-slate-500")}>
                         <ArrowRight className="w-3 h-3" />
                     </div>
                 </div>

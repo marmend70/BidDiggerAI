@@ -63,17 +63,16 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-
+            <div className="bg-slate-900 rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-slate-800">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50">
-                    <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                        <Mail className="h-5 w-5 text-slate-500" />
+                <div className="flex items-center justify-between p-6 border-b border-slate-800 bg-slate-950">
+                    <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                        <Mail className="h-5 w-5 text-slate-400" />
                         Contatti
                     </h2>
                     <button
                         onClick={handleClose}
-                        className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-200 rounded-full"
+                        className="text-slate-400 hover:text-slate-200 transition-colors p-1 hover:bg-slate-800 rounded-full"
                     >
                         <X className="h-5 w-5" />
                     </button>
@@ -83,16 +82,16 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                 <div className="p-6">
                     {status === 'SUCCESS' ? (
                         <div className="flex flex-col items-center justify-center text-center py-8 space-y-4">
-                            <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center">
-                                <CheckCircle2 className="h-8 w-8 text-green-600" />
+                            <div className="h-16 w-16 bg-green-900/30 rounded-full flex items-center justify-center">
+                                <CheckCircle2 className="h-8 w-8 text-green-500" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-semibold text-slate-900">Richiesta Inviata!</h3>
-                                <p className="text-slate-500 mt-2 max-w-xs mx-auto">
-                                    Grazie <strong>{formData.firstName}</strong>. La tua richiesta di informazioni è stata inviata a <span className="text-slate-700 font-medium">mm.infoapps@gmail.com</span>.
+                                <h3 className="text-lg font-semibold text-slate-100">Richiesta Inviata!</h3>
+                                <p className="text-slate-400 mt-2 max-w-xs mx-auto">
+                                    Grazie <strong>{formData.firstName}</strong>. La tua richiesta di informazioni è stata inviata a <span className="text-slate-200 font-medium">mm.infoapps@gmail.com</span>.
                                 </p>
                             </div>
-                            <Button onClick={handleClose} className="mt-4 min-w-[120px]">
+                            <Button onClick={handleClose} className="mt-4 min-w-[120px] bg-slate-800 hover:bg-slate-700 text-white border border-slate-700">
                                 Chiudi
                             </Button>
                         </div>
@@ -101,7 +100,7 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                             <div className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <label htmlFor="firstName" className="text-sm font-medium text-slate-700">
+                                        <label htmlFor="firstName" className="text-sm font-medium text-slate-300">
                                             Nome <span className="text-red-500">*</span>
                                         </label>
                                         <Input
@@ -111,10 +110,11 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                                             onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
                                             required
                                             disabled={status === 'SENDING'}
+                                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label htmlFor="lastName" className="text-sm font-medium text-slate-700">
+                                        <label htmlFor="lastName" className="text-sm font-medium text-slate-300">
                                             Cognome <span className="text-red-500">*</span>
                                         </label>
                                         <Input
@@ -124,11 +124,12 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                                             onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
                                             required
                                             disabled={status === 'SENDING'}
+                                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600"
                                         />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label htmlFor="email" className="text-sm font-medium text-slate-700">
+                                    <label htmlFor="email" className="text-sm font-medium text-slate-300">
                                         Indirizzo mail <span className="text-red-500">*</span>
                                     </label>
                                     <Input
@@ -139,10 +140,11 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                                         onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                                         required
                                         disabled={status === 'SENDING'}
+                                        className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label htmlFor="message" className="text-sm font-medium text-slate-700">
+                                    <label htmlFor="message" className="text-sm font-medium text-slate-300">
                                         Richiesta <span className="text-red-500">*</span>
                                     </label>
                                     <Textarea
@@ -152,7 +154,7 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                                         onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
                                         required
                                         disabled={status === 'SENDING'}
-                                        className="resize-none min-h-[100px]"
+                                        className="resize-none min-h-[100px] bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600"
                                     />
                                 </div>
                             </div>
@@ -160,7 +162,7 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                             <div className="pt-4">
                                 <Button
                                     type="submit"
-                                    className="w-full bg-slate-900 hover:bg-slate-800 text-white"
+                                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold"
                                     disabled={status === 'SENDING'}
                                 >
                                     {status === 'SENDING' ? (
@@ -175,7 +177,7 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                                         </>
                                     )}
                                 </Button>
-                                <p className="text-xs text-slate-400 text-center mt-3">
+                                <p className="text-xs text-slate-500 text-center mt-3">
                                     Compilando questo form accetti di essere contattato per fornire le informazioni richieste.
                                 </p>
                             </div>

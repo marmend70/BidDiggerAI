@@ -1247,14 +1247,14 @@ function App() {
       {!analysisData && activeSection !== 'configurazioni' && activeSection !== 'archivio' ? (
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-center mb-8 relative">
-            <div className="inline-block mb-4 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-full text-sm font-semibold border border-indigo-100 flex items-center gap-2">
+            <div className="inline-block mb-4 px-4 py-2 bg-[#1e1e2d] text-indigo-400 rounded-full text-sm font-semibold border border-slate-700 flex items-center gap-2 shadow-sm">
               <span>Crediti disponibili: {userCredits}</span>
-              <button onClick={() => setShowPricingModal(true)} className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700">
+              <button onClick={() => setShowPricingModal(true)} className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-500 transition-colors">
                 Ricarica
               </button>
             </div>
-            <h1 className="text-4xl font-bold text-slate-900 mb-4">Benvenuto in Bid Digger</h1>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+            <h1 className="text-4xl font-bold text-slate-100 mb-4">Benvenuto in Bid Digger</h1>
+            <p className="text-lg text-slate-400 max-w-2xl mx-auto">
               Carica i documenti di gara (PDF) e lascia che la nostra AI li analizzi per te.
               Estrai requisiti, scadenze e criteri di valutazione in pochi secondi.
             </p>
@@ -1267,41 +1267,41 @@ function App() {
           />
 
           <div className="mt-8 max-w-3xl mx-auto grid gap-4 md:grid-cols-3 text-left">
-            <div className="p-4 bg-white rounded-lg border border-slate-200 shadow-sm">
-              <h3 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
-                <span className="h-6 w-6 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-xs">1</span>
+            <div className="p-4 bg-[#1e1e2d] rounded-lg border border-slate-800 shadow-sm">
+              <h3 className="font-semibold text-slate-200 mb-2 flex items-center gap-2">
+                <span className="h-6 w-6 rounded-full bg-amber-400/10 text-amber-500 flex items-center justify-center text-xs font-bold border border-amber-400/20">1</span>
                 Documenti
               </h3>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-slate-400">
                 Si consiglia di caricare <strong>uno o due documenti</strong> (es. disciplinare e capitolato). Più documenti rendono i tempi di attesa più lunghi.
               </p>
             </div>
-            <div className="p-4 bg-white rounded-lg border border-slate-200 shadow-sm">
-              <h3 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
-                <span className="h-6 w-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs">2</span>
+            <div className="p-4 bg-[#1e1e2d] rounded-lg border border-slate-800 shadow-sm">
+              <h3 className="font-semibold text-slate-200 mb-2 flex items-center gap-2">
+                <span className="h-6 w-6 rounded-full bg-blue-400/10 text-blue-500 flex items-center justify-center text-xs font-bold border border-blue-400/20">2</span>
                 Configurazioni
               </h3>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-slate-400">
                 La sezione <strong>"Configurazioni"</strong> permette di selezionare o deselezionare l'analisi e/o l'export su report per contenuti non necessari.
               </p>
             </div>
-            <div className="p-4 bg-white rounded-lg border border-slate-200 shadow-sm">
-              <h3 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
-                <span className="h-6 w-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">3</span>
+            <div className="p-4 bg-[#1e1e2d] rounded-lg border border-slate-800 shadow-sm">
+              <h3 className="font-semibold text-slate-200 mb-2 flex items-center gap-2">
+                <span className="h-6 w-6 rounded-full bg-emerald-400/10 text-emerald-500 flex items-center justify-center text-xs font-bold border border-emerald-400/20">3</span>
                 Approfondimenti
               </h3>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-slate-400">
                 In ogni sezione e in <strong>"Faq e Approfondimenti"</strong> si possono aggiungere ulteriori richieste specifiche all'AI.
               </p>
             </div>
           </div>
           {isUploading && (
             <div className="mt-6 flex flex-col items-center gap-2 animate-in fade-in slide-in-from-bottom-4">
-              <div className="h-2 w-64 bg-slate-200 rounded-full overflow-hidden">
+              <div className="h-2 w-64 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
                 <div className="h-full bg-amber-500 animate-progress origin-left" style={{ width: '100%' }}></div>
               </div>
-              <p className="text-sm text-slate-500 font-medium animate-pulse">{progressMessage}</p>
-              <p className="text-xs text-slate-400 font-mono mt-1">Tempo trascorso: {formatTime(elapsedTime)}</p>
+              <p className="text-sm text-slate-300 font-medium animate-pulse">{progressMessage}</p>
+              <p className="text-xs text-slate-500 font-mono mt-1">Tempo trascorso: {formatTime(elapsedTime)}</p>
             </div>
           )}
         </div>

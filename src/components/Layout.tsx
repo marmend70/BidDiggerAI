@@ -253,7 +253,7 @@ export function Layout(props: LayoutProps) {
     };
 
     return (
-        <div className="flex h-screen bg-slate-50 overflow-hidden flex-col md:flex-row">
+        <div className="flex h-screen bg-slate-950 overflow-hidden flex-col md:flex-row">
             {/* Desktop Sidebar */}
             <aside className="hidden md:flex w-80 bg-slate-900 flex-shrink-0 flex-col h-full overflow-hidden">
                 <SidebarContent

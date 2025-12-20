@@ -18,6 +18,56 @@ import { DeepDive } from './DeepDive';
 import { SECTIONS_MAP, MENU_ORDER, DEEP_DIVE_EXAMPLES, SECTION_BATCH_MAP, AVAILABLE_MODELS, SECTORS } from '@/constants';
 import { supabase } from '@/lib/supabase';
 
+// Helper for parsing Italian dates
+const parseItalianDate = (dateStr: string): Date | null => {
+    if (!dateStr) return null;
+    const months: { [key: string]: number } = {
+        'gennaio': 0, 'febbraio': 1, 'marzo': 2, 'aprile': 3, 'maggio': 4, 'giugno': 5,
+        'luglio': 6, 'agosto': 7, 'settembre': 8, 'ottobre': 9, 'novembre': 10, 'dicembre': 11,
+        'gen': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'mag': 4, 'giu': 5,
+        'lug': 6, 'ago': 7, 'set': 8, 'ott': 9, 'nov': 10, 'dic': 11
+    };
+
+    try {
+        const parts = dateStr.trim().toLowerCase().split(/[\/\s-]+/);
+        // Handle common formats: DD/MM/YYYY, DD Month YYYY
+        let day, month, year;
+
+        if (parts.length >= 3) {
+            // Check for DD/MM/YYYY
+            if (!isNaN(parseInt(parts[1]))) {
+                day = parseInt(parts[0]);
+                month = parseInt(parts[1]) - 1;
+                year = parseInt(parts[2]);
+            } else {
+                // Assume DD Month YYYY
+                day = parseInt(parts[0]);
+                month = months[parts[1]] !== undefined ? months[parts[1]] : -1;
+                year = parseInt(parts[2]);
+                // Handle cases where year comes first or other variations if needed, but this covers standard output
+            }
+
+            if (year < 100) year += 2000; // Assume 21 -> 2021
+
+            if (day > 0 && month >= 0 && year > 1900) {
+                return new Date(year, month, day);
+            }
+        }
+    } catch (e) {
+        console.warn("Failed to parse date:", dateStr);
+    }
+    return null;
+};
+
+const getDaysDifference = (targetDate: Date): number => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(targetDate);
+    target.setHours(0, 0, 0, 0);
+    const diffTime = target.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
+
 interface DashboardProps {
     data: AnalysisResult;
     activeSection: string;
@@ -57,22 +107,22 @@ const SemanticAnalysisBlock = ({ data, sectionId, children }: { data?: { semanti
     if (!semantic_analysis && (!risks || risks.length === 0) && (!suggestions || suggestions.length === 0) && !children) return null;
 
     return (
-        <Card className="bg-purple-50 border-purple-200 mb-6 shadow-sm">
-            <CardHeader className="pb-3 border-b border-purple-100">
-                <CardTitle className="flex items-center gap-2 text-purple-900">
-                    <Sparkles className="h-5 w-5 text-purple-600" />
+        <Card className="bg-purple-950/20 border-purple-900 mb-6 shadow-sm">
+            <CardHeader className="pb-3 border-b border-purple-900">
+                <CardTitle className="flex items-center gap-2 text-purple-100">
+                    <Sparkles className="h-5 w-5 text-purple-400" />
                     Bid Digger - Genius Mode
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 pt-4">
                 {/* 1. ANALISI SEMANTICA */}
                 {semantic_analysis && (
-                    <div className="bg-white/60 p-4 rounded-lg border border-purple-100">
-                        <h4 className="font-semibold text-purple-900 mb-2 flex items-center gap-2">
+                    <div className="bg-slate-900/60 p-4 rounded-lg border border-purple-900">
+                        <h4 className="font-semibold text-purple-100 mb-2 flex items-center gap-2">
                             <BrainCircuit className="h-4 w-4" />
                             Analisi Approfondita
                         </h4>
-                        <p className="text-purple-900/80 whitespace-pre-line leading-relaxed text-sm">
+                        <p className="text-purple-100/80 whitespace-pre-line leading-relaxed text-sm">
                             {semantic_analysis}
                         </p>
                     </div>
@@ -81,7 +131,7 @@ const SemanticAnalysisBlock = ({ data, sectionId, children }: { data?: { semanti
                 {/* 2. RISCHI RILEVATI */}
                 {risks && risks.length > 0 && (
                     <div>
-                        <h4 className="font-semibold text-red-700 mb-3 flex items-center gap-2">
+                        <h4 className="font-semibold text-red-400 mb-3 flex items-center gap-2">
                             <AlertTriangle className="h-4 w-4" />
                             Rischi Rilevati
                         </h4>
@@ -90,23 +140,23 @@ const SemanticAnalysisBlock = ({ data, sectionId, children }: { data?: { semanti
                                 // BACKWARD COMPATIBILITY: Handle old string format
                                 if (typeof risk === 'string') {
                                     return (
-                                        <div key={i} className="flex items-start gap-3 p-3 bg-red-50/50 rounded border border-red-100">
+                                        <div key={i} className="flex items-start gap-3 p-3 bg-red-950/20 rounded border border-red-900">
                                             <div className="mt-0.5 min-w-[6px] h-1.5 w-1.5 rounded-full bg-red-400" />
-                                            <p className="text-sm text-red-800">{risk}</p>
+                                            <p className="text-sm text-red-200">{risk}</p>
                                         </div>
                                     );
                                 }
                                 // NEW OBJECT FORMAT
                                 return (
-                                    <div key={i} className="flex items-start gap-3 p-3 bg-white rounded border border-red-100 shadow-sm">
+                                    <div key={i} className="flex items-start gap-3 p-3 bg-slate-900/50 rounded border border-red-900/50 shadow-sm">
                                         <div className={`mt-0.5 px-1.5 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider
-                                            ${risk.livello === 'ALTO' ? 'bg-red-100 text-red-700' :
-                                                risk.livello === 'MEDIO' ? 'bg-orange-100 text-orange-700' :
-                                                    'bg-yellow-100 text-yellow-700'}`}>
+                                            ${risk.livello === 'ALTO' ? 'bg-red-950/40 text-red-400' :
+                                                risk.livello === 'MEDIO' ? 'bg-orange-950/40 text-orange-400' :
+                                                    'bg-yellow-950/40 text-yellow-400'}`}>
                                             {risk.livello || 'GENERICO'}
                                         </div>
                                         <div className="flex-1">
-                                            <p className="text-sm font-medium text-slate-800">{risk.rischio || risk.descrizione}</p>
+                                            <p className="text-sm font-medium text-slate-200">{risk.rischio || risk.descrizione}</p>
                                             {risk.fonte && <p className="text-xs text-slate-400 mt-1">Fonte: {risk.fonte}</p>}
                                         </div>
                                     </div>
@@ -119,19 +169,19 @@ const SemanticAnalysisBlock = ({ data, sectionId, children }: { data?: { semanti
                 {/* 3. SUGGERIMENTI (NEW) */}
                 {suggestions && suggestions.length > 0 && (
                     <div>
-                        <h4 className="font-semibold text-emerald-700 mb-3 flex items-center gap-2">
+                        <h4 className="font-semibold text-emerald-400 mb-3 flex items-center gap-2">
                             <Lightbulb className="h-4 w-4" />
                             Suggerimenti Operativi
                         </h4>
                         <div className="space-y-3">
                             {suggestions.map((sugg, i) => (
-                                <div key={i} className="bg-emerald-50/50 border border-emerald-100 rounded-lg p-3 hover:bg-emerald-50 transition-colors">
+                                <div key={i} className="bg-emerald-950/20 border border-emerald-900 rounded-lg p-3 hover:bg-emerald-900/30 transition-colors">
                                     <div className="flex items-start gap-3">
                                         <CheckSquare className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
                                         <div>
-                                            <p className="text-sm font-medium text-emerald-900">{sugg.azione}</p>
+                                            <p className="text-sm font-medium text-emerald-100">{sugg.azione}</p>
                                             {sugg.motivazione && (
-                                                <p className="text-xs text-emerald-700/80 mt-1 leading-snug">
+                                                <p className="text-xs text-emerald-200/80 mt-1 leading-snug">
                                                     <span className="font-semibold">Perché:</span> {sugg.motivazione}
                                                 </p>
                                             )}
@@ -159,46 +209,46 @@ const SemanticAnalysisBlock = ({ data, sectionId, children }: { data?: { semanti
 const InquadramentoBlock = ({ data }: { data?: { descrizione_settore: string, criticita_ricorrenti: string, leve_progettuali: string, aspetti_rilevanti: string } }) => {
     if (!data) return null;
     return (
-        <Card className="bg-indigo-50 border-indigo-200 mb-8 shadow-sm">
-            <CardHeader className="pb-3 border-b border-indigo-100">
-                <CardTitle className="flex items-center gap-2 text-indigo-900">
-                    <Building className="h-5 w-5 text-indigo-600" />
+        <Card className="bg-indigo-950/20 border-indigo-900 mb-8 shadow-sm">
+            <CardHeader className="pb-3 border-b border-indigo-900">
+                <CardTitle className="flex items-center gap-2 text-indigo-100">
+                    <Building className="h-5 w-5 text-indigo-400" />
                     Inquadramento Settoriale
                 </CardTitle>
-                <CardDescription className="text-indigo-700/80">
+                <CardDescription className="text-indigo-200/80">
                     Contestualizzazione e Modelli di Riferimento
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pt-4">
-                <div className="bg-white/60 p-4 rounded-lg border border-indigo-100">
-                    <p className="text-indigo-900/90 leading-relaxed text-sm">
+                <div className="bg-slate-900/60 p-4 rounded-lg border border-indigo-900">
+                    <p className="text-indigo-100/90 leading-relaxed text-sm">
                         {data.descrizione_settore}
                     </p>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
                     <div>
-                        <h4 className="font-semibold text-indigo-800 mb-2 flex items-center gap-2 text-sm">
+                        <h4 className="font-semibold text-indigo-300 mb-2 flex items-center gap-2 text-sm">
                             <AlertTriangle className="h-4 w-4" /> Criticità Ricorrenti
                         </h4>
-                        <p className="text-sm text-slate-700 bg-white p-3 rounded border border-indigo-50 leading-relaxed">
+                        <p className="text-sm text-slate-300 bg-slate-900 p-3 rounded border border-indigo-900 leading-relaxed">
                             {data.criticita_ricorrenti}
                         </p>
                     </div>
                     <div>
-                        <h4 className="font-semibold text-indigo-800 mb-2 flex items-center gap-2 text-sm">
+                        <h4 className="font-semibold text-indigo-300 mb-2 flex items-center gap-2 text-sm">
                             <Target className="h-4 w-4" /> Leve Progettuali
                         </h4>
-                        <p className="text-sm text-slate-700 bg-white p-3 rounded border border-indigo-50 leading-relaxed">
+                        <p className="text-sm text-slate-300 bg-slate-900 p-3 rounded border border-indigo-900 leading-relaxed">
                             {data.leve_progettuali}
                         </p>
                     </div>
                 </div>
                 {data.aspetti_rilevanti && (
                     <div>
-                        <h4 className="font-semibold text-indigo-800 mb-2 flex items-center gap-2 text-sm">
+                        <h4 className="font-semibold text-indigo-300 mb-2 flex items-center gap-2 text-sm">
                             <Star className="h-4 w-4" /> Aspetti Rilevanti per la S.A.
                         </h4>
-                        <p className="text-sm text-slate-700 bg-white p-3 rounded border border-indigo-50 leading-relaxed">
+                        <p className="text-sm text-slate-300 bg-slate-900 p-3 rounded border border-indigo-900 leading-relaxed">
                             {data.aspetti_rilevanti}
                         </p>
                     </div>
@@ -211,25 +261,25 @@ const InquadramentoBlock = ({ data }: { data?: { descrizione_settore: string, cr
 const SuggerimentiPunteggioBlock = ({ tips }: { tips?: Array<{ scelta: string, priorita: string, trade_off: string }> }) => {
     if (!tips || tips.length === 0) return null;
     return (
-        <Card className="bg-sky-50 border-sky-200 mt-6 shadow-sm">
-            <CardHeader className="pb-3 border-b border-sky-100">
-                <CardTitle className="flex items-center gap-2 text-sky-900 text-lg">
-                    <Lightbulb className="h-5 w-5 text-sky-600" />
+        <Card className="bg-sky-950/20 border-sky-900 mt-6 shadow-sm">
+            <CardHeader className="pb-3 border-b border-sky-900">
+                <CardTitle className="flex items-center gap-2 text-sky-100 text-lg">
+                    <Lightbulb className="h-5 w-5 text-sky-400" />
                     Suggerimenti Progettuali (Orientati al Punteggio)
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-4">
                 {tips.map((tip, i) => (
-                    <div key={i} className="bg-white p-4 rounded-lg border border-sky-100 shadow-sm relative overflow-hidden">
+                    <div key={i} className="bg-slate-900 p-4 rounded-lg border border-sky-900 shadow-sm relative overflow-hidden">
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-sky-400" />
-                        <h5 className="font-bold text-sky-900 mb-1">{tip.scelta}</h5>
+                        <h5 className="font-bold text-sky-100 mb-1">{tip.scelta}</h5>
                         <div className="flex flex-wrap gap-4 mt-2 text-sm">
-                            <div className="flex items-center gap-1.5 text-sky-700">
+                            <div className="flex items-center gap-1.5 text-sky-300">
                                 <Target className="h-3 w-3" />
                                 <span className="font-medium">Priorità:</span> {tip.priorita}
                             </div>
                             {tip.trade_off && (
-                                <div className="flex items-center gap-1.5 text-slate-600">
+                                <div className="flex items-center gap-1.5 text-slate-400">
                                     <Scale className="h-3 w-3" />
                                     <span className="font-medium">Trade-off:</span> {tip.trade_off}
                                 </div>
@@ -245,30 +295,30 @@ const SuggerimentiPunteggioBlock = ({ tips }: { tips?: Array<{ scelta: string, p
 const SuggerimentiOffertaBlock = ({ suggestions }: { suggestions?: Array<{ proposta: string, tipo: string, obiettivi: string, limiti: string }> }) => {
     if (!suggestions || suggestions.length === 0) return null;
     return (
-        <Card className="bg-teal-50 border-teal-200 mt-6 shadow-sm">
-            <CardHeader className="pb-3 border-b border-teal-100">
-                <CardTitle className="flex items-center gap-2 text-teal-900 text-lg">
-                    <Box className="h-5 w-5 text-teal-600" />
+        <Card className="bg-teal-950/20 border-teal-900 mt-6 shadow-sm">
+            <CardHeader className="pb-3 border-b border-teal-900">
+                <CardTitle className="flex items-center gap-2 text-teal-100 text-lg">
+                    <Box className="h-5 w-5 text-teal-400" />
                     Suggerimenti per Offerta Tecnica
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-4">
                 {suggestions.map((sugg, i) => (
-                    <div key={i} className="bg-white p-4 rounded-lg border border-teal-100 shadow-sm relative overflow-hidden">
+                    <div key={i} className="bg-slate-900 p-4 rounded-lg border border-teal-900 shadow-sm relative overflow-hidden">
                         <div className={`absolute left-0 top-0 bottom-0 w-1 ${sugg.tipo?.toLowerCase().includes('value') ? 'bg-purple-400' : 'bg-teal-400'}`} />
                         <div className="flex justify-between items-start mb-1">
-                            <h5 className="font-bold text-teal-900 pr-2">{sugg.proposta}</h5>
-                            <Badge variant="outline" className={`text-[10px] uppercase tracking-wider flex-shrink-0 ${sugg.tipo?.toLowerCase().includes('value') ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
+                            <h5 className="font-bold text-teal-100 pr-2">{sugg.proposta}</h5>
+                            <Badge variant="outline" className={`text-[10px] uppercase tracking-wider flex-shrink-0 ${sugg.tipo?.toLowerCase().includes('value') ? 'bg-purple-950/40 text-purple-300 border-purple-900' : 'bg-teal-950/40 text-teal-300 border-teal-900'}`}>
                                 {sugg.tipo}
                             </Badge>
                         </div>
                         <div className="grid md:grid-cols-2 gap-3 mt-3 text-sm">
-                            <div className="text-slate-700">
-                                <span className="font-medium text-teal-800 block mb-0.5">Obiettivi:</span>
+                            <div className="text-slate-300">
+                                <span className="font-medium text-teal-300 block mb-0.5">Obiettivi:</span>
                                 {sugg.obiettivi}
                             </div>
-                            <div className="text-slate-500">
-                                <span className="font-medium text-slate-600 block mb-0.5">Limiti/Impatti:</span>
+                            <div className="text-slate-400">
+                                <span className="font-medium text-slate-500 block mb-0.5">Limiti/Impatti:</span>
                                 {sugg.limiti}
                             </div>
                         </div>
@@ -304,9 +354,9 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             if (userPreferences?.analysis_sections?.[activeSection] === false && !sectionHasData) {
                 return (
                     <div className="flex flex-col items-center justify-center h-[50vh] text-center">
-                        <Ban className="h-16 w-16 text-slate-300 mb-4" />
-                        <h3 className="text-xl font-semibold text-slate-700">Sezione Esclusa dall'Analisi</h3>
-                        <p className="text-slate-500 mt-2">Questa sezione è stata disabilitata nelle configurazioni.</p>
+                        <Ban className="h-16 w-16 text-slate-700 mb-4" />
+                        <h3 className="text-xl font-semibold text-slate-200">Sezione Esclusa dall'Analisi</h3>
+                        <p className="text-slate-400 mt-2">Questa sezione è stata disabilitata nelle configurazioni.</p>
                     </div>
                 );
             }
@@ -324,9 +374,9 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                         </div>
                     </div>
                     <div>
-                        <h3 className="text-xl font-semibold text-slate-700">Analisi in corso...</h3>
-                        <p className="text-slate-500 mt-2">Stiamo analizzando questa sezione ({batch}).</p>
-                        <p className="text-xs text-slate-400 mt-1">I risultati appariranno qui appena pronti.</p>
+                        <h3 className="text-xl font-semibold text-slate-200">Analisi in corso...</h3>
+                        <p className="text-slate-400 mt-2">Stiamo analizzando questa sezione ({batch}).</p>
+                        <p className="text-xs text-slate-500 mt-1">I risultati appariranno qui appena pronti.</p>
                     </div>
                 </div>
             );
@@ -337,8 +387,8 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             return (
                 <div className="flex flex-col items-center justify-center h-[50vh] text-center">
                     <AlertCircle className="h-16 w-16 text-amber-300 mb-4" />
-                    <h3 className="text-xl font-semibold text-slate-700">Dati non disponibili</h3>
-                    <p className="text-slate-500 mt-2">I dati per questa sezione non sono stati generati o l'analisi è incompleta.</p>
+                    <h3 className="text-xl font-semibold text-slate-200">Dati non disponibili</h3>
+                    <p className="text-slate-400 mt-2">I dati per questa sezione non sono stati generati o l'analisi è incompleta.</p>
                 </div>
             );
         }
@@ -347,23 +397,23 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             case '1_requisiti_partecipazione':
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
                             <ShieldCheck className="h-8 w-8 text-blue-600" />
                             Requisiti di Partecipazione
                         </h2>
 
                         {/* Ordine Generale */}
                         <div className="space-y-4">
-                            <h3 className="text-xl font-semibold text-slate-800 border-b pb-2 flex items-center gap-2">
-                                <Briefcase className="h-5 w-5 text-slate-500" />
+                            <h3 className="text-xl font-semibold text-slate-200 border-b border-slate-800 pb-2 flex items-center gap-2">
+                                <Briefcase className="h-5 w-5 text-slate-400" />
                                 Requisiti di Ordine Generale
                             </h3>
                             <div className="grid gap-4 md:grid-cols-2">
                                 {data['1_requisiti_partecipazione'][0]?.ordine_generale?.map((req, i) => (
-                                    <Card key={i} className="hover:shadow-md transition-shadow">
+                                    <Card key={i} className="hover:shadow-md transition-shadow bg-slate-900 border-slate-800">
                                         <CardContent className="pt-6">
-                                            <p className="text-sm text-slate-700">{req.requisito}</p>
-                                            <Badge variant="outline" className="mt-2 text-xs bg-slate-50">{req.ref}</Badge>
+                                            <p className="text-sm text-slate-300">{req.requisito}</p>
+                                            <Badge variant="outline" className="mt-2 text-xs bg-slate-800 text-slate-400 border-slate-700">{req.ref}</Badge>
                                         </CardContent>
                                     </Card>
                                 ))}
@@ -372,16 +422,16 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
 
                         {/* Ordine Speciale */}
                         <div className="space-y-4">
-                            <h3 className="text-xl font-semibold text-slate-800 border-b pb-2 flex items-center gap-2">
+                            <h3 className="text-xl font-semibold text-slate-200 border-b border-slate-800 pb-2 flex items-center gap-2">
                                 <Award className="h-5 w-5 text-blue-500" />
                                 Requisiti di Ordine Speciale
                             </h3>
                             <div className="grid gap-4 md:grid-cols-2">
                                 {data['1_requisiti_partecipazione'][0]?.ordine_speciale?.map((req, i) => (
-                                    <Card key={i} className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
+                                    <Card key={i} className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow bg-slate-900 border-slate-800">
                                         <CardContent className="pt-6">
-                                            <p className="text-sm text-slate-700">{req.requisito}</p>
-                                            <Badge variant="outline" className="mt-2 text-xs bg-blue-50">{req.ref}</Badge>
+                                            <p className="text-sm text-slate-300">{req.requisito}</p>
+                                            <Badge variant="outline" className="mt-2 text-xs bg-blue-950/30 text-blue-300 border-blue-900/50">{req.ref}</Badge>
                                         </CardContent>
                                     </Card>
                                 ))}
@@ -390,16 +440,16 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
 
                         {/* Idoneità Professionale */}
                         <div className="space-y-4">
-                            <h3 className="text-xl font-semibold text-slate-800 border-b pb-2 flex items-center gap-2">
+                            <h3 className="text-xl font-semibold text-slate-200 border-b border-slate-800 pb-2 flex items-center gap-2">
                                 <Users className="h-5 w-5 text-purple-500" />
                                 Idoneità Professionale
                             </h3>
                             <div className="grid gap-4 md:grid-cols-2">
                                 {data['1_requisiti_partecipazione'][0]?.idoneita_professionale?.map((req, i) => (
-                                    <Card key={i} className="hover:shadow-md transition-shadow">
+                                    <Card key={i} className="hover:shadow-md transition-shadow bg-slate-900 border-slate-800">
                                         <CardContent className="pt-6">
-                                            <p className="text-sm text-slate-700">{req.requisito}</p>
-                                            <Badge variant="outline" className="mt-2 text-xs bg-purple-50">{req.ref}</Badge>
+                                            <p className="text-sm text-slate-300">{req.requisito}</p>
+                                            <Badge variant="outline" className="mt-2 text-xs bg-purple-950/30 text-purple-300 border-purple-900/50">{req.ref}</Badge>
                                         </CardContent>
                                     </Card>
                                 ))}
@@ -408,16 +458,16 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
 
                         {/* Capacità Tecnica */}
                         <div className="space-y-4">
-                            <h3 className="text-xl font-semibold text-slate-800 border-b pb-2 flex items-center gap-2">
+                            <h3 className="text-xl font-semibold text-slate-200 border-b border-slate-800 pb-2 flex items-center gap-2">
                                 <Settings className="h-5 w-5 text-green-500" />
                                 Capacità Tecnica e Professionale
                             </h3>
                             <div className="grid gap-4 md:grid-cols-2">
                                 {data['1_requisiti_partecipazione'][0]?.capacita_tecnica?.map((req, i) => (
-                                    <Card key={i} className="hover:shadow-md transition-shadow">
+                                    <Card key={i} className="hover:shadow-md transition-shadow bg-slate-900 border-slate-800">
                                         <CardContent className="pt-6">
-                                            <p className="text-sm text-slate-700">{req.requisito}</p>
-                                            <Badge variant="outline" className="mt-2 text-xs bg-green-50">{req.ref}</Badge>
+                                            <p className="text-sm text-slate-300">{req.requisito}</p>
+                                            <Badge variant="outline" className="mt-2 text-xs bg-green-950/30 text-green-300 border-green-900/50">{req.ref}</Badge>
                                         </CardContent>
                                     </Card>
                                 ))}
@@ -438,7 +488,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             case '3_sintesi':
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
                             <FileText className="h-8 w-8 text-amber-500" />
                             Sintesi Gara
                         </h2>
@@ -447,45 +497,45 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                         <InquadramentoBlock data={data.inquadramento_settoriale} />
 
                         {/* STAZIONE APPALTANTE CARD */}
-                        <Card className="bg-slate-50 border-slate-200">
+                        <Card className="bg-slate-900 border-slate-800">
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-slate-800 flex items-center gap-2">
+                                <CardTitle className="text-slate-200 flex items-center gap-2">
                                     <Building2 className="h-5 w-5 text-indigo-600" />
                                     Ente Appaltante
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-lg font-semibold text-slate-900 leading-snug">
+                                <p className="text-lg font-semibold text-slate-100 leading-snug">
                                     {data['3_sintesi'].stazione_appaltante || data['3_sintesi'].ente || 'Dato non disponibile'}
                                 </p>
                             </CardContent>
                         </Card>
 
-                        <Card className="bg-amber-50 border-amber-200">
+                        <Card className="bg-amber-950/20 border-amber-900">
                             <CardHeader>
-                                <CardTitle className="text-amber-900">Oggetto dell'Appalto</CardTitle>
+                                <CardTitle className="text-amber-500">Oggetto dell'Appalto</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-lg font-medium text-amber-800">{data['3_sintesi'].oggetto}</p>
+                                <p className="text-lg font-medium text-amber-100">{data['3_sintesi'].oggetto}</p>
                                 <div className="flex gap-4 mt-4">
-                                    <Badge variant="secondary" className="bg-white text-amber-700 border-amber-200">
+                                    <Badge variant="secondary" className="bg-slate-900 text-amber-500 border-amber-900">
                                         CIG: {data['3_sintesi'].codici.cig}
                                     </Badge>
-                                    <Badge variant="secondary" className="bg-white text-amber-700 border-amber-200">
+                                    <Badge variant="secondary" className="bg-slate-900 text-amber-500 border-amber-900">
                                         CUP: {data['3_sintesi'].codici.cup}
                                     </Badge>
-                                    <Badge variant="secondary" className="bg-white text-amber-700 border-amber-200">
+                                    <Badge variant="secondary" className="bg-slate-900 text-amber-500 border-amber-900">
                                         CPV: {data['3_sintesi'].codici.cpv}
                                     </Badge>
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
                                 <CardTitle>Scenario e Contesto</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-700 leading-relaxed">{data['3_sintesi'].scenario}</p>
+                                <p className="text-slate-300 leading-relaxed">{data['3_sintesi'].scenario}</p>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['3_sintesi']} sectionId="3_sintesi" />
@@ -503,55 +553,55 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                 const checklistData = data['3b_checklist_amministrativa']?.[0];
                 if (!checklistData) {
                     return (
-                        <div className="p-8 text-center text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-300">
-                            <ClipboardCheck className="h-12 w-12 mx-auto mb-4 text-slate-300" />
+                        <div className="p-8 text-center text-slate-400 bg-slate-900 rounded-lg border border-dashed border-slate-700">
+                            <ClipboardCheck className="h-12 w-12 mx-auto mb-4 text-slate-600" />
                             <p>Dati non disponibili per questa sezione.</p>
-                            <p className="text-sm mt-2">Prova a ri-analizzare il documento.</p>
+                            <p className="text-sm mt-2 text-slate-500">Prova a ri-analizzare il documento.</p>
                         </div>
                     );
                 }
 
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
                             <ClipboardCheck className="h-8 w-8 text-emerald-600" />
                             Checklist Busta Amministrativa
                         </h2>
 
                         <div className="grid md:grid-cols-2 gap-6">
                             {/* Garanzia Provvisoria */}
-                            <Card>
+                            <Card className="bg-slate-900 border-slate-800">
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
+                                    <CardTitle className="flex items-center gap-2 text-slate-200">
                                         <ShieldCheck className="h-5 w-5 text-emerald-500" />
                                         Garanzia Provvisoria
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div>
-                                        <span className="text-sm font-medium text-slate-500">Importo</span>
-                                        <p className="font-medium text-slate-900">{checklistData.garanzia_provvisoria?.importo || '-'}</p>
+                                        <span className="text-sm font-medium text-slate-400">Importo</span>
+                                        <p className="font-medium text-slate-100">{checklistData.garanzia_provvisoria?.importo || '-'}</p>
                                     </div>
                                     <div>
-                                        <span className="text-sm font-medium text-slate-500">Beneficiario</span>
-                                        <p className="text-slate-900">{checklistData.garanzia_provvisoria?.beneficiario || '-'}</p>
+                                        <span className="text-sm font-medium text-slate-400">Beneficiario</span>
+                                        <p className="text-slate-100">{checklistData.garanzia_provvisoria?.beneficiario || '-'}</p>
                                     </div>
                                     <div>
-                                        <span className="text-sm font-medium text-slate-500">Validità</span>
-                                        <p className="text-slate-900">{checklistData.garanzia_provvisoria?.validita || '-'}</p>
+                                        <span className="text-sm font-medium text-slate-400">Validità</span>
+                                        <p className="text-slate-100">{checklistData.garanzia_provvisoria?.validita || '-'}</p>
                                     </div>
                                     <div>
-                                        <span className="text-sm font-medium text-slate-500">Clausole</span>
-                                        <p className="text-slate-900 text-sm">{checklistData.garanzia_provvisoria?.clausole || '-'}</p>
+                                        <span className="text-sm font-medium text-slate-400">Clausole</span>
+                                        <p className="text-slate-300 text-sm">{checklistData.garanzia_provvisoria?.clausole || '-'}</p>
                                     </div>
                                 </CardContent>
                             </Card>
 
                             {/* Contributo ANAC & Bollo */}
                             <div className="space-y-6">
-                                <Card>
+                                <Card className="bg-slate-900 border-slate-800">
                                     <CardHeader>
-                                        <CardTitle className="flex items-center gap-2">
+                                        <CardTitle className="flex items-center gap-2 text-slate-200">
                                             <Banknote className="h-5 w-5 text-blue-500" />
                                             Contributo ANAC
                                         </CardTitle>
@@ -559,12 +609,12 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     <CardContent className="space-y-4">
                                         <div className="flex justify-between">
                                             <div>
-                                                <span className="text-sm font-medium text-slate-500">Importo</span>
-                                                <p className="font-medium text-slate-900">{checklistData.contributo_anac?.importo || '-'}</p>
+                                                <span className="text-sm font-medium text-slate-400">Importo</span>
+                                                <p className="font-medium text-slate-100">{checklistData.contributo_anac?.importo || '-'}</p>
                                             </div>
                                             <div>
-                                                <span className="text-sm font-medium text-slate-500">CIG</span>
-                                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                                <span className="text-sm font-medium text-slate-400">CIG</span>
+                                                <Badge variant="outline" className="bg-blue-950/30 text-blue-300 border-blue-900/50">
                                                     {checklistData.contributo_anac?.cig || '-'}
                                                 </Badge>
                                             </div>
@@ -572,21 +622,21 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     </CardContent>
                                 </Card>
 
-                                <Card>
+                                <Card className="bg-slate-900 border-slate-800">
                                     <CardHeader>
-                                        <CardTitle className="flex items-center gap-2">
+                                        <CardTitle className="flex items-center gap-2 text-slate-200">
                                             <FileText className="h-5 w-5 text-purple-500" />
                                             Imposta di Bollo
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-2">
                                         <div className="flex justify-between items-center">
-                                            <span className="text-sm font-medium text-slate-500">Importo</span>
-                                            <p className="font-medium text-slate-900">{checklistData.imposta_bollo?.importo || '-'}</p>
+                                            <span className="text-sm font-medium text-slate-400">Importo</span>
+                                            <p className="font-medium text-slate-100">{checklistData.imposta_bollo?.importo || '-'}</p>
                                         </div>
                                         <div>
-                                            <span className="text-sm font-medium text-slate-500">Modalità</span>
-                                            <p className="text-slate-900 text-sm">{checklistData.imposta_bollo?.modalita || '-'}</p>
+                                            <span className="text-sm font-medium text-slate-400">Modalità</span>
+                                            <p className="text-slate-300 text-sm">{checklistData.imposta_bollo?.modalita || '-'}</p>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -595,16 +645,16 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
 
                         <div className="grid md:grid-cols-2 gap-6">
                             {/* Sopralluogo */}
-                            <Card>
+                            <Card className="bg-slate-900 border-slate-800">
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
+                                    <CardTitle className="flex items-center gap-2 text-slate-200">
                                         <MapPin className="h-5 w-5 text-amber-500" />
                                         Sopralluogo
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div>
-                                        <span className="text-sm font-medium text-slate-500">Stato</span>
+                                        <span className="text-sm font-medium text-slate-400">Stato</span>
                                         <div className="mt-1">
                                             <Badge variant={checklistData.sopralluogo?.stato?.toLowerCase().includes('obbligatorio') ? 'destructive' : 'secondary'}>
                                                 {checklistData.sopralluogo?.stato || '-'}
@@ -612,54 +662,54 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                         </div>
                                     </div>
                                     <div>
-                                        <span className="text-sm font-medium text-slate-500">Modalità</span>
-                                        <p className="text-slate-900 text-sm">{checklistData.sopralluogo?.modalita || '-'}</p>
+                                        <span className="text-sm font-medium text-slate-400">Modalità</span>
+                                        <p className="text-slate-300 text-sm">{checklistData.sopralluogo?.modalita || '-'}</p>
                                     </div>
                                 </CardContent>
                             </Card>
 
                             {/* Firma e Formato */}
-                            <Card>
+                            <Card className="bg-slate-900 border-slate-800">
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
+                                    <CardTitle className="flex items-center gap-2 text-slate-200">
                                         <FileCode className="h-5 w-5 text-slate-600" />
                                         Firma e Piattaforma
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div>
-                                        <span className="text-sm font-medium text-slate-500">Formato Firma</span>
-                                        <p className="font-medium text-slate-900">{checklistData.firma_formato?.formato || '-'}</p>
+                                        <span className="text-sm font-medium text-slate-400">Formato Firma</span>
+                                        <p className="font-medium text-slate-100">{checklistData.firma_formato?.formato || '-'}</p>
                                     </div>
                                     <div>
-                                        <span className="text-sm font-medium text-slate-500">Piattaforma</span>
-                                        <p className="text-slate-900">{checklistData.firma_formato?.piattaforma || '-'}</p>
+                                        <span className="text-sm font-medium text-slate-400">Piattaforma</span>
+                                        <p className="text-slate-100">{checklistData.firma_formato?.piattaforma || '-'}</p>
                                     </div>
                                 </CardContent>
                             </Card>
                         </div>
 
                         {/* Elenco Documenti */}
-                        <Card>
+                        <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <CheckSquare className="h-5 w-5 text-blue-600" />
+                                <CardTitle className="flex items-center gap-2 text-slate-200">
+                                    <CheckSquare className="h-5 w-5 text-blue-500" />
                                     Checklist Documentale
                                 </CardTitle>
-                                <CardDescription>Elenco delle dichiarazioni e documenti richiesti oltre al DGUE</CardDescription>
+                                <CardDescription className="text-slate-400">Elenco delle dichiarazioni e documenti richiesti oltre al DGUE</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-4">
                                     {(checklistData.elenco_documenti && Array.isArray(checklistData.elenco_documenti) && checklistData.elenco_documenti.length > 0) ? (
                                         checklistData.elenco_documenti.map((doc, i) => (
-                                            <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                            <div key={i} className="flex items-start gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
                                                 <div className="mt-0.5">
-                                                    <div className="h-5 w-5 rounded border-2 border-slate-300" />
+                                                    <div className="h-5 w-5 rounded border-2 border-slate-600" />
                                                 </div>
                                                 <div>
-                                                    <p className="font-medium text-slate-900">{doc.documento}</p>
-                                                    {doc.descrizione && <p className="text-sm text-slate-600 mt-1">{doc.descrizione}</p>}
-                                                    {doc.ref && <p className="text-xs text-slate-400 mt-1">Ref: {doc.ref}</p>}
+                                                    <p className="font-medium text-slate-200">{doc.documento}</p>
+                                                    {doc.descrizione && <p className="text-sm text-slate-400 mt-1">{doc.descrizione}</p>}
+                                                    {doc.ref && <p className="text-xs text-slate-500 mt-1">Ref: {doc.ref}</p>}
                                                 </div>
                                             </div>
                                         ))
@@ -684,14 +734,14 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             case '4_servizi':
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
                             <Zap className="h-8 w-8 text-yellow-500" />
                             Dettaglio Servizi
                         </h2>
                         <div className="grid gap-6 md:grid-cols-2">
-                            <Card>
+                            <Card className="bg-slate-900 border-slate-800">
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
+                                    <CardTitle className="flex items-center gap-2 text-slate-200">
                                         <Box className="h-5 w-5 text-blue-500" />
                                         Attività Richieste
                                     </CardTitle>
@@ -699,7 +749,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardContent>
                                     <ul className="space-y-2">
                                         {data['4_servizi'][0]?.attivita?.map((att, i) => (
-                                            <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                                            <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
                                                 <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0" />
                                                 {att}
                                             </li>
@@ -707,24 +757,24 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     </ul>
                                 </CardContent>
                             </Card>
-                            <Card>
+                            <Card className="bg-slate-900 border-slate-800">
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
+                                    <CardTitle className="flex items-center gap-2 text-slate-200">
                                         <Lightbulb className="h-5 w-5 text-yellow-500" />
                                         Innovazioni e Migliorie
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-sm text-slate-700">{data['4_servizi'][0]?.innovazioni}</p>
+                                    <p className="text-sm text-slate-300">{data['4_servizi'][0]?.innovazioni}</p>
                                 </CardContent>
                             </Card>
                         </div>
-                        <Card>
+                        <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle>Fabbisogno Stimato</CardTitle>
+                                <CardTitle className="text-slate-200">Fabbisogno Stimato</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-700">{data['4_servizi'][0]?.fabbisogno}</p>
+                                <p className="text-slate-300">{data['4_servizi'][0]?.fabbisogno}</p>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['4_servizi']} sectionId="4_servizi" />
@@ -741,39 +791,55 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             case '5_scadenze':
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
                             <Calendar className="h-8 w-8 text-red-500" />
                             Timeline e Scadenze
                         </h2>
-                        <div className="relative border-l-2 border-slate-200 ml-4 space-y-8">
-                            {data['5_scadenze'][0]?.timeline?.map((event, i) => (
-                                <div key={i} className="relative pl-6">
-                                    <div className="absolute -left-[9px] top-1 h-4 w-4 rounded-full bg-white border-2 border-blue-500" />
-                                    <div className="text-sm text-slate-500 font-mono mb-1">{event.data}</div>
-                                    <div className="font-medium text-slate-900">{event.evento}</div>
-                                    <Badge variant="outline" className="mt-1 text-xs">{event.ref}</Badge>
-                                </div>
-                            ))}
+                        {/* REPLACED OLD TIMELINE WITH THE NEW CARD-BASED ONE */}
+                        <div className="space-y-4">
+                            {data['5_scadenze'][0]?.timeline?.map((event, i) => {
+                                // Simple logic to determine progress/status based on date (mock)
+                                const eventDate = new Date(event.data); // Needs parsing if not ISO
+                                // For now, let's just render the cards as requested
+                                return (
+                                    <div key={i} className="flex items-center justify-between p-4 bg-slate-900 rounded-lg border border-slate-800">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`h-2 w-2 rounded-full ${event.evento.toLowerCase().includes('scadenza') ? 'bg-red-500' : 'bg-blue-500'}`} />
+                                            <div>
+                                                <p className="font-semibold text-slate-200">{event.evento}</p>
+                                                <p className="text-xs text-slate-500">{event.ref}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-lg font-bold text-slate-100">{event.data}</p>
+                                            {/* Progress bar placeholder - fully styled timeline needs more complex date parsing */}
+                                            <div className="w-32 h-1.5 bg-slate-800 rounded-full mt-2 overflow-hidden">
+                                                <div className={`h-full rounded-full w-2/3 ${event.evento.toLowerCase().includes('scadenza') ? 'bg-red-500' : 'bg-blue-500'}`} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
                         </div>
-                        <Card className="bg-slate-50">
+                        <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
+                                <CardTitle className="flex items-center gap-2 text-slate-200">
                                     <MapPin className="h-5 w-5 text-red-500" />
                                     Sopralluogo
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="grid gap-4 md:grid-cols-2">
                                 <div>
-                                    <span className="text-sm font-medium text-slate-500">Previsto</span>
-                                    <p className="font-semibold">{data['5_scadenze'][0]?.sopralluogo?.previsto}</p>
+                                    <span className="text-sm font-medium text-slate-400">Previsto</span>
+                                    <p className="font-semibold text-slate-100">{data['5_scadenze'][0]?.sopralluogo?.previsto}</p>
                                 </div>
                                 <div>
-                                    <span className="text-sm font-medium text-slate-500">Obbligatorio</span>
-                                    <p className="font-semibold">{data['5_scadenze'][0]?.sopralluogo?.obbligatorio}</p>
+                                    <span className="text-sm font-medium text-slate-400">Obbligatorio</span>
+                                    <p className="font-semibold text-slate-100">{data['5_scadenze'][0]?.sopralluogo?.obbligatorio}</p>
                                 </div>
                                 <div className="md:col-span-2">
-                                    <span className="text-sm font-medium text-slate-500">Modalità</span>
-                                    <p className="text-sm text-slate-700">{data['5_scadenze'][0]?.sopralluogo?.modalita}</p>
+                                    <span className="text-sm font-medium text-slate-400">Modalità</span>
+                                    <p className="text-sm text-slate-300">{data['5_scadenze'][0]?.sopralluogo?.modalita}</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -791,45 +857,45 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             case '6_importi':
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
                             <DollarSign className="h-8 w-8 text-green-600" />
                             Quadro Economico
                         </h2>
                         <div className="grid gap-6 md:grid-cols-2">
-                            <Card className="bg-green-50 border-green-200">
+                            <Card className="bg-green-950/20 border-green-900">
                                 <CardContent className="pt-6 text-center">
-                                    <p className="text-sm font-medium text-green-800 mb-1">Base d'Asta Totale</p>
-                                    <p className="text-3xl font-bold text-green-700">
+                                    <p className="text-sm font-medium text-green-300 mb-1">Base d'Asta Totale</p>
+                                    <p className="text-3xl font-bold text-green-400">
                                         {new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(data['6_importi'][0]?.base_asta_totale || 0)}
                                     </p>
                                 </CardContent>
                             </Card>
-                            <Card>
+                            <Card className="bg-slate-900 border-slate-800">
                                 <CardContent className="pt-6 text-center">
-                                    <p className="text-sm font-medium text-slate-500 mb-1">Costi della Manodopera</p>
-                                    <p className="text-2xl font-semibold text-slate-700">
+                                    <p className="text-sm font-medium text-slate-400 mb-1">Costi della Manodopera</p>
+                                    <p className="text-2xl font-semibold text-slate-200">
                                         {new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(data['6_importi'][0]?.costi_manodopera || 0)}
                                     </p>
                                 </CardContent>
                             </Card>
                         </div>
-                        <Card>
+                        <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle>Dettaglio Voci di Costo</CardTitle>
+                                <CardTitle className="text-slate-200">Dettaglio Voci di Costo</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <Table>
                                     <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Voce</TableHead>
-                                            <TableHead className="text-right">Importo</TableHead>
+                                        <TableRow className="border-slate-800 hover:bg-slate-800/50">
+                                            <TableHead className="text-slate-400">Voce</TableHead>
+                                            <TableHead className="text-right text-slate-400">Importo</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {data['6_importi'][0]?.dettaglio?.map((item, i) => (
-                                            <TableRow key={i}>
-                                                <TableCell className="font-medium">{item.voce}</TableCell>
-                                                <TableCell className="text-right font-mono">
+                                            <TableRow key={i} className="border-slate-800 hover:bg-slate-800/50">
+                                                <TableCell className="font-medium text-slate-300">{item.voce}</TableCell>
+                                                <TableCell className="text-right font-mono text-slate-300">
                                                     {new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(item.importo)}
                                                 </TableCell>
                                             </TableRow>
@@ -852,34 +918,34 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             case '7_durata':
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
                             <Clock className="h-8 w-8 text-blue-500" />
                             Durata e Tempistiche
                         </h2>
                         <div className="grid gap-6 md:grid-cols-2">
-                            <Card>
+                            <Card className="bg-slate-900 border-slate-800">
                                 <CardHeader>
-                                    <CardTitle>Durata Base</CardTitle>
+                                    <CardTitle className="text-slate-200">Durata Base</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-xl font-semibold text-slate-800">{data['7_durata'][0]?.durata_base}</p>
+                                    <p className="text-xl font-semibold text-slate-100">{data['7_durata'][0]?.durata_base}</p>
                                 </CardContent>
                             </Card>
-                            <Card>
+                            <Card className="bg-slate-900 border-slate-800">
                                 <CardHeader>
-                                    <CardTitle>Opzioni di Proroga</CardTitle>
+                                    <CardTitle className="text-slate-200">Opzioni di Proroga</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-slate-700">{data['7_durata'][0]?.proroghe}</p>
+                                    <p className="text-slate-300">{data['7_durata'][0]?.proroghe}</p>
                                 </CardContent>
                             </Card>
                         </div>
-                        <Card>
+                        <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle>Tempistiche Operative</CardTitle>
+                                <CardTitle className="text-slate-200">Tempistiche Operative</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-700">{data['7_durata'][0]?.tempistiche_operative}</p>
+                                <p className="text-slate-300">{data['7_durata'][0]?.tempistiche_operative}</p>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['7_durata']} sectionId="7_durata" />
@@ -896,34 +962,34 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             case '8_ccnl':
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
                             <Building className="h-8 w-8 text-orange-500" />
                             CCNL e Clausola Sociale
                         </h2>
-                        <Card>
+                        <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle>Contratti Collettivi Applicabili</CardTitle>
+                                <CardTitle className="text-slate-200">Contratti Collettivi Applicabili</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="flex flex-wrap gap-2">
                                     {data['8_ccnl'][0]?.contratti?.map((c, i) => (
-                                        <Badge key={i} variant="secondary" className="text-sm py-1 px-3">
+                                        <Badge key={i} variant="secondary" className="text-sm py-1 px-3 bg-slate-800 text-slate-200 border-slate-700">
                                             {c}
                                         </Badge>
                                     ))}
                                 </div>
                                 <div className="mt-4">
-                                    <h4 className="text-sm font-semibold text-slate-900 mb-1">Equivalenze</h4>
-                                    <p className="text-sm text-slate-600">{data['8_ccnl'][0]?.equivalenze}</p>
+                                    <h4 className="text-sm font-semibold text-slate-200 mb-1">Equivalenze</h4>
+                                    <p className="text-sm text-slate-400">{data['8_ccnl'][0]?.equivalenze}</p>
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card className="border-l-4 border-l-orange-500">
+                        <Card className="border-l-4 border-l-orange-500 bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle>Clausola Sociale</CardTitle>
+                                <CardTitle className="text-slate-200">Clausola Sociale</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-700">{data['8_ccnl'][0]?.clausola_sociale}</p>
+                                <p className="text-slate-300">{data['8_ccnl'][0]?.clausola_sociale}</p>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['8_ccnl']} sectionId="8_ccnl" />
@@ -940,19 +1006,19 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             case '9_oneri':
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
                             <Scale className="h-8 w-8 text-indigo-500" />
                             Ripartizione Oneri
                         </h2>
                         <div className="grid gap-6 md:grid-cols-2">
-                            <Card>
+                            <Card className="bg-slate-900 border-slate-800">
                                 <CardHeader>
-                                    <CardTitle className="text-red-600">A Carico del Fornitore</CardTitle>
+                                    <CardTitle className="text-red-400">A Carico del Fornitore</CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <ul className="space-y-2">
                                         {data['9_oneri'][0]?.carico_fornitore?.map((item, i) => (
-                                            <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                                            <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
                                                 <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0" />
                                                 {item}
                                             </li>
@@ -960,14 +1026,14 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     </ul>
                                 </CardContent>
                             </Card>
-                            <Card>
+                            <Card className="bg-slate-900 border-slate-800">
                                 <CardHeader>
-                                    <CardTitle className="text-green-600">A Carico della Stazione Appaltante</CardTitle>
+                                    <CardTitle className="text-green-400">A Carico della Stazione Appaltante</CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <ul className="space-y-2">
                                         {data['9_oneri'][0]?.carico_stazione?.map((item, i) => (
-                                            <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                                            <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
                                                 <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-green-500 flex-shrink-0" />
                                                 {item}
                                             </li>
@@ -990,52 +1056,52 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             case '10_punteggi':
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
                             <Target className="h-8 w-8 text-pink-500" />
                             Criteri di Valutazione
                         </h2>
 
                         <div className="grid gap-6 md:grid-cols-3">
-                            <Card className="bg-pink-50 border-pink-200">
+                            <Card className="bg-pink-950/20 border-pink-900">
                                 <CardContent className="pt-6 text-center">
-                                    <p className="text-sm font-medium text-pink-800 mb-1">Punteggio Tecnico</p>
-                                    <p className="text-4xl font-bold text-pink-700">{data['10_punteggi'][0]?.tecnico}</p>
+                                    <p className="text-sm font-medium text-pink-300 mb-1">Punteggio Tecnico</p>
+                                    <p className="text-4xl font-bold text-pink-400">{data['10_punteggi'][0]?.tecnico}</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-blue-50 border-blue-200">
+                            <Card className="bg-blue-950/20 border-blue-900">
                                 <CardContent className="pt-6 text-center">
-                                    <p className="text-sm font-medium text-blue-800 mb-1">Punteggio Economico</p>
-                                    <p className="text-4xl font-bold text-blue-700">{data['10_punteggi'][0]?.economico}</p>
+                                    <p className="text-sm font-medium text-blue-300 mb-1">Punteggio Economico</p>
+                                    <p className="text-4xl font-bold text-blue-400">{data['10_punteggi'][0]?.economico}</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-slate-50 border-slate-200">
+                            <Card className="bg-slate-900 border-slate-800">
                                 <CardContent className="pt-6 text-center">
-                                    <p className="text-sm font-medium text-slate-600 mb-1">Soglia Sbarramento</p>
-                                    <p className="text-4xl font-bold text-slate-700">{data['10_punteggi'][0]?.soglia_sbarramento}</p>
+                                    <p className="text-sm font-medium text-slate-400 mb-1">Soglia Sbarramento</p>
+                                    <p className="text-4xl font-bold text-slate-200">{data['10_punteggi'][0]?.soglia_sbarramento}</p>
                                 </CardContent>
                             </Card>
                         </div>
 
 
-                        <Card>
+                        <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle>Dettaglio Criteri Tecnici</CardTitle>
+                                <CardTitle className="text-slate-200">Dettaglio Criteri Tecnici</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-6">
                                     {data['10_punteggi'][0]?.criteri_tecnici?.map((criterio, i) => (
-                                        <div key={i} className="border-b last:border-0 pb-4 last:pb-0">
+                                        <div key={i} className="border-b border-slate-800 last:border-0 pb-4 last:pb-0">
                                             <div className="flex justify-between items-start mb-2">
-                                                <h4 className="font-semibold text-slate-900">{criterio.criterio}</h4>
-                                                <Badge>{criterio.punti_max} pt</Badge>
+                                                <h4 className="font-semibold text-slate-200">{criterio.criterio}</h4>
+                                                <Badge className="bg-slate-800 text-slate-200">{criterio.punti_max} pt</Badge>
                                             </div>
-                                            <p className="text-sm text-slate-600 mb-3">{criterio.descrizione}</p>
+                                            <p className="text-sm text-slate-400 mb-3">{criterio.descrizione}</p>
                                             {criterio.subcriteri && criterio.subcriteri.length > 0 && (
-                                                <div className="bg-slate-50 p-3 rounded-md">
+                                                <div className="bg-slate-800/50 p-3 rounded-md">
                                                     <p className="text-xs font-semibold text-slate-500 mb-2 uppercase">Sub-criteri</p>
                                                     <ul className="space-y-1">
                                                         {criterio.subcriteri.map((sub, j) => (
-                                                            <li key={j} className="text-sm flex justify-between">
+                                                            <li key={j} className="text-sm flex justify-between text-slate-300">
                                                                 <span>{sub.descrizione}</span>
                                                                 <span className="font-mono text-slate-500">{sub.punti_max} pt</span>
                                                             </li>
@@ -1049,46 +1115,46 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardContent>
                         </Card>
 
-                        <Card className="border-l-4 border-l-blue-500">
+                        <Card className="border-l-4 border-l-blue-500 bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle className="text-blue-700">Formula Economica</CardTitle>
+                                <CardTitle className="text-blue-400">Formula Economica</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {data['10_punteggi'][0]?.formula_economica_dettaglio ? (
                                     <>
                                         <div>
-                                            <h4 className="font-semibold text-slate-900 mb-1">Formula</h4>
-                                            <code className="block bg-slate-100 p-3 rounded text-sm text-slate-800 font-mono">
+                                            <h4 className="font-semibold text-slate-200 mb-1">Formula</h4>
+                                            <code className="block bg-slate-950 p-3 rounded text-sm text-blue-300 font-mono border border-slate-800">
                                                 {data['10_punteggi'][0].formula_economica_dettaglio.formula}
                                             </code>
                                         </div>
                                         <div>
-                                            <h4 className="font-semibold text-slate-900 mb-1">Parametri</h4>
-                                            <p className="text-sm text-slate-700 whitespace-pre-line">
+                                            <h4 className="font-semibold text-slate-200 mb-1">Parametri</h4>
+                                            <p className="text-sm text-slate-400 whitespace-pre-line">
                                                 {data['10_punteggi'][0].formula_economica_dettaglio.parametri_legenda}
                                             </p>
                                         </div>
                                         <div>
-                                            <h4 className="font-semibold text-slate-900 mb-1">Modalità di Calcolo</h4>
-                                            <p className="text-sm text-slate-700">
+                                            <h4 className="font-semibold text-slate-200 mb-1">Modalità di Calcolo</h4>
+                                            <p className="text-sm text-slate-400">
                                                 {data['10_punteggi'][0].formula_economica_dettaglio.modalita_calcolo}
                                             </p>
                                         </div>
                                     </>
                                 ) : (
-                                    <p className="text-slate-700 italic">
+                                    <p className="text-slate-500 italic">
                                         {data['10_punteggi'][0]?.formula_economica || "Dettaglio formula non disponibile."}
                                     </p>
                                 )}
                             </CardContent>
                         </Card>
 
-                        <Card>
+                        <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle>Note Economiche</CardTitle>
+                                <CardTitle className="text-slate-200">Note Economiche</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-700">{data['10_punteggi'][0]?.note_economiche}</p>
+                                <p className="text-slate-300">{data['10_punteggi'][0]?.note_economiche}</p>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['10_punteggi'][0]} sectionId="10_punteggi">
@@ -1104,19 +1170,125 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                     </div>
                 );
 
+            case '5_scadenze':
+                // Sort timeline events
+                const sortedEvents = data['5_scadenze'][0]?.timeline?.map((event: any) => {
+                    const parsedDate = parseItalianDate(event.data);
+                    return { ...event, parsedDate, daysDiff: parsedDate ? getDaysDifference(parsedDate) : null };
+                }).sort((a: any, b: any) => {
+                    if (!a.parsedDate) return 1;
+                    if (!b.parsedDate) return -1;
+                    return a.parsedDate.getTime() - b.parsedDate.getTime();
+                }) || [];
+
+                return (
+                    <div className="space-y-8">
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
+                                <Calendar className="h-8 w-8 text-red-500" />
+                                Timeline e Scadenze
+                            </h2>
+                            <div className="text-sm text-slate-400 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
+                                {sortedEvents.length} Eventi Rilevati
+                            </div>
+                        </div>
+
+                        <div className="grid gap-4">
+                            {sortedEvents.map((event: any, i: number) => {
+                                const isPast = event.daysDiff !== null && event.daysDiff < 0;
+                                const isUrgent = event.daysDiff !== null && event.daysDiff >= 0 && event.daysDiff <= 7;
+                                const isFuture = event.daysDiff !== null && event.daysDiff > 7;
+
+                                let statusColor = "text-slate-400 border-slate-700 bg-slate-800";
+                                let statusText = "Data Rilevata";
+                                let dateColor = "text-slate-400";
+
+                                if (isPast) {
+                                    statusColor = "text-red-400 border-red-900 bg-red-950/20";
+                                    statusText = "Scaduto";
+                                    dateColor = "text-red-400";
+                                } else if (isUrgent) {
+                                    statusColor = "text-amber-400 border-amber-900 bg-amber-950/20";
+                                    statusText = "In Scadenza";
+                                    dateColor = "text-amber-400";
+                                } else if (isFuture) {
+                                    statusColor = "text-emerald-400 border-emerald-900 bg-emerald-950/20";
+                                    statusText = "Programmato";
+                                    dateColor = "text-emerald-400";
+                                }
+
+                                return (
+                                    <div key={i} className={`relative flex flex-col md:flex-row gap-6 p-6 rounded-xl border bg-slate-900 transition-all hover:shadow-lg ${isUrgent ? 'border-amber-500/50 shadow-amber-900/10' : 'border-slate-800'}`}>
+                                        {/* Date Column */}
+                                        <div className="flex-shrink-0 flex md:flex-col items-center justify-center gap-2 md:gap-0 min-w-[100px] border-b md:border-b-0 md:border-r border-slate-800 pb-4 md:pb-0 md:pr-6">
+                                            {event.parsedDate ? (
+                                                <>
+                                                    <span className={`text-4xl font-bold ${dateColor}`}>{event.parsedDate.getDate()}</span>
+                                                    <span className="text-sm uppercase tracking-wider font-semibold text-slate-500">
+                                                        {event.parsedDate.toLocaleString('it-IT', { month: 'short' })} '{event.parsedDate.getFullYear().toString().substr(2)}
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <Calendar className="h-10 w-10 text-slate-600 mb-1" />
+                                            )}
+                                        </div>
+
+                                        {/* Content Column */}
+                                        <div className="flex-1 flex flex-col justify-center">
+                                            <div className="flex flex-wrap justify-between items-start gap-4 mb-2">
+                                                <h3 className="text-xl font-semibold text-slate-200">{event.evento}</h3>
+                                                <Badge variant="outline" className={`${statusColor} flex items-center gap-1.5`}>
+                                                    <div className={`w-1.5 h-1.5 rounded-full bg-current`} />
+                                                    {statusText}
+                                                    {event.daysDiff !== null && (
+                                                        <span className="opacity-75 border-l border-current pl-1.5 ml-1.5">
+                                                            {event.daysDiff === 0 ? "Oggi" : (event.daysDiff > 0 ? `Tra ${event.daysDiff} gg` : `${Math.abs(event.daysDiff)} gg fa`)}
+                                                        </span>
+                                                    )}
+                                                </Badge>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 text-sm text-slate-400 mt-1">
+                                                <span className="bg-slate-800 px-2 py-0.5 rounded text-xs border border-slate-700 font-mono">
+                                                    Originale: {event.data}
+                                                </span>
+                                                {event.ref && (
+                                                    <span className="flex items-center gap-1">
+                                                        <span className="w-1 h-1 rounded-full bg-slate-600" />
+                                                        Ref: {event.ref}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <SemanticAnalysisBlock data={data['5_scadenze']} sectionId="5_scadenze" />
+                        <DeepDive
+                            sectionId="5_scadenze"
+                            existingQA={data.deep_dives?.['5_scadenze']}
+                            onAskQuestion={onAskQuestion}
+                            isGlobalLoading={isGlobalLoading}
+                            exampleQuestion={DEEP_DIVE_EXAMPLES['5_scadenze']}
+                        />
+                    </div>
+                );
+
             case '11_pena_esclusione':
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
                             <AlertTriangle className="h-8 w-8 text-red-600" />
                             Prescrizioni a Pena di Esclusione
                         </h2>
                         <div className="grid gap-4">
                             {data['11_pena_esclusione'][0]?.elementi?.map((item, i) => (
-                                <Card key={i} className="border-l-4 border-l-red-500">
+                                <Card key={i} className="border-l-4 border-l-red-500 bg-slate-900 border-slate-800">
                                     <CardContent className="pt-6">
-                                        <p className="text-slate-800 font-medium">{item.descrizione}</p>
-                                        <Badge variant="outline" className="mt-2 bg-red-50 text-red-700 border-red-200">
+                                        <p className="text-slate-200 font-medium">{item.descrizione}</p>
+                                        <Badge variant="outline" className="mt-2 bg-red-950/30 text-red-300 border-red-900/50">
                                             {item.ref}
                                         </Badge>
                                     </CardContent>
@@ -1137,31 +1309,31 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             case '12_offerta_tecnica':
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
                             <FileCode className="h-8 w-8 text-blue-600" />
                             Offerta Tecnica
                         </h2>
-                        <Card>
+                        <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle>Documentazione Richiesta</CardTitle>
+                                <CardTitle className="text-slate-200">Documentazione Richiesta</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <ul className="space-y-3">
                                     {data['12_offerta_tecnica'][0]?.documenti?.map((doc, i) => (
-                                        <li key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-md">
+                                        <li key={i} className="flex items-start gap-3 p-3 bg-slate-800/50 rounded-md">
                                             <CheckSquare className="h-5 w-5 text-blue-500 mt-0.5" />
-                                            <span className="text-sm text-slate-700">{doc}</span>
+                                            <span className="text-sm text-slate-300">{doc}</span>
                                         </li>
                                     ))}
                                 </ul>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle>Modalità di Presentazione</CardTitle>
+                                <CardTitle className="text-slate-200">Modalità di Presentazione</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-700 whitespace-pre-line">{data['12_offerta_tecnica'][0]?.formattazione_modalita}</p>
+                                <p className="text-slate-300 whitespace-pre-line">{data['12_offerta_tecnica'][0]?.formattazione_modalita}</p>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['12_offerta_tecnica'][0]} sectionId="12_offerta_tecnica">
@@ -1180,31 +1352,31 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             case '13_offerta_economica':
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
                             <Banknote className="h-8 w-8 text-green-600" />
                             Offerta Economica
                         </h2>
-                        <Card>
+                        <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle>Documentazione Richiesta</CardTitle>
+                                <CardTitle className="text-slate-200">Documentazione Richiesta</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <ul className="space-y-3">
                                     {data['13_offerta_economica'][0]?.documenti?.map((doc, i) => (
-                                        <li key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-md">
+                                        <li key={i} className="flex items-start gap-3 p-3 bg-slate-800/50 rounded-md">
                                             <CheckSquare className="h-5 w-5 text-green-500 mt-0.5" />
-                                            <span className="text-sm text-slate-700">{doc}</span>
+                                            <span className="text-sm text-slate-300">{doc}</span>
                                         </li>
                                     ))}
                                 </ul>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle>Modalità di Presentazione</CardTitle>
+                                <CardTitle className="text-slate-200">Modalità di Presentazione</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-700 whitespace-pre-line">{data['13_offerta_economica'][0]?.formattazione_modalita}</p>
+                                <p className="text-slate-300 whitespace-pre-line">{data['13_offerta_economica'][0]?.formattazione_modalita}</p>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['13_offerta_economica']} sectionId="13_offerta_economica" />
@@ -1221,18 +1393,18 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             case '14_note_importanti':
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
                             <Info className="h-8 w-8 text-amber-500" />
                             Note Importanti AI
                         </h2>
                         <div className="grid gap-4">
                             {data['14_note_importanti'][0]?.note?.map((note, i) => (
-                                <Card key={i} className="bg-amber-50 border-amber-200">
+                                <Card key={i} className="bg-amber-950/20 border-amber-900/50">
                                     <CardContent className="pt-6 flex gap-4">
-                                        <AlertCircle className="h-6 w-6 text-amber-600 flex-shrink-0" />
+                                        <AlertCircle className="h-6 w-6 text-amber-500 flex-shrink-0" />
                                         <div>
-                                            <p className="text-amber-900 font-medium">{note.nota}</p>
-                                            <Badge variant="outline" className="mt-2 bg-white text-amber-700 border-amber-300">
+                                            <p className="text-amber-200 font-medium">{note.nota}</p>
+                                            <Badge variant="outline" className="mt-2 bg-amber-950/40 text-amber-400 border-amber-800">
                                                 {note.ref}
                                             </Badge>
                                         </div>
@@ -1254,33 +1426,33 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             case '15_remunerazione':
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                            <CreditCard className="h-8 w-8 text-cyan-600" />
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
+                            <CreditCard className="h-8 w-8 text-cyan-500" />
                             Remunerazione
                         </h2>
                         <div className="grid gap-6 md:grid-cols-3">
-                            <Card>
+                            <Card className="bg-slate-900 border-slate-800">
                                 <CardHeader>
-                                    <CardTitle>Modalità</CardTitle>
+                                    <CardTitle className="text-slate-200">Modalità</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-slate-700">{data['15_remunerazione'][0]?.modalita}</p>
+                                    <p className="text-slate-300">{data['15_remunerazione'][0]?.modalita}</p>
                                 </CardContent>
                             </Card>
-                            <Card>
+                            <Card className="bg-slate-900 border-slate-800">
                                 <CardHeader>
-                                    <CardTitle>Pagamenti</CardTitle>
+                                    <CardTitle className="text-slate-200">Pagamenti</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-slate-700">{data['15_remunerazione'][0]?.pagamenti}</p>
+                                    <p className="text-slate-300">{data['15_remunerazione'][0]?.pagamenti}</p>
                                 </CardContent>
                             </Card>
-                            <Card>
+                            <Card className="bg-slate-900 border-slate-800">
                                 <CardHeader>
-                                    <CardTitle>Clausole</CardTitle>
+                                    <CardTitle className="text-slate-200">Clausole</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-slate-700">{data['15_remunerazione'][0]?.clausole}</p>
+                                    <p className="text-slate-300">{data['15_remunerazione'][0]?.clausole}</p>
                                 </CardContent>
                             </Card>
                         </div>
@@ -1298,29 +1470,29 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             case '16_sla_penali':
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                            <Gavel className="h-8 w-8 text-red-700" />
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
+                            <Gavel className="h-8 w-8 text-red-500" />
                             SLA e Penali
                         </h2>
-                        <Card>
+                        <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle>Service Level Agreement (SLA)</CardTitle>
+                                <CardTitle className="text-slate-200">Service Level Agreement (SLA)</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-4">
                                     {data['16_sla_penali'][0]?.sla?.length > 0 ? (
                                         data['16_sla_penali'][0].sla.map((s: any, i: number) => (
-                                            <div key={i} className="p-3 bg-slate-50 rounded border border-slate-100 text-sm text-slate-700">
-                                                {s.servizio && <p><strong className="text-slate-900">Servizio:</strong> {s.servizio}</p>}
+                                            <div key={i} className="p-3 bg-slate-800/50 rounded border border-slate-700 text-sm text-slate-300">
+                                                {s.servizio && <p><strong className="text-slate-100">Servizio:</strong> {s.servizio}</p>}
                                                 <p><strong>Indicatore:</strong> {s.indicatore || '-'}</p>
                                                 <p><strong>Soglia:</strong> {s.soglia || '-'}</p>
-                                                {s.priorita && <p><strong>Priorità:</strong> <Badge variant="outline" className="text-xs">{s.priorita}</Badge></p>}
-                                                {s.penale_correlata && <p className="mt-1 text-red-600 font-medium"><strong>Penale:</strong> {s.penale_correlata}</p>}
+                                                {s.priorita && <p><strong>Priorità:</strong> <Badge variant="outline" className="text-xs border-slate-600 text-slate-400">{s.priorita}</Badge></p>}
+                                                {s.penale_correlata && <p className="mt-1 text-red-400 font-medium"><strong>Penale:</strong> {s.penale_correlata}</p>}
                                             </div>
                                         ))
                                     ) : (
                                         data['16_sla_penali'][0]?.elenco_testuale ? (
-                                            <div className="p-4 bg-slate-50 rounded border border-slate-100 text-sm text-slate-700 prose prose-sm max-w-none">
+                                            <div className="p-4 bg-slate-800/50 rounded border border-slate-700 text-sm text-slate-300 prose prose-sm prose-invert max-w-none">
                                                 <ReactMarkdown>{data['16_sla_penali'][0].elenco_testuale}</ReactMarkdown>
                                             </div>
                                         ) : (
@@ -1330,15 +1502,15 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle>Penali Applicabili</CardTitle>
+                                <CardTitle className="text-slate-200">Penali Applicabili</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-4">
                                     {data['16_sla_penali'][0]?.penali?.length > 0 ? (
                                         data['16_sla_penali'][0].penali.map((p: any, i: number) => (
-                                            <div key={i} className="p-3 bg-red-50 rounded border border-red-100 text-sm text-slate-700">
+                                            <div key={i} className="p-3 bg-red-950/20 rounded border border-red-900/50 text-sm text-slate-300">
                                                 <p><strong>Descrizione:</strong> {p.descrizione}</p>
                                                 <p><strong>Calcolo:</strong> {p.calcolo}</p>
                                                 {p.sla_associato && <p className="text-xs text-slate-500 mt-1">SLA: {p.sla_associato}</p>}
@@ -1348,7 +1520,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                         <p className="text-slate-500 italic">Nessuna penale specifica strutturata rilevata.</p>
                                     )}
                                 </div>
-                                <div className="mt-4 p-3 bg-slate-100 rounded text-sm flex items-start gap-2">
+                                <div className="mt-4 p-3 bg-slate-800 rounded text-sm flex items-start gap-2 text-slate-300">
                                     <Info className="h-4 w-4 text-slate-500 mt-0.5" />
                                     <div><strong>Clausole Cumulative:</strong> {data['16_sla_penali'][0]?.clausole_cumulative || "Non specificato"}</div>
                                 </div>
@@ -1369,30 +1541,30 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                 const sectionData = data['17_ambiguita_punti_da_chiarire']?.[0];
                 if (!sectionData) {
                     return (
-                        <div className="p-8 text-center text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-300">
-                            <HelpCircle className="h-12 w-12 mx-auto mb-4 text-slate-300" />
+                        <div className="p-8 text-center text-slate-400 bg-slate-900 rounded-lg border border-dashed border-slate-700">
+                            <HelpCircle className="h-12 w-12 mx-auto mb-4 text-slate-500" />
                             <p>Dati non disponibili per questa sezione.</p>
-                            <p className="text-sm mt-2">Prova a ri-analizzare il documento.</p>
+                            <p className="text-sm mt-2 text-slate-500">Prova a ri-analizzare il documento.</p>
                         </div>
                     );
                 }
 
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
                             <HelpCircle className="h-8 w-8 text-amber-500" />
                             Ambiguità e Punti da Chiarire
                         </h2>
 
                         <div className="space-y-6">
                             {/* Ambiguità Rilevate */}
-                            <Card className="border-l-4 border-l-amber-500">
+                            <Card className="border-l-4 border-l-amber-500 bg-slate-900 border-slate-800">
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-amber-700">
+                                    <CardTitle className="flex items-center gap-2 text-amber-500">
                                         <AlertTriangle className="h-5 w-5" />
                                         Ambiguità Rilevate
                                     </CardTitle>
-                                    <CardDescription>
+                                    <CardDescription className="text-slate-400">
                                         Punti del disciplinare che potrebbero essere soggetti a interpretazione o contraddittori.
                                     </CardDescription>
                                 </CardHeader>
@@ -1402,20 +1574,20 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                             sectionData.ambiguita.map((item, i) => {
                                                 const riskLevel = item.tipo?.toUpperCase() || 'BASSO';
                                                 let icon = "🟢"; // Default BASSO
-                                                let colorClass = "text-green-600 border-green-200 bg-green-50";
+                                                let colorClass = "text-green-400 border-green-900 bg-green-950/20";
 
                                                 if (riskLevel.includes('ALTO')) {
                                                     icon = "🔴";
-                                                    colorClass = "text-red-700 border-red-200 bg-red-50";
+                                                    colorClass = "text-red-400 border-red-900 bg-red-950/20";
                                                 } else if (riskLevel.includes('MEDIO')) {
                                                     icon = "🟡";
-                                                    colorClass = "text-amber-700 border-amber-200 bg-amber-50";
+                                                    colorClass = "text-amber-400 border-amber-900 bg-amber-950/20";
                                                 }
 
                                                 return (
                                                     <div key={i} className={`p-4 rounded-lg border ${colorClass.replace('text-', 'border-').replace('bg-', 'bg-opacity-50 ')}`}>
                                                         <div className="flex justify-between items-start mb-2">
-                                                            <Badge variant="outline" className={`bg-white ${colorClass} border-current flex gap-1 items-center`}>
+                                                            <Badge variant="outline" className={`bg-slate-900 ${colorClass} border-current flex gap-1 items-center`}>
                                                                 <span>{icon}</span>
                                                                 <span>{item.tipo}</span>
                                                             </Badge>
@@ -1423,7 +1595,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                                 <span className="text-xs text-slate-500">Ref: {item.riferimento_documento}</span>
                                                             )}
                                                         </div>
-                                                        <p className="text-slate-800 font-medium">{item.descrizione}</p>
+                                                        <p className="text-slate-200 font-medium">{item.descrizione}</p>
                                                     </div>
                                                 );
                                             })
@@ -1435,13 +1607,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </Card>
 
                             {/* Quesiti Suggeriti */}
-                            <Card className="border-l-4 border-l-blue-500">
+                            <Card className="border-l-4 border-l-blue-500 bg-slate-900 border-slate-800">
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-blue-700">
+                                    <CardTitle className="flex items-center gap-2 text-blue-400">
                                         <MessageSquare className="h-5 w-5" />
                                         Quesiti da Porre alla Stazione Appaltante
                                     </CardTitle>
-                                    <CardDescription>
+                                    <CardDescription className="text-slate-400">
                                         Domande suggerite per chiarire i dubbi emersi durante l'analisi.
                                     </CardDescription>
                                 </CardHeader>
@@ -1449,16 +1621,16 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     <div className="space-y-4">
                                         {sectionData.punti_da_chiarire?.length > 0 ? (
                                             sectionData.punti_da_chiarire.map((item, i) => (
-                                                <div key={i} className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                                                    <h4 className="font-semibold text-blue-900 mb-2">{item.quesito_suggerito}</h4>
+                                                <div key={i} className="bg-blue-950/20 p-4 rounded-lg border border-blue-900/50">
+                                                    <h4 className="font-semibold text-blue-300 mb-2">{item.quesito_suggerito}</h4>
                                                     <div className="space-y-2 text-sm">
                                                         <div>
-                                                            <span className="font-medium text-slate-600">Contesto: </span>
-                                                            <span className="text-slate-700">{item.contesto}</span>
+                                                            <span className="font-medium text-slate-400">Contesto: </span>
+                                                            <span className="text-slate-300">{item.contesto}</span>
                                                         </div>
                                                         <div>
-                                                            <span className="font-medium text-slate-600">Motivazione: </span>
-                                                            <span className="text-slate-700">{item.motivazione}</span>
+                                                            <span className="font-medium text-slate-400">Motivazione: </span>
+                                                            <span className="text-slate-300">{item.motivazione}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1484,13 +1656,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             case 'faq':
                 return (
                     <div className="space-y-6">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
                             <div className="bg-purple-600 text-white p-2 rounded-lg">
                                 <Bot className="h-6 w-6" />
                             </div>
                             FAQ & Approfondimenti AI
                         </h2>
-                        <p className="text-slate-600">
+                        <p className="text-slate-400">
                             Seleziona una delle domande preimpostate per avviare un'analisi specifica basata sull'intero corpus documentale.
                         </p>
 
@@ -1503,15 +1675,15 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             ]).map((question, i) => (
                                 <Card
                                     key={i}
-                                    className="hover:shadow-lg transition-all cursor-pointer border-l-4 border-l-purple-500 hover:bg-purple-50 group"
+                                    className="hover:shadow-lg transition-all cursor-pointer border-l-4 border-l-purple-500 hover:bg-purple-900/20 group bg-slate-900 border-slate-800"
                                     onClick={() => onAskQuestion('faq', question)}
                                 >
                                     <CardContent className="p-6 flex items-start gap-4">
-                                        <div className="bg-purple-100 p-2 rounded-full group-hover:bg-purple-200 transition-colors">
-                                            <MessageSquare className="h-5 w-5 text-purple-600" />
+                                        <div className="bg-purple-900/50 p-2 rounded-full group-hover:bg-purple-800 transition-colors">
+                                            <MessageSquare className="h-5 w-5 text-purple-400" />
                                         </div>
                                         <div>
-                                            <h3 className="font-medium text-slate-900 group-hover:text-purple-900 transition-colors">
+                                            <h3 className="font-medium text-slate-200 group-hover:text-purple-300 transition-colors">
                                                 {question}
                                             </h3>
                                             <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
@@ -1538,38 +1710,38 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
             case 'configurazioni':
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                            <Settings className="h-8 w-8 text-slate-700" />
+                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
+                            <Settings className="h-8 w-8 text-slate-400" />
                             Configurazioni
                         </h2>
 
                         {/* Unified Section Configuration */}
-                        <Card>
+                        <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle>Configurazione Sezioni</CardTitle>
-                                <CardDescription>Gestisci quali sezioni includere nell'analisi AI e nell'esportazione DOCX.</CardDescription>
+                                <CardTitle className="text-slate-200">Configurazione Sezioni</CardTitle>
+                                <CardDescription className="text-slate-400">Gestisci quali sezioni includere nell'analisi AI e nell'esportazione DOCX.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="mb-6 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-r-md flex items-start gap-3">
-                                    <Info className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                                    <div className="text-sm text-amber-800">
+                                <div className="mb-6 p-4 bg-amber-950/20 border-l-4 border-amber-500 rounded-r-md flex items-start gap-3">
+                                    <Info className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                                    <div className="text-sm text-amber-200">
                                         <span className="font-semibold block mb-1">Nota sull'Analisi Semantica</span>
                                         L'analisi semantica (Bid Digger - Genius Mode) permette di avere un approfondimento sulle informazioni della sezione.
                                     </div>
                                 </div>
 
-                                <Card className="mb-6 border-slate-200">
-                                    <CardHeader className="pb-3 bg-slate-50/50">
-                                        <CardTitle className="text-base font-semibold text-slate-800 flex items-center gap-2">
-                                            <Building className="h-4 w-4 text-blue-600" />
+                                <Card className="mb-6 border-slate-800 bg-slate-900">
+                                    <CardHeader className="pb-3 bg-slate-800/50">
+                                        <CardTitle className="text-base font-semibold text-slate-200 flex items-center gap-2">
+                                            <Building className="h-4 w-4 text-blue-500" />
                                             Contestualizzazione Settoriale
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="pt-4">
                                         <div className="flex flex-col gap-2">
-                                            <label className="text-sm font-medium text-slate-700">Settore di Gara</label>
+                                            <label className="text-sm font-medium text-slate-300">Settore di Gara</label>
                                             <select
-                                                className="w-full p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                                                className="w-full p-2 border border-slate-700 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-slate-800 text-slate-200"
                                                 value={userPreferences?.sector || "Generale"}
                                                 onChange={(e) => {
                                                     if (onUpdatePreferences && userPreferences) {
@@ -1588,12 +1760,12 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     </CardContent>
                                 </Card>
 
-                                <div className="rounded-md border">
+                                <div className="rounded-md border border-slate-800">
                                     <Table>
                                         <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Sezione</TableHead>
-                                                <TableHead className="text-center w-32">
+                                            <TableRow className="border-slate-800 hover:bg-slate-800/50">
+                                                <TableHead className="text-slate-400">Sezione</TableHead>
+                                                <TableHead className="text-center w-32 text-slate-400">
                                                     <div className="flex flex-col items-center gap-1">
                                                         <span>Analisi AI</span>
                                                         <input
@@ -1655,7 +1827,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                         />
                                                     </div>
                                                 </TableHead>
-                                                <TableHead className="text-center w-32">
+                                                <TableHead className="text-center w-32 text-slate-400">
                                                     <div className="flex flex-col items-center gap-1">
                                                         <span>Export DOCX</span>
                                                         <input
@@ -1717,20 +1889,20 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                 return (
                                                     <React.Fragment key={sectionId}>
                                                         {header && (
-                                                            <TableRow className="bg-slate-50 hover:bg-slate-50">
-                                                                <TableCell colSpan={3} className="font-semibold text-slate-500 uppercase tracking-wider text-xs py-3">
+                                                            <TableRow className="bg-slate-800/50 hover:bg-slate-800/50 border-slate-800">
+                                                                <TableCell colSpan={3} className="font-semibold text-slate-400 uppercase tracking-wider text-xs py-3">
                                                                     {header}
                                                                 </TableCell>
                                                             </TableRow>
                                                         )}
-                                                        <TableRow>
+                                                        <TableRow className="border-slate-800 hover:bg-slate-800/20">
                                                             <TableCell className="font-medium">
                                                                 <div className="flex flex-col">
-                                                                    <div className="flex items-center gap-2">
-                                                                        {React.createElement(section.icon, { className: "h-4 w-4 text-slate-500" })}
+                                                                    <div className="flex items-center gap-2 text-slate-300">
+                                                                        {React.createElement(section.icon, { className: "h-4 w-4 text-slate-400" })}
                                                                         {section.label}
                                                                         {sectionId === '5_scadenze' && (
-                                                                            <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-100 ml-2">
+                                                                            <span className="text-[10px] text-emerald-400 bg-emerald-950/30 px-1 py-0.5 rounded border border-emerald-900 ml-2">
                                                                                 Sempre verificata
                                                                             </span>
                                                                         )}
@@ -1782,7 +1954,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                                             });
                                                                         }
                                                                     }}
-                                                                    className={`h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${isFaq ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                                    className={`h-4 w-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500 bg-slate-800 ${isFaq ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                                 />
                                                             </TableCell>
                                                             <TableCell className="text-center">
@@ -1813,7 +1985,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                                             });
                                                                         }
                                                                     }}
-                                                                    className={`h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 ${(!isAnalysisEnabled || isFaq) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                                    className={`h-4 w-4 rounded border-gray-600 text-purple-500 focus:ring-purple-500 bg-slate-800 ${(!isAnalysisEnabled || isFaq) ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                                 />
                                                             </TableCell>
                                                             <TableCell className="text-center">
@@ -1832,7 +2004,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                                             });
                                                                         }
                                                                     }}
-                                                                    className={`h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${(!isAnalysisEnabled && !isFaq) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                                    className={`h-4 w-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500 bg-slate-800 ${(!isAnalysisEnabled && !isFaq) ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                                 />
                                                             </TableCell>
                                                         </TableRow>
@@ -1848,10 +2020,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
 
 
                         {/* FAQ Configuration */}
-                        < Card >
+                        < Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle>Gestione FAQ</CardTitle>
-                                <CardDescription>Aggiungi o rimuovi le domande preimpostate per la sezione FAQ.</CardDescription>
+                                <CardTitle className="text-slate-200">Gestione FAQ</CardTitle>
+                                <CardDescription className="text-slate-400">Aggiungi o rimuovi le domande preimpostate per la sezione FAQ.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="flex gap-2">
@@ -1859,7 +2031,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                         type="text"
                                         id="new-faq"
                                         placeholder="Nuova domanda..."
-                                        className="flex-1 px-3 py-2 border rounded-md text-sm"
+                                        className="flex-1 px-3 py-2 border border-slate-700 rounded-md text-sm bg-slate-800 text-slate-200"
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter') {
                                                 const input = e.currentTarget;
@@ -1893,12 +2065,12 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </div>
                                 <div className="space-y-2">
                                     {userPreferences?.faq_questions.map((q, i) => (
-                                        <div key={i} className="flex items-center justify-between bg-slate-50 p-3 rounded border">
+                                        <div key={i} className="flex items-center justify-between bg-slate-800/50 p-3 rounded border border-slate-700">
                                             {editingFaqIndex === i ? (
                                                 <input
                                                     type="text"
                                                     defaultValue={q}
-                                                    className="flex-1 px-2 py-1 border rounded text-sm mr-2"
+                                                    className="flex-1 px-2 py-1 border border-slate-600 rounded text-sm mr-2 bg-slate-700 text-slate-100"
                                                     autoFocus
                                                     onKeyDown={(e) => {
                                                         if (e.key === 'Enter') {
@@ -1919,7 +2091,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                     onBlur={() => setEditingFaqIndex(null)}
                                                 />
                                             ) : (
-                                                <span className="text-sm text-slate-700 flex-1">{q}</span>
+                                                <span className="text-sm text-slate-300 flex-1">{q}</span>
                                             )}
                                             <div className="flex gap-2">
                                                 <button
@@ -1951,19 +2123,19 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                         </Card >
 
                         {/* Data Retention Configuration */}
-                        <Card>
+                        <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
+                                <CardTitle className="flex items-center gap-2 text-slate-200">
                                     <Clock className="h-5 w-5 text-orange-500" />
                                     Data Retention (GDPR)
                                 </CardTitle>
-                                <CardDescription>Gestisci il periodo di conservazione dei documenti caricati.</CardDescription>
+                                <CardDescription className="text-slate-400">Gestisci il periodo di conservazione dei documenti caricati.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center text-sm">
-                                        <span className="font-medium text-slate-700">Conservazione Documenti (giorni)</span>
-                                        <span className="font-bold text-slate-900 bg-slate-100 px-2 py-1 rounded">
+                                        <span className="font-medium text-slate-300">Conservazione Documenti (giorni)</span>
+                                        <span className="font-bold text-slate-100 bg-slate-800 px-2 py-1 rounded border border-slate-700">
                                             {userPreferences?.retention_days || 60} giorni
                                         </span>
                                     </div>
@@ -1981,7 +2153,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                 });
                                             }
                                         }}
-                                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                                        className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
                                     />
                                     <p className="text-xs text-slate-500">
                                         Nota: I documenti salvati nello storage non possono essere conservati per oltre 60 giorni.
@@ -2002,10 +2174,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             const ownersList = userPreferences?.[listKey] || [];
 
                             return (
-                                <Card key={listKey}>
+                                <Card key={listKey} className="bg-slate-900 border-slate-800">
                                     <CardHeader>
-                                        <CardTitle>{roleConfig.title}</CardTitle>
-                                        <CardDescription>{roleConfig.desc}</CardDescription>
+                                        <CardTitle className="text-slate-200">{roleConfig.title}</CardTitle>
+                                        <CardDescription className="text-slate-400">{roleConfig.desc}</CardDescription>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
                                         <div className="flex gap-2">
@@ -2013,7 +2185,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                 type="text"
                                                 id={`new-${listKey}`}
                                                 placeholder={`Nuovo ${roleConfig.title}...`}
-                                                className="flex-1 px-3 py-2 border rounded-md text-sm"
+                                                className="flex-1 px-3 py-2 border border-slate-700 rounded-md text-sm bg-slate-800 text-slate-200"
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter') {
                                                         const input = e.currentTarget;
@@ -2052,12 +2224,12 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                 <p className="text-sm text-slate-500 italic">Nessun nominativo configurato.</p>
                                             )}
                                             {ownersList.map((owner, i) => (
-                                                <div key={i} className="flex items-center justify-between bg-slate-50 p-3 rounded border">
+                                                <div key={i} className="flex items-center justify-between bg-slate-800/50 p-3 rounded border border-slate-700">
                                                     {(editingOwnerState?.list === listKey && editingOwnerState?.index === i) ? (
                                                         <input
                                                             type="text"
                                                             defaultValue={owner}
-                                                            className="flex-1 px-2 py-1 border rounded text-sm mr-2"
+                                                            className="flex-1 px-2 py-1 border border-slate-600 rounded text-sm mr-2 bg-slate-700 text-slate-200"
                                                             autoFocus
                                                             onKeyDown={async (e) => {
                                                                 if (e.key === 'Enter') {
@@ -2095,7 +2267,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                             onBlur={() => setEditingOwnerState(null)}
                                                         />
                                                     ) : (
-                                                        <span className="text-sm text-slate-700 flex-1">{owner}</span>
+                                                        <span className="text-sm text-slate-300 flex-1">{owner}</span>
                                                     )}
 
                                                     <div className="flex gap-2">

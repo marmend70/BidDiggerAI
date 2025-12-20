@@ -226,12 +226,8 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
 
                 {userRole === 'admin' && (
                     <button
-                        onClick={() => !isAnalyzing && onSectionClick?.('admin')}
-                        disabled={isAnalyzing}
-                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors border mt-4 ${activeSection === 'admin'
-                            ? 'bg-red-500/10 text-red-400 border-red-500/20' // Active
-                            : 'text-red-400 hover:bg-slate-800 hover:text-red-300 border-transparent' // Default
-                            } ${isAnalyzing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        onClick={() => window.location.href = '/admin'}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-400 rounded-md hover:bg-slate-800 hover:text-red-300 border border-transparent mt-4"
                     >
                         <Settings className="h-4 w-4" />
                         Amministrazione
@@ -257,7 +253,7 @@ export function Layout(props: LayoutProps) {
     };
 
     return (
-        <div className="flex h-screen bg-slate-50 overflow-hidden flex-col md:flex-row">
+        <div className="flex h-screen bg-slate-950 overflow-hidden flex-col md:flex-row">
             {/* Desktop Sidebar */}
             <aside className="hidden md:flex w-80 bg-slate-900 flex-shrink-0 flex-col h-full overflow-hidden">
                 <SidebarContent

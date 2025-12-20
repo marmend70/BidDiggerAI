@@ -30,21 +30,21 @@ export function ArchiveTimeline({ items }: ArchiveTimelineProps) {
     const today = new Date();
 
     return (
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6">
-            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+        <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 shadow-sm mb-6">
+            <h2 className="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">
                 <Clock className="w-5 h-5 text-amber-500" />
                 Timeline Scadenze
             </h2>
 
             <div className="relative pt-8 pb-4 overflow-x-auto">
                 {/* Main Timeline Line */}
-                <div className="absolute top-8 left-0 w-full h-1 bg-slate-100 rounded-full" />
+                <div className="absolute top-8 left-0 w-full h-1 bg-slate-800 rounded-full" />
 
                 {/* Today Marker */}
                 <div className="absolute top-6 left-0 z-10 flex flex-col items-center">
-                    <div className="w-4 h-4 rounded-full bg-emerald-500 ring-4 ring-white shadow-sm" />
-                    <span className="mt-2 text-xs font-bold text-emerald-600 uppercase tracking-wider">Oggi</span>
-                    <span className="text-[10px] text-slate-400">{today.toLocaleDateString('it-IT')}</span>
+                    <div className="w-4 h-4 rounded-full bg-emerald-500 ring-4 ring-slate-900 shadow-sm" />
+                    <span className="mt-2 text-xs font-bold text-emerald-500 uppercase tracking-wider">Oggi</span>
+                    <span className="text-[10px] text-slate-500">{today.toLocaleDateString('it-IT')}</span>
                 </div>
 
                 {/* Timeline Items Container */}
@@ -60,46 +60,46 @@ export function ArchiveTimeline({ items }: ArchiveTimelineProps) {
                             >
                                 {/* Node on Line */}
                                 <div className={cn(
-                                    "absolute -top-[1.6rem] left-4 w-3 h-3 rounded-full ring-2 ring-white transition-colors",
-                                    isPast ? "bg-slate-300" : (isUrgent ? "bg-red-500" : "bg-blue-500")
+                                    "absolute -top-[1.6rem] left-4 w-3 h-3 rounded-full ring-2 ring-slate-900 transition-colors",
+                                    isPast ? "bg-slate-600" : (isUrgent ? "bg-red-500" : "bg-blue-500")
                                 )} />
 
                                 {/* Card */}
                                 <div className={cn(
                                     "mt-2 p-3 rounded-lg border w-full transition-all hover:shadow-md",
-                                    isPast ? "bg-slate-50 border-slate-200 opacity-70" :
-                                        item.status === 'Decisa: Go' ? "bg-green-50 border-green-200" :
-                                            item.status === 'Decisa: No Go' ? "bg-red-50 border-red-200" :
-                                                item.status === 'Assegnata' ? "bg-emerald-100 border-emerald-300" :
-                                                    item.status === 'Presentata' ? "bg-slate-100 border-slate-300" :
-                                                        "bg-white border-slate-200 hover:border-amber-200"
+                                    isPast ? "bg-slate-900 border-slate-800 opacity-70" :
+                                        item.status === 'Decisa: Go' ? "bg-green-950/20 border-green-900/50" :
+                                            item.status === 'Decisa: No Go' ? "bg-red-950/20 border-red-900/50" :
+                                                item.status === 'Assegnata' ? "bg-emerald-950/20 border-emerald-900/50" :
+                                                    item.status === 'Presentata' ? "bg-slate-800 border-slate-700" :
+                                                        "bg-slate-950/50 border-slate-800 hover:border-amber-500/50"
                                 )}>
                                     <div className="flex items-center justify-between mb-2">
                                         <span className={cn(
                                             "text-xs font-bold px-2 py-0.5 rounded-full",
-                                            isPast ? "bg-slate-200 text-slate-600" : "bg-blue-100 text-blue-700"
+                                            isPast ? "bg-slate-800 text-slate-500" : "bg-blue-900/40 text-blue-300"
                                         )}>
                                             #{item.numericId}
                                         </span>
                                         <span className={cn(
                                             "text-xs font-bold",
-                                            isUrgent && !isPast ? "text-red-600" : "text-slate-500"
+                                            isUrgent && !isPast ? "text-red-400" : "text-slate-500"
                                         )}>
                                             {isPast ? 'Scaduta' : `${item.daysRemaining} gg`}
                                         </span>
                                     </div>
 
-                                    <h4 className="text-sm font-medium text-slate-800 line-clamp-2 mb-2" title={item.title}>
+                                    <h4 className="text-sm font-medium text-slate-200 line-clamp-2 mb-2" title={item.title}>
                                         {item.title}
                                     </h4>
 
-                                    <div className="flex flex-col gap-1 text-xs text-slate-500">
+                                    <div className="flex flex-col gap-1 text-xs text-slate-400">
                                         <div className="flex items-center gap-1.5">
                                             <Calendar className="w-3 h-3" />
                                             <span>{item.deadline}</span>
                                         </div>
                                         {item.owner && (
-                                            <div className="flex items-center gap-1.5 text-slate-700">
+                                            <div className="flex items-center gap-1.5 text-slate-300">
                                                 <User className="w-3 h-3" />
                                                 <span className="font-medium">{item.owner}</span>
                                             </div>

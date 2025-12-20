@@ -235,5 +235,4 @@ export interface UserProfile {
     credits: number; // Added for credit system
     preferences?: UserPreferences;
     role?: string; // Added for admin functionality
-    app_role?: string; // Legacy/Fallback admin role
 }

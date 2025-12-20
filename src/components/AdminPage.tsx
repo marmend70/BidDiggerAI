@@ -14,6 +14,7 @@ export function AdminPage() {
     // Configure Timeout State
     const [timeoutSeconds, setTimeoutSeconds] = useState<number>(240);
     const [updatingTimeout, setUpdatingTimeout] = useState(false);
+
     useEffect(() => {
         checkAdminStatus();
     }, []);
@@ -29,15 +30,11 @@ export function AdminPage() {
 
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('*') // Select * to assume robustness against schema variations
+                .select('role')
                 .eq('id', session.user.id)
                 .single();
 
-            // Robust check: 'role' OR 'app_role'
-            const userRole = profile?.role || profile?.app_role;
-
-            if (userRole !== 'admin') {
-                console.warn("Access denied. User role:", userRole);
+            if (profile?.role !== 'admin') {
                 window.location.href = '/'; // Redirect non-admins
                 return;
             }
@@ -79,6 +76,7 @@ export function AdminPage() {
             } else {
                 setTimeoutSeconds(240); // Default
             }
+
         } catch (error) {
             console.error('Error fetching settings:', error);
         }
@@ -120,6 +118,7 @@ export function AdminPage() {
             setUpdatingTimeout(false);
         }
     };
+
     if (loading) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-slate-50">
@@ -181,6 +180,7 @@ export function AdminPage() {
                         </CardContent>
                     </Card>
                 </div>
+
                 <div className="grid gap-6">
                     <Card>
                         <CardHeader>
@@ -220,7 +220,7 @@ export function AdminPage() {
                         </CardContent>
                     </Card>
                 </div>
-            </div >
-        </div >
+            </div>
+        </div>
     );
 }

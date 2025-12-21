@@ -20,6 +20,7 @@ import { supabase } from '@/lib/supabase';
 
 // Helper for parsing Italian dates
 const parseItalianDate = (dateStr: string): Date | null => {
+    // console.log("DEBUG: Raw date input:", dateStr); // Uncomment to debug raw dates
     if (!dateStr) return null;
     const months: { [key: string]: number } = {
         'gennaio': 0, 'febbraio': 1, 'marzo': 2, 'aprile': 3, 'maggio': 4, 'giugno': 5,
@@ -29,27 +30,41 @@ const parseItalianDate = (dateStr: string): Date | null => {
     };
 
     try {
-        const parts = dateStr.trim().toLowerCase().split(/[\/\s-]+/);
-        // Handle common formats: DD/MM/YYYY, DD Month YYYY
+        // Cleaning the string
+        let cleanStr = dateStr.trim().toLowerCase();
+
+        // Handle ISO format YYYY-MM-DD natively
+        if (/^\d{4}-\d{2}-\d{2}/.test(cleanStr)) {
+            return new Date(cleanStr);
+        }
+
+        const parts = cleanStr.split(/[\/\s-']+/).filter(p => p.length > 0);
+
         let day, month, year;
 
         if (parts.length >= 3) {
-            // Check for DD/MM/YYYY
+            // Check for DD/MM/YYYY or DD-MM-YYYY
             if (!isNaN(parseInt(parts[1]))) {
                 day = parseInt(parts[0]);
                 month = parseInt(parts[1]) - 1;
                 year = parseInt(parts[2]);
             } else {
-                // Assume DD Month YYYY
+                // Assume DD Month YYYY (or DD Month 'YY)
                 day = parseInt(parts[0]);
                 month = months[parts[1]] !== undefined ? months[parts[1]] : -1;
                 year = parseInt(parts[2]);
-                // Handle cases where year comes first or other variations if needed, but this covers standard output
             }
 
-            if (year < 100) year += 2000; // Assume 21 -> 2021
+            // Smart 2-digit year handling
+            // If year is 2 digits (e.g. 23, 24, 09)
+            if (year < 100) {
+                // If it's something like 90-99, probably 1990s (unlikely for tenders but safe)
+                // If it's 00-50, definitely 2000s
+                year += 2000;
+            }
 
             if (day > 0 && month >= 0 && year > 1900) {
+                // Validation: if day is invalid for month (e.g. 31 Feb), Date autocorrections might occur, but usually acceptable
                 return new Date(year, month, day);
             }
         }
@@ -811,34 +826,48 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </div>
                         </div>
 
-                        <div className="grid gap-4">
+                        <div className="space-y-4">
                             {sortedEvents.map((event: any, i: number) => {
+                                // console.log(`DEBUG: Timeline Event ${i}:`, event.data, "Parsed:", event.parsedDate);
                                 const isPast = event.daysDiff !== null && event.daysDiff < 0;
-                                const isUrgent = event.daysDiff !== null && event.daysDiff >= 0 && event.daysDiff <= 7;
-                                const isFuture = event.daysDiff !== null && event.daysDiff > 7;
+                                const isUrgent = event.daysDiff !== null && event.daysDiff >= 0 && event.daysDiff <= 10;
+                                const isMedium = event.daysDiff !== null && event.daysDiff > 10 && event.daysDiff <= 20;
+                                const isSafe = event.daysDiff !== null && event.daysDiff > 20;
 
-                                let statusColor = "text-slate-400 border-slate-700 bg-slate-800";
+                                let statusColor = "bg-slate-600"; // Default
                                 let statusText = "Data Rilevata";
                                 let dateColor = "text-slate-400";
+                                let borderColor = "border-slate-700";
 
                                 if (isPast) {
-                                    statusColor = "text-red-400 border-red-900 bg-red-950/20";
+                                    statusColor = "bg-slate-500"; // Archived/Expired style (or could remain red if critical)
                                     statusText = "Scaduto";
                                     dateColor = "text-red-400";
+                                    borderColor = "border-red-900/30";
                                 } else if (isUrgent) {
-                                    statusColor = "text-amber-400 border-amber-900 bg-amber-950/20";
-                                    statusText = "In Scadenza";
-                                    dateColor = "text-amber-400";
-                                } else if (isFuture) {
-                                    statusColor = "text-emerald-400 border-emerald-900 bg-emerald-950/20";
-                                    statusText = "Programmato";
+                                    statusColor = "bg-red-500";
+                                    statusText = "In Scadenza (< 10gg)";
+                                    dateColor = "text-red-400";
+                                    borderColor = "border-red-500/50";
+                                } else if (isMedium) {
+                                    statusColor = "bg-yellow-500";
+                                    statusText = "Attenzione (10-20gg)";
+                                    dateColor = "text-yellow-400";
+                                    borderColor = "border-yellow-500/50";
+                                } else if (isSafe) {
+                                    statusColor = "bg-emerald-500";
+                                    statusText = "Programmato (> 20gg)";
                                     dateColor = "text-emerald-400";
+                                    borderColor = "border-emerald-500/50";
                                 }
 
                                 return (
-                                    <div key={i} className={`relative flex flex-col md:flex-row gap-6 p-6 rounded-xl border bg-slate-900 transition-all hover:shadow-lg ${isUrgent ? 'border-amber-500/50 shadow-amber-900/10' : 'border-slate-800'}`}>
+                                    <div key={i} className={`relative flex flex-col md:flex-row gap-6 p-6 rounded-xl border bg-slate-900 transition-all hover:shadow-lg ${borderColor}`}>
+                                        {/* Status Bar Indicator */}
+                                        <div className={`absolute top-0 left-0 bottom-0 w-1.5 rounded-l-xl ${statusColor}`} />
+
                                         {/* Date Column */}
-                                        <div className="flex-shrink-0 flex md:flex-col items-center justify-center gap-2 md:gap-0 min-w-[100px] border-b md:border-b-0 md:border-r border-slate-800 pb-4 md:pb-0 md:pr-6">
+                                        <div className="flex-shrink-0 flex md:flex-col items-center justify-center gap-2 md:gap-0 min-w-[100px] border-b md:border-b-0 md:border-r border-slate-800 pb-4 md:pb-0 md:pr-6 pl-2">
                                             {event.parsedDate ? (
                                                 <>
                                                     <span className={`text-4xl font-bold ${dateColor}`}>{event.parsedDate.getDate()}</span>
@@ -855,23 +884,29 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                         <div className="flex-1 flex flex-col justify-center">
                                             <div className="flex flex-wrap justify-between items-start gap-4 mb-2">
                                                 <h3 className="text-xl font-semibold text-slate-200">{event.evento}</h3>
-                                                <Badge variant="outline" className={`${statusColor} flex items-center gap-1.5`}>
-                                                    <div className={`w-1.5 h-1.5 rounded-full bg-current`} />
-                                                    {statusText}
-                                                    {event.daysDiff !== null && (
-                                                        <span className="opacity-75 border-l border-current pl-1.5 ml-1.5">
-                                                            {event.daysDiff === 0 ? "Oggi" : (event.daysDiff > 0 ? `Tra ${event.daysDiff} gg` : `${Math.abs(event.daysDiff)} gg fa`)}
-                                                        </span>
-                                                    )}
-                                                </Badge>
+
+                                                {/* New Visual Indicator for Status */}
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`h-2.5 w-24 rounded-full bg-slate-800 overflow-hidden border border-slate-700`}>
+                                                        <div className={`h-full ${statusColor}`} style={{ width: isPast ? '100%' : '100%' }} />
+                                                    </div>
+                                                    <span className={`text-xs font-bold uppercase tracking-wider ${dateColor}`}>
+                                                        {statusText}
+                                                    </span>
+                                                </div>
                                             </div>
 
                                             <div className="flex items-center gap-2 text-sm text-slate-400 mt-1">
+                                                {event.daysDiff !== null && (
+                                                    <Badge variant="secondary" className="bg-slate-800 text-slate-300 border-slate-700">
+                                                        {event.daysDiff === 0 ? "Oggi" : (event.daysDiff > 0 ? `Mancano ${event.daysDiff} gg` : `Scaduto da ${Math.abs(event.daysDiff)} gg`)}
+                                                    </Badge>
+                                                )}
                                                 <span className="bg-slate-800 px-2 py-0.5 rounded text-xs border border-slate-700 font-mono">
                                                     Originale: {event.data}
                                                 </span>
                                                 {event.ref && (
-                                                    <span className="flex items-center gap-1">
+                                                    <span className="flex items-center gap-1 ml-2">
                                                         <span className="w-1 h-1 rounded-full bg-slate-600" />
                                                         Ref: {event.ref}
                                                     </span>
@@ -1198,7 +1233,15 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['10_punteggi'][0]} sectionId="10_punteggi">
-                            <SuggerimentiPunteggioBlock tips={data['10_punteggi'][0]?.suggerimenti_progettuali_punteggio} />
+                            <SuggerimentiPunteggioBlock tips={
+                                (data['10_punteggi'][0]?.suggerimenti_progettuali_punteggio) ||
+                                (data['10_punteggi'][0]?.suggerimenti_progettuali) ||
+                                (data['10_punteggi'][0]?.suggerimenti?.map((s: any) => ({
+                                    scelta: s.azione || s.scelta,
+                                    priorita: s.priorita || "Media",
+                                    trade_off: s.motivazione || s.trade_off || s.target
+                                })))
+                            } />
                         </SemanticAnalysisBlock>
                         <DeepDive
                             sectionId="10_punteggi"
@@ -1273,7 +1316,16 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['12_offerta_tecnica'][0]} sectionId="12_offerta_tecnica">
-                            <SuggerimentiOffertaBlock suggestions={data['12_offerta_tecnica'][0]?.suggerimenti_progettuali_offerta} />
+                            <SuggerimentiOffertaBlock suggestions={
+                                (data['12_offerta_tecnica'][0]?.suggerimenti_progettuali_offerta) ||
+                                (data['12_offerta_tecnica'][0]?.suggerimenti_progettuali) ||
+                                (data['12_offerta_tecnica'][0]?.suggerimenti?.map((s: any) => ({
+                                    proposta: s.azione || s.proposta,
+                                    tipo: s.tipo || "Generale",
+                                    obiettivi: s.motivazione || s.obiettivi,
+                                    limiti: s.target || s.limiti
+                                })))
+                            } />
                         </SemanticAnalysisBlock>
                         <DeepDive
                             sectionId="12_offerta_tecnica"

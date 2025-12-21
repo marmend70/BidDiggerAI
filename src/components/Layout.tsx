@@ -11,9 +11,11 @@ import {
     Menu,
     X,
     Bot,
-    Zap
+    Zap,
+    BookOpen
 } from 'lucide-react';
 import { Footer } from './Footer';
+import { GuideModal } from './GuideModal';
 import { SECTIONS_MAP, MENU_ORDER, SECTION_BATCH_MAP } from '@/constants';
 
 interface LayoutProps {
@@ -41,9 +43,10 @@ interface SidebarContentProps {
     onNewAnalysis?: () => void;
     onOpenChatAssistant?: () => void;
     userRole?: string;
+    onOpenGuide: () => void;
 }
 
-function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant, userRole }: SidebarContentProps) {
+function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant, userRole, onOpenGuide }: SidebarContentProps) {
     return (
         <div className="flex flex-col h-full text-white">
             <div className="p-6 bg-slate-950 shadow-sm z-10">
@@ -160,6 +163,14 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
 
             <div className="p-4 border-t border-slate-800 space-y-2 bg-slate-950 z-10">
                 <button
+                    onClick={onOpenGuide}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-amber-500 rounded-md hover:bg-slate-800 hover:text-amber-400 border border-amber-500/20 bg-amber-500/5 mb-2"
+                >
+                    <BookOpen className="h-4 w-4" />
+                    Guida & FAQ
+                </button>
+
+                <button
                     onClick={() => !isAnalyzing && onSectionClick?.('configurazioni')}
                     disabled={isAnalyzing}
                     className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors border ${isAnalyzing
@@ -224,9 +235,10 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                     Esci
                 </button>
 
-                {userRole === 'admin' && (
+                {/* DEBUG: Role is {userRole} */}
+                {userRole?.toLowerCase() === 'admin' && (
                     <button
-                        onClick={() => window.location.href = '/admin'}
+                        onClick={() => { console.log("Navigating to admin"); window.location.href = '/admin'; }}
                         className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-400 rounded-md hover:bg-slate-800 hover:text-red-300 border border-transparent mt-4"
                     >
                         <Settings className="h-4 w-4" />
@@ -241,6 +253,7 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
 export function Layout(props: LayoutProps) {
     const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onOpenContact, onOpenChatAssistant, userRole } = props;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+    const [isGuideOpen, setIsGuideOpen] = React.useState(false); // NEW STATE
 
     const handleExport = async () => {
         if (!data) return;
@@ -254,6 +267,9 @@ export function Layout(props: LayoutProps) {
 
     return (
         <div className="flex h-screen bg-slate-950 overflow-hidden flex-col md:flex-row">
+            {/* GUIDE MODAL */}
+            <GuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
+
             {/* Desktop Sidebar */}
             <aside className="hidden md:flex w-80 bg-slate-900 flex-shrink-0 flex-col h-full overflow-hidden">
                 <SidebarContent
@@ -267,6 +283,7 @@ export function Layout(props: LayoutProps) {
                     onNewAnalysis={props.onNewAnalysis}
                     onOpenChatAssistant={onOpenChatAssistant}
                     userRole={userRole}
+                    onOpenGuide={() => setIsGuideOpen(true)} // PASS HANDLER
                 />
             </aside>
 
@@ -323,6 +340,10 @@ export function Layout(props: LayoutProps) {
                                 setIsMobileMenuOpen(false);
                             }}
                             userRole={userRole}
+                            onOpenGuide={() => {
+                                setIsGuideOpen(true);
+                                setIsMobileMenuOpen(false);
+                            }}
                         />
                     </div>
                 </div>

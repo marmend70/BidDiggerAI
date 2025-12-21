@@ -116,6 +116,8 @@ export interface AnalysisResult {
             priorita: string;
             trade_off: string;
         }>;
+        suggerimenti_progettuali?: any[]; // Fallback
+        suggerimenti?: any[]; // Fallback
     }> & GeniusData;
     "11_pena_esclusione": Array<{
         lotto: string;
@@ -135,6 +137,8 @@ export interface AnalysisResult {
             obiettivi: string;
             limiti: string;
         }>;
+        suggerimenti_progettuali?: any[]; // Fallback
+        suggerimenti?: any[]; // Fallback
     }> & GeniusData;
     "13_offerta_economica": Array<{
         lotto: string;

@@ -283,19 +283,37 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
     };
 
     // --- FILTER LOGIC ---
-    type TabType = 'TUTTE' | 'SCADENZA' | 'DA_ASSEGNARE';
+    type TabType = 'TUTTE' | 'SCADENZA' | 'DA_ASSEGNARE' | 'IN_VALUTAZIONE' | 'DECISA_GO' | 'DECISA_NO_GO' | 'ASSEGNATA' | 'PRESENTATA';
     const [activeTab, setActiveTab] = useState<TabType>('TUTTE');
 
     const getOfferDeadline = (analysis: AnalysisResult): string | null => {
         const timeline = analysis['5_scadenze']?.[0]?.timeline || [];
-        // Look for keywords indicating the deadline
-        const deadlineEvent = timeline.find(t =>
-            t.evento.toLowerCase().includes('termine') ||
-            t.evento.toLowerCase().includes('scadenza') ||
-            t.evento.toLowerCase().includes('presentazione') ||
-            t.evento.toLowerCase().includes('ricezione')
-        );
-        return deadlineEvent ? deadlineEvent.data : null;
+
+        // Filter candidates by excluding other known types of deadlines
+        const candidates = timeline.filter(t => {
+            const e = t.evento.toLowerCase();
+            // Exclude Questions/Clarifications
+            if (e.includes('chiarimenti') || e.includes('quesiti') || e.includes('domande')) return false;
+            // Exclude Site Visits
+            if (e.includes('sopralluogo')) return false;
+            // Exclude Opening Sessions (which happen after deadline)
+            if (e.includes('apertura')) return false;
+            return true;
+        });
+
+        // 1. Strict Search: Key terms "Offerta/e" + "Scadenza/Termine/Presentazione/Ricezione"
+        let event = candidates.find(t => {
+            const e = t.evento.toLowerCase();
+            return (e.includes('offerta') || e.includes('offerte')) &&
+                (e.includes('scadenza') || e.includes('termine') || e.includes('presentazione') || e.includes('ricezione'));
+        });
+
+        // 2. Fallback: Any remaining candidate with "Termine" or "Scadenza" (since we filtered out other types)
+        if (!event) {
+            event = candidates.find(t => t.evento.toLowerCase().includes('termine') || t.evento.toLowerCase().includes('scadenza'));
+        }
+
+        return event ? event.data : null;
     };
 
     const getQuesitiDeadline = (analysis: AnalysisResult): string | null => {
@@ -303,7 +321,7 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
         const quesitiEvent = timeline.find(t =>
             t.evento.toLowerCase().includes('chiarimenti') ||
             t.evento.toLowerCase().includes('quesiti') ||
-            t.evento.toLowerCase().includes('domande')
+            (t.evento.toLowerCase().includes('domande') && !t.evento.toLowerCase().includes('partecipazione')) // Avoid 'domanda di partecipazione'
         );
         return quesitiEvent ? quesitiEvent.data : null;
     };
@@ -344,10 +362,16 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
                     (!a.tenders.owner_tech || !a.tenders.owner_admin || !a.tenders.owner_comm);
             }
 
+            if (activeTab === 'IN_VALUTAZIONE') return a.tenders?.tender_status === 'In valutazione';
+            if (activeTab === 'DECISA_GO') return a.tenders?.tender_status === 'Decisa: Go';
+            if (activeTab === 'DECISA_NO_GO') return a.tenders?.tender_status === 'Decisa: No Go';
+            if (activeTab === 'ASSEGNATA') return a.tenders?.tender_status === 'Assegnata';
+            if (activeTab === 'PRESENTATA') return a.tenders?.tender_status === 'Presentata';
+
             return true;
         })
         .sort((a, b) => {
-            // Sort by Deadline Ascending (Nearest First)
+            // Sort by Deadline: Future dates (Ascending - Nearest First) -> Past dates (Descending - Most Recent First) -> Nulls last
             const deadlineA = getOfferDeadline(a.result_json);
             const deadlineB = getOfferDeadline(b.result_json);
 
@@ -367,7 +391,14 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
             if (isNaN(dateA)) return 1;
             if (isNaN(dateB)) return -1;
 
-            return dateA - dateB;
+            const now = new Date().getTime();
+            const isFutureA = dateA >= now;
+            const isFutureB = dateB >= now;
+
+            if (isFutureA && isFutureB) return dateA - dateB; // Both future: Nearest first
+            if (!isFutureA && !isFutureB) return dateB - dateA; // Both past: Most recent first
+            if (isFutureA) return -1; // A is future, B is past
+            return 1; // B is future, A is past
         });
 
     // Counts for tabs
@@ -587,34 +618,45 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
                         Bid Digger Dashboard
                     </h1>
                     {/* Tabs */}
-                    <div className="flex items-center gap-6 mt-6 border-b border-slate-800">
-                        <button
-                            onClick={() => setActiveTab('TUTTE')}
-                            className={cn(
-                                "pb-3 text-sm font-medium transition-all relative",
-                                activeTab === 'TUTTE' ? "text-amber-500" : "text-slate-400 hover:text-slate-200"
-                            )}
-                        >
-                            Tutte le Gare <span className="ml-1 text-xs opacity-70">({analyses.length})</span>
+                    {/* Tabs Scroll Container */}
+                    <div className="flex items-center gap-6 mt-6 border-b border-slate-800 overflow-x-auto pb-0">
+                        <button onClick={() => setActiveTab('TUTTE')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", activeTab === 'TUTTE' ? "text-amber-500" : "text-slate-400 hover:text-slate-200")}>
+                            Tutte <span className="ml-1 text-xs opacity-70">({analyses.length})</span>
                             {activeTab === 'TUTTE' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-amber-500" />}
                         </button>
-                        <button
-                            onClick={() => setActiveTab('SCADENZA')}
-                            className={cn(
-                                "pb-3 text-sm font-medium transition-all relative",
-                                activeTab === 'SCADENZA' ? "text-amber-500" : "text-slate-400 hover:text-slate-200"
-                            )}
-                        >
+
+                        <button onClick={() => setActiveTab('IN_VALUTAZIONE')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", activeTab === 'IN_VALUTAZIONE' ? "text-amber-500" : "text-slate-400 hover:text-slate-200")}>
+                            In Valutazione <span className="ml-1 text-xs opacity-70">({analyses.filter(a => a.tenders?.tender_status === 'In valutazione').length})</span>
+                            {activeTab === 'IN_VALUTAZIONE' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-amber-500" />}
+                        </button>
+
+                        <button onClick={() => setActiveTab('DECISA_GO')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", activeTab === 'DECISA_GO' ? "text-green-500" : "text-slate-400 hover:text-green-400")}>
+                            Go <span className="ml-1 text-xs opacity-70">({analyses.filter(a => a.tenders?.tender_status === 'Decisa: Go').length})</span>
+                            {activeTab === 'DECISA_GO' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-green-500" />}
+                        </button>
+
+                        <button onClick={() => setActiveTab('DECISA_NO_GO')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", activeTab === 'DECISA_NO_GO' ? "text-red-500" : "text-slate-400 hover:text-red-400")}>
+                            No Go <span className="ml-1 text-xs opacity-70">({analyses.filter(a => a.tenders?.tender_status === 'Decisa: No Go').length})</span>
+                            {activeTab === 'DECISA_NO_GO' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-red-500" />}
+                        </button>
+
+                        <button onClick={() => setActiveTab('ASSEGNATA')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", activeTab === 'ASSEGNATA' ? "text-blue-500" : "text-slate-400 hover:text-blue-400")}>
+                            Assegnata <span className="ml-1 text-xs opacity-70">({analyses.filter(a => a.tenders?.tender_status === 'Assegnata').length})</span>
+                            {activeTab === 'ASSEGNATA' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-500" />}
+                        </button>
+
+                        <button onClick={() => setActiveTab('PRESENTATA')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", activeTab === 'PRESENTATA' ? "text-purple-500" : "text-slate-400 hover:text-purple-400")}>
+                            Presentata <span className="ml-1 text-xs opacity-70">({analyses.filter(a => a.tenders?.tender_status === 'Presentata').length})</span>
+                            {activeTab === 'PRESENTATA' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-purple-500" />}
+                        </button>
+
+                        <div className="w-px h-6 bg-slate-800 mx-2" />
+
+                        <button onClick={() => setActiveTab('SCADENZA')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", activeTab === 'SCADENZA' ? "text-amber-500" : "text-slate-400 hover:text-slate-200")}>
                             In Scadenza <span className="ml-1 text-xs opacity-70">({countScadenza})</span>
                             {activeTab === 'SCADENZA' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-amber-500" />}
                         </button>
-                        <button
-                            onClick={() => setActiveTab('DA_ASSEGNARE')}
-                            className={cn(
-                                "pb-3 text-sm font-medium transition-all relative",
-                                activeTab === 'DA_ASSEGNARE' ? "text-amber-500" : "text-slate-400 hover:text-slate-200"
-                            )}
-                        >
+                        <button onClick={() => setActiveTab('DA_ASSEGNARE')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", activeTab === 'DA_ASSEGNARE' ? "text-amber-500" : "text-slate-400 hover:text-slate-200")}>
                             Da Assegnare <span className="ml-1 text-xs opacity-70">({countDaAssegnare})</span>
                             {activeTab === 'DA_ASSEGNARE' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-amber-500" />}
                         </button>

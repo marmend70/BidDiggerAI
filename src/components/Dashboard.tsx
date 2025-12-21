@@ -1245,7 +1245,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['10_punteggi'][0]} sectionId="10_punteggi">
-
+                            <SuggerimentiPunteggioBlock tips={data['10_punteggi'][0]?.suggerimenti_progettuali_punteggio} />
                         </SemanticAnalysisBlock>
                         <DeepDive
                             sectionId="10_punteggi"
@@ -1256,7 +1256,6 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                         />
                     </div>
                 );
-
 
 
             case '11_pena_esclusione':
@@ -1320,7 +1319,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['12_offerta_tecnica'][0]} sectionId="12_offerta_tecnica">
-
+                            <SuggerimentiOffertaBlock suggestions={data['12_offerta_tecnica'][0]?.suggerimenti_progettuali_offerta} />
                         </SemanticAnalysisBlock>
                         <DeepDive
                             sectionId="12_offerta_tecnica"

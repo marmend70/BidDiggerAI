@@ -1222,17 +1222,19 @@ function App() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Analisi Incompleta</AlertDialogTitle>
-            <AlertDialogDescription>
-              A causa del sovraccarico delle richieste o di un timeout, le seguenti sezioni non sono state completate:
-              <ul className="list-disc pl-5 mt-2 mb-2 text-slate-700 font-medium">
-                {resumeSections.map(sId => (
-                  <li key={sId}>{SECTIONS_MAP[sId]?.label || sId}</li>
-                ))}
-              </ul>
-              <br />
-              Vuoi riavviare l'analisi <strong>limitatamente alle sezioni mancanti</strong>?
-              <br />
-              <span className="font-semibold text-green-600">Nota: Non verranno scalati ulteriori crediti.</span>
+            <AlertDialogDescription asChild>
+              <div className="text-sm text-slate-500">
+                A causa del sovraccarico delle richieste o di un timeout, le seguenti sezioni non sono state completate:
+                <ul className="list-disc pl-5 mt-2 mb-2 text-slate-700 font-medium">
+                  {resumeSections.map(sId => (
+                    <li key={sId}>{SECTIONS_MAP[sId]?.label || sId}</li>
+                  ))}
+                </ul>
+                <br />
+                Vuoi riavviare l'analisi <strong>limitatamente alle sezioni mancanti</strong>?
+                <br />
+                <span className="font-semibold text-green-600">Nota: Non verranno scalati ulteriori crediti.</span>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1242,11 +1244,7 @@ function App() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <TimeoutModal
-        isOpen={showTimeoutModal}
-        onContinue={() => handleTimeoutDecision('continue')}
-        onTerminate={() => handleTimeoutDecision('terminate')}
-      />
+
       <ModelSelectionModal
         isOpen={showModelModal}
         onClose={() => setShowModelModal(false)}

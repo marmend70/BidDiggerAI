@@ -243,7 +243,15 @@ Deno.serve(async (req) => {
                const responseText = await performAnalysisNative(primaryModel, fallbackModel, activePrompt, googleFiles, JSON_ANALYSIS_PROMPT, "application/json", analysisTemperature);
 
                // Clean Response (Gemini sometimes adds ```json ... ```)
-               const cleanText = responseText.replace(/```json/g, '').replace(/```/g, '');
+               let cleanText = responseText.replace(/```json/g, '').replace(/```/g, '');
+
+               // ROBUSTNESS: Find the JSON object relative to the text
+               const firstBrace = cleanText.indexOf('{');
+               const lastBrace = cleanText.lastIndexOf('}');
+               if (firstBrace !== -1 && lastBrace !== -1) {
+                  cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+               }
+
                try {
                   resultJson = JSON.parse(cleanText); // or use jsonrepair?
                } catch (e) {
@@ -252,7 +260,14 @@ Deno.serve(async (req) => {
                      resultJson = JSON5.parse(jsonrepair(cleanText));
                   } catch (e2) {
                      console.error("Critical JSON Parse Error", cleanText);
-                     throw new Error("Failed to parse AI response.");
+                     // DUMP ERROR TO LOGS BUT ALSO TRY ONE LAST TIME WITH AGGRESSIVE REPAIR
+                     try {
+                        // Sometimes jsonrepair needs un-escaped newlines? 
+                        // But let's just fail with dignity if this doesn't work.
+                        throw e2;
+                     } catch (e3) {
+                        throw new Error("Failed to parse AI response.");
+                     }
                   }
                }
 

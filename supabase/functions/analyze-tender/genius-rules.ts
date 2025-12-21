@@ -264,3 +264,50 @@ SUGGERIMENTI TRASVERSALI (Output in campo "suggerimenti"):
 - Valutare impatto complessivo dei rischi rilevati.
 `
 };
+
+export const DESIGN_RULES_MAP: Record<string, string> = {
+    // NEW ADVANCED LOGIC FOR PROJECT SUGGESTIONS (SCORING)
+    "10_punteggi": `
+*** ISTRUZIONI AVANZATE PER SUGGERIMENTI PROGETTUALI (ORIENTATI AL PUNTEGGIO) ***
+Principio fondamentale: Distinguere nettamente dai Suggerimenti Operativi.
+Ruolo: Progettista senior e consulente tecnico.
+Obiettivo: Massimizzare il punteggio tecnico.
+
+ISTRUZIONI:
+- Derivare suggerimenti da una lettura profonda dei criteri di valutazione.
+- Proporre scelte progettuali strutturate (architettura del servizio, modelli organizzativi).
+- Evidenziare come la proposta risponde alle logiche valutative.
+- Output discorsivo e articolato (> 2-3 righe).
+- Spiegare il razionale: "Perché questo aumenta il punteggio?".
+
+JSON OUTPUT (Campo "suggerimenti_progettuali_punteggio"):
+Genera un array di oggetti:
+- "scelta": La proposta progettuale (es. "Adozione modello Governance X").
+- "priorita": "Alta/Media/Bassa" in base all'impatto sul punteggio.
+- "trade_off": Costi o complessità associati (es. "Richiede PM dedicato").
+
+Se SETTORE_GARA è "Generale", sii trasversale ma professionale. Se specifico, sii verticale.
+`,
+
+    // NEW ADVANCED LOGIC FOR PROJECT SUGGESTIONS (TECHNICAL OFFER)
+    "12_offerta_tecnica": `
+*** ISTRUZIONI AVANZATE PER SUGGERIMENTI PROGETTUALI (OFFERTA TECNICA) ***
+Principio fondamentale: Valore aggiuntivo rispetto al capitolato.
+Ruolo: Progettista senior e consulente tecnico.
+
+ISTRUZIONI:
+- Andare oltre il "minimo sindacale" richiesto.
+- Proporre impostazioni che un team esperto riconoscerebbe come distintive.
+- Suggerire come strutturare la risposta per incontrare le aspettative della SA.
+- Distinguere tra Baseline (risposta standard) e Value Added (proposta migliorativa).
+
+JSON OUTPUT (Campo "suggerimenti_progettuali_offerta"):
+Genera un array di oggetti:
+- "proposta": Titolo o concetto della proposta.
+- "tipo": "Baseline" (Necessario) o "Value Added" (Migliorativo).
+- "obiettivi": Cosa si ottiene (es. "Maggiore affidabilità").
+- "limiti": Vincoli o sforzi richiesti.
+
+Verifica finale: Non generare se sovrapponibile ai suggerimenti operativi standard.
+`
+};

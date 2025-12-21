@@ -1,4 +1,4 @@
-import { GENIUS_RULES_MAP } from './genius-rules.ts';
+import { GENIUS_RULES_MAP, DESIGN_RULES_MAP } from './genius-rules.ts';
 
 export const generateAnalysisPrompt = (preferences: Record<string, boolean>, batchName: string, semanticPreferences: Record<string, boolean> = {}, sector: string = 'Generale'): string => {
 
@@ -387,10 +387,13 @@ JSON SCHEMA:
   if (preferences['12_offerta_tecnica']) prompts.push(`
   Chiave: "12_offerta_tecnica"
   ISTRUZIONI: Offerta Tecnica.
-  ${semanticPreferences['12_offerta_tecnica'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['12_offerta_tecnica']}` : ''}
-  ${(sector && sector !== 'Generale') ? `
-  *** CONTESTUALIZZAZIONE SETTORIALE ATTIVA: ${sector} ***
+  ${semanticPreferences['12_offerta_tecnica'] ? `
+  *** GENIUS MODE ATTIVO ***
+  ${GENIUS_RULES_MAP['12_offerta_tecnica']}
+  
+  ${DESIGN_RULES_MAP['12_offerta_tecnica']}
   ` : ''}
+
 JSON SCHEMA:
   "12_offerta_tecnica": {
     "structured": [
@@ -398,8 +401,10 @@ JSON SCHEMA:
         "documenti": ["doc1 (stringa)", "doc2"],
         "formattazione_modalita": "...",
         "limiti": "...",
-        "criteri_formali": "..."
-        ${(sector && sector !== 'Generale') ? '' : ''}
+        "criteri_formali": "...",
+        "suggerimenti_progettuali_offerta": [
+          { "proposta": "...", "tipo": "Baseline/Value Added", "obiettivi": "...", "limiti": "..." }
+        ]
       }
     ],
       "analysis": {
@@ -436,10 +441,13 @@ JSON SCHEMA:
   if (preferences['10_punteggi']) prompts.push(`
   Chiave: "10_punteggi"
   ISTRUZIONI: Punteggi e Criteri.
-  ${semanticPreferences['10_punteggi'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['10_punteggi']}` : ''}
-  ${(sector && sector !== 'Generale') ? `
-  *** CONTESTUALIZZAZIONE SETTORIALE ATTIVA: ${sector} ***
+  ${semanticPreferences['10_punteggi'] ? `
+  *** GENIUS MODE ATTIVO ***
+  ${GENIUS_RULES_MAP['10_punteggi']}
+  
+  ${DESIGN_RULES_MAP['10_punteggi']}
   ` : ''}
+
 JSON SCHEMA:
   "10_punteggi": {
     "structured": [
@@ -460,8 +468,10 @@ JSON SCHEMA:
           "parametri_legenda": "...",
           "modalita_calcolo": "..."
         },
-        "note_economiche": "..."
-        ${(sector && sector !== 'Generale') ? '' : ''}
+        "note_economiche": "...",
+        "suggerimenti_progettuali_punteggio": [
+          { "scelta": "...", "priorita": "Alta", "trade_off": "..." }
+        ]
       }
     ],
       "analysis": {

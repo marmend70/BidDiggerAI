@@ -1265,7 +1265,7 @@ function App() {
             </div>
             <h1 className="text-4xl font-bold text-slate-100 mb-4">Benvenuto in Bid Digger</h1>
             <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-              Carica i documenti di gara (PDF) e lascia che la nostra AI li analizzi per te.
+              Carica i documenti di gara e lascia che la nostra AI li analizzi per te.
               Estrai requisiti, scadenze e criteri di valutazione in pochi secondi.
             </p>
           </div>

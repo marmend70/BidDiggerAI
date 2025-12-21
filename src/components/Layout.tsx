@@ -77,7 +77,10 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                     // OR simply enable it if overall data is present.
                     const hasData = isSnapshot
                         ? (data && (data['3_sintesi'] || data['6_importi']))
-                        : (data && data[sectionId as keyof AnalysisResult]);
+                        : (sectionId === 'faq'
+                            ? (data && data['3_sintesi']) // FAQ: Enabled if core data (Sintesi) is present
+                            : (data && data[sectionId as keyof AnalysisResult])
+                        );
 
                     // Disable logic:
                     // For Snapshot (isSnapshot), we explicitly force disabled if isAnalyzing is true (user request: active ONLY at end of analysis).

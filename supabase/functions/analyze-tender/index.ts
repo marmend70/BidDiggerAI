@@ -3,6 +3,11 @@ import JSON5 from 'https://esm.sh/json5@2.2.3'
 import { jsonrepair } from 'https://esm.sh/jsonrepair@3.6.0'
 import { generateAnalysisPrompt } from './prompt-utils.ts'
 import { uploadFileToGoogleAI, generateContentGoogle, GoogleFileResult } from './utils.ts'
+import * as mammoth from 'npm:mammoth';
+import { Buffer } from "node:buffer";
+
+
+
 
 const corsHeaders = {
    'Access-Control-Allow-Origin': '*',
@@ -81,6 +86,7 @@ Deno.serve(async (req) => {
       // --- HELPER: Prepare Files for Google ---
       const prepareFilesForGoogle = async (paths: string[]): Promise<GoogleFileResult[]> => {
          const results: GoogleFileResult[] = [];
+         const errors: string[] = []; // Collect errors
          console.log(`[GoogleAI] Preparing ${paths.length} files... Paths:`, JSON.stringify(paths));
 
          for (const path of paths) {
@@ -88,28 +94,60 @@ Deno.serve(async (req) => {
             const { data, error } = await supabaseClient.storage.from('tenders').download(path);
 
             if (error) {
-               console.error(`[GoogleAI] Download FAILED for ${path}:`, error);
-               // Continue to try other files
+               const msg = `Download FAILED for ${path}: ${error.message}`;
+               console.error(msg);
+               errors.push(msg);
                continue;
             }
 
             if (data) {
                // Must clone the blob to a File object for upload
                const arrayBuffer = await data.arrayBuffer();
-               const fileName = path.split('/').pop() || 'doc.pdf';
-               const mimeType = fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/plain';
-               // Note: If checking for docx, verify MIME type support in Gemini.
+               let fileName = path.split('/').pop() || 'doc.pdf';
+               let mimeType = fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/plain';
+               let fileData = arrayBuffer;
 
-               console.log(`[GoogleAI] Uploading to Gemini: ${fileName} (${data.size} bytes)`);
+               // DOCX HANDLING: Convert to Text using Mammoth
+               if (fileName.toLowerCase().endsWith('.docx')) {
+                  console.log(`[GoogleAI] Detected DOCX: ${fileName}. Converting to text...`);
+                  try {
+                     const nodeBuffer = Buffer.from(arrayBuffer);
+                     // @ts-ignore
+                     const result = await mammoth.extractRawText({ buffer: nodeBuffer });
+                     const text = result.value;
+                     if (!text) throw new Error("Extracted text is empty");
+
+
+                     console.log(`[GoogleAI] DOCX Conversion successful. Text length: ${text.length}`);
+                     // Create a text file buffer
+                     fileData = new TextEncoder().encode(text).buffer;
+                     mimeType = 'text/plain';
+                     fileName = fileName.replace('.docx', '.txt');
+                  } catch (docxError: any) {
+                     const msg = `DOCX Conversion Failed for ${fileName}: ${docxError.message}`;
+                     console.error(msg);
+                     errors.push(msg);
+                     continue;
+                  }
+               }
+
+               console.log(`[GoogleAI] Uploading to Gemini: ${fileName} (${fileData.byteLength} bytes)`);
                try {
-                  const fileObj = new File([arrayBuffer], fileName, { type: mimeType });
+                  const fileObj = new File([fileData], fileName, { type: mimeType });
                   const result = await uploadFileToGoogleAI(fileObj, geminiKey);
                   console.log(`[GoogleAI] Upload Success: ${result.fileUri}`);
                   results.push(result);
-               } catch (uploadError) {
-                  console.error(`[GoogleAI] Upload to Gemini FAILED for ${fileName}:`, uploadError);
+               } catch (uploadError: any) {
+                  const msg = `Upload to Gemini FAILED for ${fileName}: ${uploadError.message}`;
+                  console.error(msg);
+                  errors.push(msg);
                }
             }
+         }
+
+         if (results.length === 0 && errors.length > 0) {
+            // If all failed, throw the first detailed error
+            throw new Error(`Preparation failed: ${errors.join(' | ')}`);
          }
          return results;
       };

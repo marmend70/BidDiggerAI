@@ -97,7 +97,7 @@ export function Upload({ onUpload, isUploading, userTier = 'trial', userCredits 
                             <p className="text-sm text-slate-400">
                                 {files.length >= MAX_FILES
                                     ? "Rimuovi un file per caricarne altri"
-                                    : "Trascina i file PDF qui, o clicca per selezionarli"}
+                                    : "Trascina i file PDF o DOCX qui, o clicca per selezionarli"}
                             </p>
                         </div>
                     </div>

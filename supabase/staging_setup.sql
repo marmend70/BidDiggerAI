@@ -152,8 +152,8 @@ add column if not exists preferences jsonb default '{
   "faq_questions": [
     "Descrivimi lo scenario dei sistemi tecnologici, infrastrutturale software, sistemi informatici",
     "Approfondisci il fabbisogno del personale impiegato in termini di giorni e/o ore richieste",
-    "Quali sono le principali figure di responsabilitÃ , gestione, coordinamento?",
-    "Esegui una ricerca esterna sul servizio per trovare chi Ã¨ l''attuale fornitore"
+    "Quali sono le principali figure di responsabilità , gestione, coordinamento?",
+    "Esegui una ricerca esterna sul servizio per trovare chi è l'attuale fornitore"
   ],
   "export_sections": {
     "1_requisiti_partecipazione": true,

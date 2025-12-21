@@ -258,24 +258,25 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
         }
     };
 
-    const handleUpdateNotes = async (tenderId: string, newNotes: string) => {
+    const handleUpdateNotes = async (tenderId: string, notes: string) => {
+        // Optimistic update
+        setAnalyses(prev => prev.map(a =>
+            a.tender_id === tenderId ? { ...a, tenders: { ...a.tenders, notes } } : a
+        ));
+
         try {
             const { error } = await supabase
                 .from('tenders')
-                .update({ notes: newNotes })
+                .update({ notes })
                 .eq('id', tenderId);
 
             if (error) throw error;
-
-            setAnalyses(prev => prev.map(a =>
-                a.tender_id === tenderId
-                    ? { ...a, tenders: { ...a.tenders, notes: newNotes } }
-                    : a
-            ));
         } catch (error) {
             console.error('Error updating notes:', error);
         }
     };
+
+
 
     const handleSummary = (e: React.MouseEvent, analysis: AnalysisResult) => {
         e.stopPropagation();
@@ -698,10 +699,12 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
 
             {/* TABLE HEADER */}
             <div className="bg-slate-900/50 rounded-t-xl border border-slate-800 border-b-0 overflow-hidden">
-                <div className="grid grid-cols-[1.2fr,1.5fr,2.5fr,2fr,2fr] gap-4 p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                {/* MODIFIED GRID TO MATCH TENDERLISTITEM */}
+                <div className="grid grid-cols-[1.1fr,1.3fr,1.8fr,1.5fr,1.3fr,1.3fr] gap-3 p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
                     <div>Stato Decisionale</div>
                     <div>Ente Appaltante</div>
                     <div>Oggetto (Sintesi)</div>
+                    <div>Note</div>
                     <div>Scadenze (Offerta / Quesiti)</div>
                     <div>Responsabili</div>
                 </div>
@@ -745,6 +748,7 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
                                         admin: item.tenders.owner_admin,
                                         comm: item.tenders.owner_comm
                                     },
+                                    notes: item.tenders.notes,
                                     result_json: { ...item.result_json, tender_id: item.tender_id, id: item.id } // ensure tender_id AND analysis id exists for persistence
                                 }}
                                 onOpen={handleOpen}
@@ -752,6 +756,7 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
                                 onExport={handleExport}
                                 onUpdateStatus={handleUpdateStatus}
                                 onUpdateOwner={handleUpdateOwnerField}
+                                onUpdateNotes={handleUpdateNotes}
                                 userPreferences={userPreferences || {}} // Fallback to empty object
                             />
                         );

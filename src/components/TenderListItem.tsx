@@ -16,12 +16,13 @@ interface TenderListItemProps {
         deadline: string | null;
         deadlineQuesiti?: string | null; // NEW PROP
         status: string;
-        status_updated_at?: string; // NEW PROP
+        status_updated_at?: string;
         owners: {
             tech?: string;
             admin?: string;
             comm?: string;
         };
+        notes?: string;
         result_json: AnalysisResult;
     };
     onOpen: (data: AnalysisResult) => void;
@@ -29,6 +30,7 @@ interface TenderListItemProps {
     onExport: (e: React.MouseEvent, data: AnalysisResult) => void;
     onUpdateStatus: (id: string, status: string) => void;
     onUpdateOwner: (id: string, type: 'owner_tech' | 'owner_admin' | 'owner_comm', value: string) => void;
+    onUpdateNotes: (id: string, notes: string) => void;
     userPreferences?: any;
     isAssigning?: boolean;
 }
@@ -40,6 +42,7 @@ export function TenderListItem({
     onExport,
     onUpdateStatus,
     onUpdateOwner,
+    onUpdateNotes,
     userPreferences
 }: TenderListItemProps) {
     // --- 1. STATUS LOGIC ---
@@ -165,22 +168,49 @@ export function TenderListItem({
     // History Logic
     const history = (item.result_json as any).status_history as Array<{ status: string; date: string }>;
 
+    // --- 4. NOTES LOGIC ---
+    const [localNotes, setLocalNotes] = React.useState(item.notes || '');
+
+    // Sync if item prop updates externally
+    React.useEffect(() => {
+        setLocalNotes(item.notes || '');
+    }, [item.notes]);
+
+    const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const val = e.target.value;
+        if (val.length <= 300) {
+            setLocalNotes(val);
+        }
+    };
+
+    const handleNotesBlur = () => {
+        // Only trigger update if changed
+        if (localNotes !== (item.notes || '')) {
+            onUpdateNotes(item.tender_id, localNotes);
+        }
+    };
+
     return (
         <div
-            onClick={() => onOpen(item.result_json)}
-            /* UPDATED GRID COLS */
-            className="group grid grid-cols-[1.2fr,1.5fr,2.5fr,2fr,2fr] gap-4 p-4 border-b border-slate-800/50 hover:bg-slate-800/30 transition-all items-center last:border-0"
+            onClick={(e) => {
+                // Prevent opening if clicking on interactive elements
+                const target = e.target as HTMLElement;
+                if (target.tagName === 'TEXTAREA' || target.closest('.interactive-area')) return;
+                onOpen(item.result_json);
+            }}
+            /* UPDATED GRID COLS to include NOTES */
+            className="group grid grid-cols-[1.1fr,1.3fr,1.8fr,1.5fr,1.3fr,1.3fr] gap-3 p-4 border-b border-slate-800/50 hover:bg-slate-800/30 transition-all items-start last:border-0 relative"
         >
             {/* COLUMN 1: STATO */}
-            <div onClick={(e) => e.stopPropagation()} className="flex flex-col items-center gap-2">
+            <div onClick={(e) => e.stopPropagation()} className="flex flex-col items-center gap-2 interactive-area pt-1">
                 <div className="relative inline-block w-full group/status">
                     <div className={cn(
-                        "flex items-center justify-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold uppercase tracking-wide transition-colors cursor-pointer hover:opacity-80 w-full",
+                        "flex items-center justify-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wide transition-colors cursor-pointer hover:opacity-80 w-full",
                         getStatusStyle(item.status)
                     )} title="Clicca per modificare lo stato">
-                        <div className={cn("w-2 h-2 rounded-full", getStatusDot(item.status))} />
+                        <div className={cn("w-2 h-2 rounded-full hidden sm:block", getStatusDot(item.status))} />
                         <span className="truncate">{item.status}</span>
-                        {/* Edit Icon visual cue on hover (requires import of Edit2) */}
+                        {/* Edit Icon visual cue on hover */}
                         <div className="w-3 h-3 opacity-0 group-hover/status:opacity-50 ml-1">✎</div>
                     </div>
 
@@ -217,47 +247,63 @@ export function TenderListItem({
                 {/* Last Update Timestamp */}
                 {item.status_updated_at && (
                     <span className="text-[10px] text-slate-500 whitespace-nowrap">
-                        Aggiornato: {new Date(item.status_updated_at).toLocaleDateString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(item.status_updated_at).toLocaleDateString('it-IT', { month: '2-digit', day: '2-digit' })}
                     </span>
                 )}
             </div>
 
             {/* COLUMN 2: ENTE / CIG */}
-            <div className="flex flex-col gap-1">
-                <h3 className="text-slate-200 font-bold text-sm line-clamp-2" title={item.ente}>
+            <div className="flex flex-col gap-1 pt-1">
+                <h3 className="text-slate-200 font-bold text-xs line-clamp-2" title={item.ente}>
                     {item.ente || "N/D"}
                 </h3>
                 {item.cig && (
-                    <span className="text-xs text-slate-500 font-mono bg-slate-900/50 px-1.5 py-0.5 rounded w-fit">
+                    <span className="text-[10px] text-slate-500 font-mono bg-slate-900/50 px-1.5 py-0.5 rounded w-fit">
                         CIG: {item.cig}
                     </span>
                 )}
             </div>
 
-            {/* COLUMN 3: OGGETTO (NEW) */}
-            <div className="pr-2">
-                <p className="text-sm text-slate-300 line-clamp-2 leading-relaxed" title={item.object}>
+            {/* COLUMN 3: OGGETTO */}
+            <div className="pr-2 pt-1">
+                <p className="text-xs text-slate-300 line-clamp-3 leading-relaxed" title={item.object}>
                     {item.object || item.title}
                 </p>
             </div>
 
-            {/* COLUMN 4: TIMELINE (UPDATED) */}
-            <div className="pr-4 flex flex-col gap-3">
+            {/* COLUMN 4: NOTE (NEW) */}
+            <div className="interactive-area relative">
+                <textarea
+                    className="w-full bg-slate-900/50 border border-slate-700 rounded-md text-xs text-slate-300 p-2 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none transition-all placeholder:text-slate-600"
+                    placeholder="Note..."
+                    rows={3}
+                    value={localNotes}
+                    onChange={handleNotesChange}
+                    onBlur={handleNotesBlur}
+                    onClick={(e) => e.stopPropagation()}
+                />
+                <div className="absolute bottom-1 right-2 text-[9px] text-slate-600 pointer-events-none">
+                    {localNotes.length}/300
+                </div>
+            </div>
+
+            {/* COLUMN 5: TIMELINE */}
+            <div className="pr-2 flex flex-col gap-3 pt-1">
                 {/* 1. SCADENZA OFFERTA */}
                 <div>
                     <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Consegna Offerta</span>
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Offerta</span>
                         <span className={cn(
-                            "text-xs font-bold",
+                            "text-[10px] font-bold",
                             daysRemaining !== null && daysRemaining < 0 ? "text-red-400" : "text-slate-300"
                         )}>
-                            {deadlineDate ? deadlineDate.toLocaleDateString('it-IT') : 'N/D'}
+                            {deadlineDate ? deadlineDate.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) : '-'}
                         </span>
                     </div>
                     {deadlineDate && (
-                        <div className="w-full bg-slate-800 rounded-full h-1.5 mt-1">
+                        <div className="w-full bg-slate-800 rounded-full h-1 mt-0.5">
                             <div
-                                className={cn("h-1.5 rounded-full transition-all", getProgressColor())}
+                                className={cn("h-1 rounded-full transition-all", getProgressColor())}
                                 style={{ width: `${daysRemaining === null ? 100 : Math.min(100, Math.max(10, (Math.max(0, daysRemaining) / 60) * 100))}%` }}
                             />
                         </div>
@@ -268,38 +314,40 @@ export function TenderListItem({
                 {deadlineQuesitiDate && (
                     <div>
                         <div className="flex items-center justify-between mb-0.5">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Invio Quesiti</span>
+                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Quesiti</span>
                             <span className={cn(
-                                "text-xs font-medium",
+                                "text-[10px] font-medium",
                                 daysRemainingQuesiti !== null && daysRemainingQuesiti < 3 ? "text-amber-500" : "text-slate-400"
                             )}>
-                                {deadlineQuesitiDate.toLocaleDateString('it-IT')}
+                                {deadlineQuesitiDate.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
                             </span>
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* COLUMN 5: RESPONSABILI & ACTIONS */}
-            <div className="flex items-center justify-between pl-2">
-                <div className="flex items-center gap-3">
+            {/* COLUMN 6: RESPONSABILI & ACTIONS */}
+            <div className="flex items-center justify-between interactive-area pt-1">
+                <div className="flex items-center gap-2">
                     {renderOwnerCircle('owner_comm', 'COMM', 'bg-blue-600')}
                     {renderOwnerCircle('owner_tech', 'TEC', 'bg-purple-600')}
                     {renderOwnerCircle('owner_admin', 'AMM', 'bg-orange-600')}
                 </div>
 
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex flex-col gap-1 items-end ml-2 opacity-80 group-hover:opacity-100 transition-opacity">
                     <button
                         onClick={(e) => onExport(e, item.result_json)}
-                        className="p-1.5 text-slate-500 hover:text-emerald-400 hover:bg-emerald-950/30 rounded-md transition-colors"
+                        className="p-1 text-slate-500 hover:text-emerald-400 hover:bg-emerald-950/30 rounded transition-colors"
+                        title="Esporta Report"
                     >
-                        <Download className="w-4 h-4" />
+                        <Download className="w-3.5 h-3.5" />
                     </button>
                     <button
                         onClick={(e) => onDelete(e, item.tender_id)}
-                        className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-950/30 rounded-md transition-colors"
+                        className="p-1 text-slate-500 hover:text-red-400 hover:bg-red-950/30 rounded transition-colors"
+                        title="Elimina"
                     >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                     </button>
                 </div>
             </div>

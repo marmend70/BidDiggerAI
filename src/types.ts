@@ -2,6 +2,7 @@ export interface GeniusData {
     semantic_analysis?: string;
     rischi_rilevati?: Array<string | { rischio?: string; descrizione?: string; livello?: string; fonte?: string }>;
     suggerimenti?: Array<{ azione: string; motivazione?: string; target?: string }>;
+    user_notes?: string; // Field for persistent user integrations
 }
 
 export interface AnalysisResult {

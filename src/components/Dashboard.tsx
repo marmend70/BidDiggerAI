@@ -15,6 +15,7 @@ import {
     Bot, MessageSquare, HelpCircle, ClipboardCheck, Database, BrainCircuit, Sparkles, Star
 } from 'lucide-react';
 import { DeepDive } from './DeepDive';
+import { UserNotesBlock } from './UserNotesBlock';
 import { SECTIONS_MAP, MENU_ORDER, DEEP_DIVE_EXAMPLES, SECTION_BATCH_MAP, AVAILABLE_MODELS, SECTORS } from '@/constants';
 import { supabase } from '@/lib/supabase';
 
@@ -88,6 +89,7 @@ interface DashboardProps {
     activeSection: string;
     onAskQuestion: (sectionId: string, question: string) => void;
     isGlobalLoading: boolean;
+    onUpdateUserNotes: (sectionId: string, notes: string) => Promise<void>;
     userPreferences?: UserPreferences;
     onUpdatePreferences?: (newPreferences: UserPreferences) => void;
     loadingBatches?: string[];
@@ -362,7 +364,7 @@ const SuggerimentiOffertaBlock = ({ suggestions }: { suggestions?: Array<{ propo
 // I'll add 'Star' to the imports first block if I can, but I only edited constants import.
 // I will use 'Award' for 'Aspetti Rilevanti' essentially as a proxy for Star.
 
-export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading, userPreferences, onUpdatePreferences, loadingBatches = [] }: DashboardProps) {
+export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading, userPreferences, onUpdatePreferences, loadingBatches = [], onUpdateUserNotes }: DashboardProps) {
     const [editingFaqIndex, setEditingFaqIndex] = React.useState<number | null>(null);
     const [editingOwnerState, setEditingOwnerState] = React.useState<{ list: 'owners_tech' | 'owners_admin' | 'owners_comm', index: number } | null>(null);
 
@@ -509,6 +511,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             isGlobalLoading={isGlobalLoading}
                             exampleQuestion={DEEP_DIVE_EXAMPLES['1_requisiti_partecipazione']}
                         />
+                        <UserNotesBlock
+                            initialNotes={data['1_requisiti_partecipazione'][0]?.user_notes}
+                            onSave={(n) => onUpdateUserNotes('1_requisiti_partecipazione', n)}
+                        />
                     </div>
                 );
 
@@ -572,6 +578,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             onAskQuestion={onAskQuestion}
                             isGlobalLoading={isGlobalLoading}
                             exampleQuestion={DEEP_DIVE_EXAMPLES['3_sintesi']}
+                        />
+                        <UserNotesBlock
+                            initialNotes={data['3_sintesi']?.user_notes}
+                            onSave={(n) => onUpdateUserNotes('3_sintesi', n)}
                         />
                     </div >
                 );
@@ -755,6 +765,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             isGlobalLoading={isGlobalLoading}
                             exampleQuestion={DEEP_DIVE_EXAMPLES['3b_checklist_amministrativa']}
                         />
+                        <UserNotesBlock
+                            initialNotes={data['3b_checklist_amministrativa']?.[0]?.user_notes}
+                            onSave={(n) => onUpdateUserNotes('3b_checklist_amministrativa', n)}
+                        />
                     </div>
                 );
 
@@ -811,6 +825,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             onAskQuestion={onAskQuestion}
                             isGlobalLoading={isGlobalLoading}
                             exampleQuestion={DEEP_DIVE_EXAMPLES['4_servizi']}
+                        />
+                        <UserNotesBlock
+                            initialNotes={data['4_servizi'][0]?.user_notes}
+                            onSave={(n) => onUpdateUserNotes('4_servizi', n)}
                         />
                     </div>
                 );
@@ -938,6 +956,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             isGlobalLoading={isGlobalLoading}
                             exampleQuestion={DEEP_DIVE_EXAMPLES['5_scadenze']}
                         />
+                        <UserNotesBlock
+                            initialNotes={data['5_scadenze'][0]?.user_notes}
+                            onSave={(n) => onUpdateUserNotes('5_scadenze', n)}
+                        />
                     </div>
                 );
 
@@ -999,6 +1021,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             isGlobalLoading={isGlobalLoading}
                             exampleQuestion={DEEP_DIVE_EXAMPLES['6_importi']}
                         />
+                        <UserNotesBlock
+                            initialNotes={data['6_importi'][0]?.user_notes}
+                            onSave={(n) => onUpdateUserNotes('6_importi', n)}
+                        />
                     </div>
                 );
 
@@ -1043,6 +1069,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             isGlobalLoading={isGlobalLoading}
                             exampleQuestion={DEEP_DIVE_EXAMPLES['7_durata']}
                         />
+                        <UserNotesBlock
+                            initialNotes={data['7_durata'][0]?.user_notes}
+                            onSave={(n) => onUpdateUserNotes('7_durata', n)}
+                        />
                     </div>
                 );
 
@@ -1086,6 +1116,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             onAskQuestion={onAskQuestion}
                             isGlobalLoading={isGlobalLoading}
                             exampleQuestion={DEEP_DIVE_EXAMPLES['8_ccnl']}
+                        />
+                        <UserNotesBlock
+                            initialNotes={data['8_ccnl'][0]?.user_notes}
+                            onSave={(n) => onUpdateUserNotes('8_ccnl', n)}
                         />
                     </div>
                 );
@@ -1136,6 +1170,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             onAskQuestion={onAskQuestion}
                             isGlobalLoading={isGlobalLoading}
                             exampleQuestion={DEEP_DIVE_EXAMPLES['9_oneri']}
+                        />
+                        <UserNotesBlock
+                            initialNotes={data['9_oneri'][0]?.user_notes}
+                            onSave={(n) => onUpdateUserNotes('9_oneri', n)}
                         />
                     </div>
                 );
@@ -1254,6 +1292,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             isGlobalLoading={isGlobalLoading}
                             exampleQuestion={DEEP_DIVE_EXAMPLES['10_punteggi']}
                         />
+                        <UserNotesBlock
+                            initialNotes={data['10_punteggi'][0]?.user_notes}
+                            onSave={(n) => onUpdateUserNotes('10_punteggi', n)}
+                        />
                     </div>
                 );
 
@@ -1284,6 +1326,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             onAskQuestion={onAskQuestion}
                             isGlobalLoading={isGlobalLoading}
                             exampleQuestion={DEEP_DIVE_EXAMPLES['11_pena_esclusione']}
+                        />
+                        <UserNotesBlock
+                            initialNotes={data['11_pena_esclusione'][0]?.user_notes}
+                            onSave={(n) => onUpdateUserNotes('11_pena_esclusione', n)}
                         />
                     </div>
                 );
@@ -1328,6 +1374,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             isGlobalLoading={isGlobalLoading}
                             exampleQuestion={DEEP_DIVE_EXAMPLES['12_offerta_tecnica']}
                         />
+                        <UserNotesBlock
+                            initialNotes={data['12_offerta_tecnica'][0]?.user_notes}
+                            onSave={(n) => onUpdateUserNotes('12_offerta_tecnica', n)}
+                        />
                     </div>
                 );
 
@@ -1369,6 +1419,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             isGlobalLoading={isGlobalLoading}
                             exampleQuestion={DEEP_DIVE_EXAMPLES['13_offerta_economica']}
                         />
+                        <UserNotesBlock
+                            initialNotes={data['13_offerta_economica'][0]?.user_notes}
+                            onSave={(n) => onUpdateUserNotes('13_offerta_economica', n)}
+                        />
                     </div>
                 );
 
@@ -1401,6 +1455,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             onAskQuestion={onAskQuestion}
                             isGlobalLoading={isGlobalLoading}
                             exampleQuestion={DEEP_DIVE_EXAMPLES['14_note_importanti']}
+                        />
+                        <UserNotesBlock
+                            initialNotes={data['14_note_importanti'][0]?.user_notes}
+                            onSave={(n) => onUpdateUserNotes('14_note_importanti', n)}
                         />
                     </div>
                 );
@@ -1445,6 +1503,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             onAskQuestion={onAskQuestion}
                             isGlobalLoading={isGlobalLoading}
                             exampleQuestion={DEEP_DIVE_EXAMPLES['15_remunerazione']}
+                        />
+                        <UserNotesBlock
+                            initialNotes={data['15_remunerazione'][0]?.user_notes}
+                            onSave={(n) => onUpdateUserNotes('15_remunerazione', n)}
                         />
                     </div>
                 );
@@ -1515,6 +1577,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             onAskQuestion={onAskQuestion}
                             isGlobalLoading={isGlobalLoading}
                             exampleQuestion={DEEP_DIVE_EXAMPLES['16_sla_penali']}
+                        />
+                        <UserNotesBlock
+                            initialNotes={data['16_sla_penali'][0]?.user_notes}
+                            onSave={(n) => onUpdateUserNotes('16_sla_penali', n)}
                         />
                     </div>
                 );
@@ -1631,6 +1697,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             onAskQuestion={onAskQuestion}
                             isGlobalLoading={isGlobalLoading}
                             exampleQuestion={DEEP_DIVE_EXAMPLES['17_ambiguita_punti_da_chiarire']}
+                        />
+                        <UserNotesBlock
+                            initialNotes={data['17_ambiguita_punti_da_chiarire'][0]?.user_notes}
+                            onSave={(n) => onUpdateUserNotes('17_ambiguita_punti_da_chiarire', n)}
                         />
                     </div>
                 );

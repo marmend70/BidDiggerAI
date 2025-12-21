@@ -745,7 +745,7 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
                                         admin: item.tenders.owner_admin,
                                         comm: item.tenders.owner_comm
                                     },
-                                    result_json: { ...item.result_json, tender_id: item.tender_id } // ensure tender_id exists
+                                    result_json: { ...item.result_json, tender_id: item.tender_id, id: item.id } // ensure tender_id AND analysis id exists for persistence
                                 }}
                                 onOpen={handleOpen}
                                 onDelete={handleDelete}

@@ -216,7 +216,7 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                     className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-amber-500 rounded-md hover:bg-slate-800 hover:text-amber-400 disabled:opacity-50 disabled:cursor-not-allowed border border-amber-500/20 bg-amber-500/5"
                 >
                     <Download className="h-4 w-4" />
-                    Esporta DOCX
+                    Esporta report DOCX
                 </button>
 
                 <button

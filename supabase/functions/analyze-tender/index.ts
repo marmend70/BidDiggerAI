@@ -3,8 +3,7 @@ import JSON5 from 'https://esm.sh/json5@2.2.3'
 import { jsonrepair } from 'https://esm.sh/jsonrepair@3.6.0'
 import { generateAnalysisPrompt } from './prompt-utils.ts'
 import { uploadFileToGoogleAI, generateContentGoogle, GoogleFileResult } from './utils.ts'
-import * as mammoth from 'npm:mammoth';
-import { Buffer } from "node:buffer";
+import mammoth from 'https://esm.sh/mammoth@1.8.0';
 
 
 
@@ -111,11 +110,10 @@ Deno.serve(async (req) => {
                if (fileName.toLowerCase().endsWith('.docx')) {
                   console.log(`[GoogleAI] Detected DOCX: ${fileName}. Converting to text...`);
                   try {
-                     const nodeBuffer = Buffer.from(arrayBuffer);
-                     // @ts-ignore
-                     const result = await mammoth.extractRawText({ buffer: nodeBuffer });
+                     // Use arrayBuffer directly (supported by esm.sh build of mammoth)
+                     const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
                      const text = result.value;
-                     if (!text) throw new Error("Extracted text is empty");
+                     if (!text || text.trim().length === 0) throw new Error("Extracted text is empty or whitespace only");
 
 
                      console.log(`[GoogleAI] DOCX Conversion successful. Text length: ${text.length}`);

@@ -174,6 +174,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         ]),
                         ...createGeniusSection(data['1_requisiti_partecipazione']),
                         ...createDeepDiveSection(data.deep_dives?.['1_requisiti_partecipazione']),
+                        ...createUserNotesSection(data['1_requisiti_partecipazione']),
                     ] : []),
 
                     // 3. Sintesi
@@ -184,6 +185,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         createKeyValueLine("Riferimento", data['3_sintesi']?.ref),
                         ...createGeniusSection(data['3_sintesi']),
                         ...createDeepDiveSection(data.deep_dives?.['3_sintesi']),
+                        ...createUserNotesSection(data['3_sintesi']),
                     ] : []),
 
                     // 3b. Checklist Busta Amministrativa
@@ -217,6 +219,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         ]),
                         ...createGeniusSection(data['3b_checklist_amministrativa']),
                         ...createDeepDiveSection(data.deep_dives?.['3b_checklist_amministrativa']),
+                        ...createUserNotesSection(data['3b_checklist_amministrativa']),
                     ] : []),
 
                     // 4. Servizi
@@ -231,6 +234,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         ]),
                         ...createGeniusSection(data['4_servizi']),
                         ...createDeepDiveSection(data.deep_dives?.['4_servizi']),
+                        ...createUserNotesSection(data['4_servizi']),
                     ] : []),
 
                     // 5. Scadenze
@@ -246,6 +250,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         ]),
                         ...createGeniusSection(data['5_scadenze']),
                         ...createDeepDiveSection(data.deep_dives?.['5_scadenze']),
+                        ...createUserNotesSection(data['5_scadenze']),
                     ] : []),
 
                     // 6. Importi
@@ -259,6 +264,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         ]),
                         ...createGeniusSection(data['6_importi']),
                         ...createDeepDiveSection(data.deep_dives?.['6_importi']),
+                        ...createUserNotesSection(data['6_importi']),
                     ] : []),
 
                     // 7. Durata
@@ -271,6 +277,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         ]),
                         ...createGeniusSection(data['7_durata']),
                         ...createDeepDiveSection(data.deep_dives?.['7_durata']),
+                        ...createUserNotesSection(data['7_durata']),
                     ] : []),
 
                     // 8. CCNL
@@ -286,6 +293,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         ]),
                         ...createGeniusSection(data['8_ccnl']),
                         ...createDeepDiveSection(data.deep_dives?.['8_ccnl']),
+                        ...createUserNotesSection(data['8_ccnl']),
                     ] : []),
 
                     // 9. Oneri
@@ -299,6 +307,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         ]),
                         ...createGeniusSection(data['9_oneri']),
                         ...createDeepDiveSection(data.deep_dives?.['9_oneri']),
+                        ...createUserNotesSection(data['9_oneri']),
                     ] : []),
 
                     // 10. Punteggi
@@ -330,6 +339,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         ]),
                         ...createGeniusSection(data['10_punteggi']),
                         ...createDeepDiveSection(data.deep_dives?.['10_punteggi']),
+                        ...createUserNotesSection(data['10_punteggi']),
                     ] : []),
 
                     // 11. Pena Esclusione
@@ -340,6 +350,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         ...renderGenericListSection(data['11_pena_esclusione'], 'elementi', 'descrizione'),
                         ...createGeniusSection(data['11_pena_esclusione']),
                         ...createDeepDiveSection(data.deep_dives?.['11_pena_esclusione']),
+                        ...createUserNotesSection(data['11_pena_esclusione']),
                     ] : []),
 
                     // 12. Offerta Tecnica
@@ -353,6 +364,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         ]),
                         ...createGeniusSection(data['12_offerta_tecnica']),
                         ...createDeepDiveSection(data.deep_dives?.['12_offerta_tecnica']),
+                        ...createUserNotesSection(data['12_offerta_tecnica']),
                     ] : []),
 
                     // 13. Offerta Economica
@@ -366,6 +378,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         ]),
                         ...createGeniusSection(data['13_offerta_economica']),
                         ...createDeepDiveSection(data.deep_dives?.['13_offerta_economica']),
+                        ...createUserNotesSection(data['13_offerta_economica']),
                     ] : []),
 
                     // 14. Note Importanti
@@ -374,6 +387,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         ...renderGenericListSection(data['14_note_importanti'], 'note', 'nota'),
                         ...createGeniusSection(data['14_note_importanti']),
                         ...createDeepDiveSection(data.deep_dives?.['14_note_importanti']),
+                        ...createUserNotesSection(data['14_note_importanti']),
                     ] : []),
 
                     // 17. Ambiguità e Punti da Chiarire
@@ -404,6 +418,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         ]),
                         ...createGeniusSection(data['17_ambiguita_punti_da_chiarire']),
                         ...createDeepDiveSection(data.deep_dives?.['17_ambiguita_punti_da_chiarire']),
+                        ...createUserNotesSection(data['17_ambiguita_punti_da_chiarire']),
                     ] : []),
 
                     // 15. Remunerazione
@@ -416,6 +431,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         ]),
                         ...createGeniusSection(data['15_remunerazione']),
                         ...createDeepDiveSection(data.deep_dives?.['15_remunerazione']),
+                        ...createUserNotesSection(data['15_remunerazione']),
                     ] : []),
 
                     // 16. SLA e Penali
@@ -424,6 +440,7 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
                         ...renderSlaPenaliSection(data['16_sla_penali']),
                         ...createGeniusSection(data['16_sla_penali']),
                         ...createDeepDiveSection(data.deep_dives?.['16_sla_penali']),
+                        ...createUserNotesSection(data['16_sla_penali']),
                     ] : []),
 
                     // 17. FAQ
@@ -746,6 +763,20 @@ function createGeniusSection(data: any) {
     }
 
     return geniusContent;
+}
+
+function createUserNotesSection(data: any) {
+    const notes = data?.user_notes || (Array.isArray(data) && data.length > 0 ? data[0].user_notes : undefined);
+    if (!notes) return [];
+
+    return [
+        createSubHeading("Integrazioni e Note Utente"),
+        new Paragraph({
+            text: safeText(notes),
+            spacing: { before: 100, after: 200 },
+            run: { italics: true, color: "444444", size: 22 } // 11pt
+        })
+    ];
 }
 
 function formatCurrency(amount: number | undefined): string {

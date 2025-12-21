@@ -1123,6 +1123,62 @@ function App() {
     }
   };
 
+  const handleUpdateUserNotes = async (sectionId: string, notes: string) => {
+    if (!analysisData) return;
+
+    // 1. Optimistic Update (Local State)
+    const updatedData = { ...analysisData };
+
+    // Determine how to update based on section structure
+    if (sectionId === '3_sintesi') {
+      const anySintesi = updatedData['3_sintesi'] as any;
+      updatedData['3_sintesi'] = { ...anySintesi, user_notes: notes };
+    } else {
+      // Most sections are arrays where the first element holds our GeniusData
+      const sectionData = updatedData[sectionId as keyof AnalysisResult] as any[];
+      if (Array.isArray(sectionData) && sectionData.length > 0) {
+        const newArray = [...sectionData];
+        newArray[0] = { ...newArray[0], user_notes: notes };
+        (updatedData as any)[sectionId] = newArray;
+      } else if (updatedData[sectionId as keyof AnalysisResult]) {
+        // Fallback for object-like sections if any exist besides 3_sintesi
+        const objData = updatedData[sectionId as keyof AnalysisResult] as any;
+        (updatedData as any)[sectionId] = { ...objData, user_notes: notes };
+      }
+    }
+
+    setAnalysisData(updatedData);
+
+    // 2. Persist to Supabase
+    try {
+      // Attempt to find the Analysis ID
+      // It might be injected by ArchivePage (item.id) OR accessible via other context
+      // If it's a new analysis, we might not have 'id' at top level of analysisData unless we injected it.
+      // However, updates to 'tenders' table for 'notes' are separate.
+      // Here we are updating 'analyses' -> 'result_json'.
+
+      const analysisId = (updatedData as any).id;
+
+      if (analysisId) {
+        const { error } = await supabase
+          .from('analyses')
+          .update({ result_json: updatedData })
+          .eq('id', analysisId);
+
+        if (error) throw error;
+      } else {
+        console.warn("Analysis ID not found. User notes saved locally but persistence requires an Analysis ID.");
+        // Optional: Try to fetch Analysis ID via tender_id if available?
+        // Since we handle 'Archive' loading by injecting ID, this covers the main use case for persistence.
+        // For fresh analyses, the record is created in backend. We might need to fetch it or wait for a reload.
+        // But for now, this logic covers the requested 'Archive' persistence.
+      }
+    } catch (err) {
+      console.error("Error saving user notes:", err);
+    }
+  };
+
+
   const handleNewAnalysis = () => {
     if (analysisData) {
       const confirmed = window.confirm(
@@ -1330,7 +1386,9 @@ function App() {
           isGlobalLoading={isAsking}
           userPreferences={userPreferences}
           onUpdatePreferences={handleUpdatePreferences}
+
           loadingBatches={loadingBatches}
+          onUpdateUserNotes={handleUpdateUserNotes}
         />
       )}
     </Layout>

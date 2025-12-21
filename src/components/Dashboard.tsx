@@ -284,6 +284,12 @@ const SuggerimentiPunteggioBlock = ({ tips }: { tips?: Array<{ scelta: string, p
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-4">
+                <div className="bg-sky-950/30 border border-sky-900/50 p-3 rounded text-xs text-sky-200/80 mb-4 flex gap-2 items-start">
+                    <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <div>
+                        <strong>Nota:</strong> I suggerimenti non garantiscono il punteggio massimo, non sostituiscono l’interpretazione ufficiale della Stazione Appaltante e non devono essere applicati in modo automatico.
+                    </div>
+                </div>
                 {tips.map((tip, i) => (
                     <div key={i} className="bg-slate-900 p-4 rounded-lg border border-sky-900 shadow-sm relative overflow-hidden">
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-sky-400" />
@@ -318,6 +324,12 @@ const SuggerimentiOffertaBlock = ({ suggestions }: { suggestions?: Array<{ propo
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-4">
+                <div className="bg-teal-950/30 border border-teal-900/50 p-3 rounded text-xs text-teal-200/80 mb-4 flex gap-2 items-start">
+                    <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <div>
+                        <strong>Nota:</strong> I suggerimenti rappresentano possibili impostazioni non vincolanti, non considerano strategie aziendali e richiedono validazione progettuale.
+                    </div>
+                </div>
                 {suggestions.map((sugg, i) => (
                     <div key={i} className="bg-slate-900 p-4 rounded-lg border border-teal-900 shadow-sm relative overflow-hidden">
                         <div className={`absolute left-0 top-0 bottom-0 w-1 ${sugg.tipo?.toLowerCase().includes('value') ? 'bg-purple-400' : 'bg-teal-400'}`} />
@@ -1233,15 +1245,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['10_punteggi'][0]} sectionId="10_punteggi">
-                            <SuggerimentiPunteggioBlock tips={
-                                (data['10_punteggi'][0]?.suggerimenti_progettuali_punteggio) ||
-                                (data['10_punteggi'][0]?.suggerimenti_progettuali) ||
-                                (data['10_punteggi'][0]?.suggerimenti?.map((s: any) => ({
-                                    scelta: s.azione || s.scelta,
-                                    priorita: s.priorita || "Media",
-                                    trade_off: s.motivazione || s.trade_off || s.target
-                                })))
-                            } />
+
                         </SemanticAnalysisBlock>
                         <DeepDive
                             sectionId="10_punteggi"
@@ -1316,16 +1320,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['12_offerta_tecnica'][0]} sectionId="12_offerta_tecnica">
-                            <SuggerimentiOffertaBlock suggestions={
-                                (data['12_offerta_tecnica'][0]?.suggerimenti_progettuali_offerta) ||
-                                (data['12_offerta_tecnica'][0]?.suggerimenti_progettuali) ||
-                                (data['12_offerta_tecnica'][0]?.suggerimenti?.map((s: any) => ({
-                                    proposta: s.azione || s.proposta,
-                                    tipo: s.tipo || "Generale",
-                                    obiettivi: s.motivazione || s.obiettivi,
-                                    limiti: s.target || s.limiti
-                                })))
-                            } />
+
                         </SemanticAnalysisBlock>
                         <DeepDive
                             sectionId="12_offerta_tecnica"

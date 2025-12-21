@@ -390,16 +390,6 @@ JSON SCHEMA:
   ${semanticPreferences['12_offerta_tecnica'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['12_offerta_tecnica']}` : ''}
   ${(sector && sector !== 'Generale') ? `
   *** CONTESTUALIZZAZIONE SETTORIALE ATTIVA: ${sector} ***
-  ISTRUZIONI "suggerimenti_progettuali_offerta":
-  Genera suggerimenti progettuali orientati al punteggio e coerenti con il settore "${sector}".
-  
-  GUIDA AI SUGGERIMENTI PROGETTUALI:
-  - Ogni suggerimento deve essere di 2-3 righe discorsive.
-  - Spiega il RATIONALE PROGETTUALE e l'IMPATTO SUL PUNTEGGIO.
-  - Indica come tradurlo in contenuto di offerta tecnica (concreta).
-  - Includi esempi applicativi e collegamenti ai criteri di valutazione.
-  - Evita slogan o indicazioni commerciali non tecniche.
-  - Distingui tra Baseline (coerente) e Value Added (migliorativa).
   ` : ''}
 JSON SCHEMA:
   "12_offerta_tecnica": {
@@ -408,10 +398,8 @@ JSON SCHEMA:
         "documenti": ["doc1 (stringa)", "doc2"],
         "formattazione_modalita": "...",
         "limiti": "...",
-        "criteri_formali": "...",
-        ${(sector && sector !== 'Generale') ? `"suggerimenti_progettuali_offerta": [
-             { "proposta": "Soluzione tecnica/organizzativa", "tipo": "Baseline/Value Added", "obiettivi": "...", "limiti": "..." }
-        ],` : ''}
+        "criteri_formali": "..."
+        ${(sector && sector !== 'Generale') ? '' : ''}
       }
     ],
       "analysis": {
@@ -451,15 +439,6 @@ JSON SCHEMA:
   ${semanticPreferences['10_punteggi'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['10_punteggi']}` : ''}
   ${(sector && sector !== 'Generale') ? `
   *** CONTESTUALIZZAZIONE SETTORIALE ATTIVA: ${sector} ***
-  ISTRUZIONI "suggerimenti_progettuali_punteggio":
-  Genera suggerimenti per massimizzare il punteggio tecnico, coerenti con il settore "${sector}".
-
-  GUIDA AI SUGGERIMENTI PROGETTUALI (Score-Oriented):
-  - Ogni suggerimento deve essere di 2-3 righe discorsive.
-  - Spiega la SCELTA PROGETTUALE e il TRADE-OFF per massimizzare i punti.
-  - Collega esplicitamente la scelta al criterio valutativo (es. Innovazione, Organizzazione, Qualità).
-  - Indica cosa potrebbe penalizzare il punteggio.
-  - Evita generalizzazioni. Sii specifico sulle leve di punteggio.
   ` : ''}
 JSON SCHEMA:
   "10_punteggi": {
@@ -481,10 +460,8 @@ JSON SCHEMA:
           "parametri_legenda": "...",
           "modalita_calcolo": "..."
         },
-        "note_economiche": "...",
-        ${(sector && sector !== 'Generale') ? `"suggerimenti_progettuali_punteggio": [
-             { "scelta": "Scelta progettuale", "priorita": "Alta/Media/Bassa", "trade_off": "..." }
-        ],` : ''}
+        "note_economiche": "..."
+        ${(sector && sector !== 'Generale') ? '' : ''}
       }
     ],
       "analysis": {

@@ -169,7 +169,7 @@ function App() {
         fetchUserData(session.user.id);
         // Load prefs to get retention policy for immediate cleanup
         supabase
-          .from('user_profiles') // Note: Make sure table name matches your schema, usually 'user_profiles' or 'profiles'
+          .from('profiles') // Corrected table name from user_profiles to profiles
           .select('preferences')
           .eq('id', session.user.id)
           .single()
@@ -198,14 +198,19 @@ function App() {
       // 1. Fetch Preferences & Plan & Role
       const { data: profile } = await supabase
         .from('profiles')
-        .select('preferences, plan_type, credits, role')
+        .select('preferences, plan_type, credits, role, app_role')
         .eq('id', userId)
         .single();
 
       if (profile) {
-        if (profile.role) setUserRole(profile.role);
-        console.log("Fetched Profile:", profile); // Debug
-        if (profile.plan_type) setUserPlan(profile.plan_type as 'trial' | 'pro');
+        // Check app_role first (main source), then fallback to role
+        const effectiveRole = profile.app_role || profile.role;
+        console.log("DEBUG: Profile roles - app_role:", profile.app_role, "role:", profile.role);
+
+        if (effectiveRole) {
+          console.log("DEBUG: Setting User Role to:", effectiveRole);
+          setUserRole(effectiveRole);
+        }
         if (typeof profile.credits === 'number') {
           console.log("Setting credits to:", profile.credits); // Debug
           setUserCredits(profile.credits);

@@ -104,9 +104,10 @@ export function TenderListItem({
     }
 
     const getProgressColor = () => {
-        if (daysRemaining !== null && daysRemaining < 5) return 'bg-red-500';
-        if (daysRemaining !== null && daysRemaining < 20) return 'bg-amber-500';
-        return 'bg-blue-500';
+        if (daysRemaining === null) return 'bg-slate-500';
+        if (daysRemaining < 10) return 'bg-red-500'; // Includes expired
+        if (daysRemaining <= 20) return 'bg-yellow-500'; // 10 to 20
+        return 'bg-green-500'; // > 20
     };
 
     // --- 3. HELPER FOR OWNERS ---
@@ -254,8 +255,11 @@ export function TenderListItem({
                         </span>
                     </div>
                     {deadlineDate && (
-                        <div className="w-full bg-slate-800 rounded-full h-1">
-                            <div className={cn("h-1 rounded-full", getProgressColor())} style={{ width: `${progress}%` }} />
+                        <div className="w-full bg-slate-800 rounded-full h-1.5 mt-1">
+                            <div
+                                className={cn("h-1.5 rounded-full transition-all", getProgressColor())}
+                                style={{ width: `${daysRemaining === null ? 100 : Math.min(100, Math.max(10, (Math.max(0, daysRemaining) / 60) * 100))}%` }}
+                            />
                         </div>
                     )}
                 </div>

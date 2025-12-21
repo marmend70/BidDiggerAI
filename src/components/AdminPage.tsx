@@ -30,11 +30,15 @@ export function AdminPage() {
 
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('role')
+                .select('role, app_role')
                 .eq('id', session.user.id)
                 .single();
 
-            if (profile?.role !== 'admin') {
+            // Check app_role first, then role
+            const userRole = profile?.app_role || profile?.role;
+
+            if (userRole?.toLowerCase() !== 'admin') {
+                console.warn("User is not admin. Role:", userRole);
                 window.location.href = '/'; // Redirect non-admins
                 return;
             }

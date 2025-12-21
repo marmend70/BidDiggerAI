@@ -20,6 +20,7 @@ import { supabase } from '@/lib/supabase';
 
 // Helper for parsing Italian dates
 const parseItalianDate = (dateStr: string): Date | null => {
+    // console.log("DEBUG: Raw date input:", dateStr); // Uncomment to debug raw dates
     if (!dateStr) return null;
     const months: { [key: string]: number } = {
         'gennaio': 0, 'febbraio': 1, 'marzo': 2, 'aprile': 3, 'maggio': 4, 'giugno': 5,
@@ -29,27 +30,41 @@ const parseItalianDate = (dateStr: string): Date | null => {
     };
 
     try {
-        const parts = dateStr.trim().toLowerCase().split(/[\/\s-]+/);
-        // Handle common formats: DD/MM/YYYY, DD Month YYYY
+        // Cleaning the string
+        let cleanStr = dateStr.trim().toLowerCase();
+
+        // Handle ISO format YYYY-MM-DD natively
+        if (/^\d{4}-\d{2}-\d{2}/.test(cleanStr)) {
+            return new Date(cleanStr);
+        }
+
+        const parts = cleanStr.split(/[\/\s-']+/).filter(p => p.length > 0);
+
         let day, month, year;
 
         if (parts.length >= 3) {
-            // Check for DD/MM/YYYY
+            // Check for DD/MM/YYYY or DD-MM-YYYY
             if (!isNaN(parseInt(parts[1]))) {
                 day = parseInt(parts[0]);
                 month = parseInt(parts[1]) - 1;
                 year = parseInt(parts[2]);
             } else {
-                // Assume DD Month YYYY
+                // Assume DD Month YYYY (or DD Month 'YY)
                 day = parseInt(parts[0]);
                 month = months[parts[1]] !== undefined ? months[parts[1]] : -1;
                 year = parseInt(parts[2]);
-                // Handle cases where year comes first or other variations if needed, but this covers standard output
             }
 
-            if (year < 100) year += 2000; // Assume 21 -> 2021
+            // Smart 2-digit year handling
+            // If year is 2 digits (e.g. 23, 24, 09)
+            if (year < 100) {
+                // If it's something like 90-99, probably 1990s (unlikely for tenders but safe)
+                // If it's 00-50, definitely 2000s
+                year += 2000;
+            }
 
             if (day > 0 && month >= 0 && year > 1900) {
+                // Validation: if day is invalid for month (e.g. 31 Feb), Date autocorrections might occur, but usually acceptable
                 return new Date(year, month, day);
             }
         }
@@ -269,6 +284,12 @@ const SuggerimentiPunteggioBlock = ({ tips }: { tips?: Array<{ scelta: string, p
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-4">
+                <div className="bg-sky-950/30 border border-sky-900/50 p-3 rounded text-xs text-sky-200/80 mb-4 flex gap-2 items-start">
+                    <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <div>
+                        <strong>Nota:</strong> I suggerimenti non garantiscono il punteggio massimo, non sostituiscono l’interpretazione ufficiale della Stazione Appaltante e non devono essere applicati in modo automatico.
+                    </div>
+                </div>
                 {tips.map((tip, i) => (
                     <div key={i} className="bg-slate-900 p-4 rounded-lg border border-sky-900 shadow-sm relative overflow-hidden">
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-sky-400" />
@@ -303,6 +324,12 @@ const SuggerimentiOffertaBlock = ({ suggestions }: { suggestions?: Array<{ propo
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-4">
+                <div className="bg-teal-950/30 border border-teal-900/50 p-3 rounded text-xs text-teal-200/80 mb-4 flex gap-2 items-start">
+                    <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <div>
+                        <strong>Nota:</strong> I suggerimenti rappresentano possibili impostazioni non vincolanti, non considerano strategie aziendali e richiedono validazione progettuale.
+                    </div>
+                </div>
                 {suggestions.map((sugg, i) => (
                     <div key={i} className="bg-slate-900 p-4 rounded-lg border border-teal-900 shadow-sm relative overflow-hidden">
                         <div className={`absolute left-0 top-0 bottom-0 w-1 ${sugg.tipo?.toLowerCase().includes('value') ? 'bg-purple-400' : 'bg-teal-400'}`} />
@@ -532,10 +559,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                         </Card>
                         <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle>Scenario e Contesto</CardTitle>
+                                <CardTitle className="text-slate-200">Scenario e Contesto</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-300 leading-relaxed">{data['3_sintesi'].scenario}</p>
+                                <p className="text-slate-200 leading-relaxed">{data['3_sintesi'].scenario}</p>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['3_sintesi']} sectionId="3_sintesi" />
@@ -789,60 +816,120 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                 );
 
             case '5_scadenze':
+                // Sort timeline events
+                const sortedEvents = data['5_scadenze'][0]?.timeline?.map((event: any) => {
+                    const parsedDate = parseItalianDate(event.data);
+                    return { ...event, parsedDate, daysDiff: parsedDate ? getDaysDifference(parsedDate) : null };
+                }).sort((a: any, b: any) => {
+                    if (!a.parsedDate) return 1;
+                    if (!b.parsedDate) return -1;
+                    return a.parsedDate.getTime() - b.parsedDate.getTime();
+                }) || [];
+
                 return (
                     <div className="space-y-8">
-                        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
-                            <Calendar className="h-8 w-8 text-red-500" />
-                            Timeline e Scadenze
-                        </h2>
-                        {/* REPLACED OLD TIMELINE WITH THE NEW CARD-BASED ONE */}
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
+                                <Calendar className="h-8 w-8 text-red-500" />
+                                Timeline e Scadenze
+                            </h2>
+                            <div className="text-sm text-slate-400 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
+                                {sortedEvents.length} Eventi Rilevati
+                            </div>
+                        </div>
+
                         <div className="space-y-4">
-                            {data['5_scadenze'][0]?.timeline?.map((event, i) => {
-                                // Simple logic to determine progress/status based on date (mock)
-                                const eventDate = new Date(event.data); // Needs parsing if not ISO
-                                // For now, let's just render the cards as requested
+                            {sortedEvents.map((event: any, i: number) => {
+                                // console.log(`DEBUG: Timeline Event ${i}:`, event.data, "Parsed:", event.parsedDate);
+                                const isPast = event.daysDiff !== null && event.daysDiff < 0;
+                                const isUrgent = event.daysDiff !== null && event.daysDiff >= 0 && event.daysDiff <= 10;
+                                const isMedium = event.daysDiff !== null && event.daysDiff > 10 && event.daysDiff <= 20;
+                                const isSafe = event.daysDiff !== null && event.daysDiff > 20;
+
+                                let statusColor = "bg-slate-600"; // Default
+                                let statusText = "Data Rilevata";
+                                let dateColor = "text-slate-400";
+                                let borderColor = "border-slate-700";
+
+                                if (isPast) {
+                                    statusColor = "bg-slate-500"; // Archived/Expired style (or could remain red if critical)
+                                    statusText = "Scaduto";
+                                    dateColor = "text-red-400";
+                                    borderColor = "border-red-900/30";
+                                } else if (isUrgent) {
+                                    statusColor = "bg-red-500";
+                                    statusText = "In Scadenza (< 10gg)";
+                                    dateColor = "text-red-400";
+                                    borderColor = "border-red-500/50";
+                                } else if (isMedium) {
+                                    statusColor = "bg-yellow-500";
+                                    statusText = "Attenzione (10-20gg)";
+                                    dateColor = "text-yellow-400";
+                                    borderColor = "border-yellow-500/50";
+                                } else if (isSafe) {
+                                    statusColor = "bg-emerald-500";
+                                    statusText = "Programmato (> 20gg)";
+                                    dateColor = "text-emerald-400";
+                                    borderColor = "border-emerald-500/50";
+                                }
+
                                 return (
-                                    <div key={i} className="flex items-center justify-between p-4 bg-slate-900 rounded-lg border border-slate-800">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`h-2 w-2 rounded-full ${event.evento.toLowerCase().includes('scadenza') ? 'bg-red-500' : 'bg-blue-500'}`} />
-                                            <div>
-                                                <p className="font-semibold text-slate-200">{event.evento}</p>
-                                                <p className="text-xs text-slate-500">{event.ref}</p>
-                                            </div>
+                                    <div key={i} className={`relative flex flex-col md:flex-row gap-6 p-6 rounded-xl border bg-slate-900 transition-all hover:shadow-lg ${borderColor}`}>
+                                        {/* Status Bar Indicator */}
+                                        <div className={`absolute top-0 left-0 bottom-0 w-1.5 rounded-l-xl ${statusColor}`} />
+
+                                        {/* Date Column */}
+                                        <div className="flex-shrink-0 flex md:flex-col items-center justify-center gap-2 md:gap-0 min-w-[100px] border-b md:border-b-0 md:border-r border-slate-800 pb-4 md:pb-0 md:pr-6 pl-2">
+                                            {event.parsedDate ? (
+                                                <>
+                                                    <span className={`text-4xl font-bold ${dateColor}`}>{event.parsedDate.getDate()}</span>
+                                                    <span className="text-sm uppercase tracking-wider font-semibold text-slate-500">
+                                                        {event.parsedDate.toLocaleString('it-IT', { month: 'short' })} '{event.parsedDate.getFullYear().toString().substr(2)}
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <Calendar className="h-10 w-10 text-slate-600 mb-1" />
+                                            )}
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-lg font-bold text-slate-100">{event.data}</p>
-                                            {/* Progress bar placeholder - fully styled timeline needs more complex date parsing */}
-                                            <div className="w-32 h-1.5 bg-slate-800 rounded-full mt-2 overflow-hidden">
-                                                <div className={`h-full rounded-full w-2/3 ${event.evento.toLowerCase().includes('scadenza') ? 'bg-red-500' : 'bg-blue-500'}`} />
+
+                                        {/* Content Column */}
+                                        <div className="flex-1 flex flex-col justify-center">
+                                            <div className="flex flex-wrap justify-between items-start gap-4 mb-2">
+                                                <h3 className="text-xl font-semibold text-slate-200">{event.evento}</h3>
+
+                                                {/* New Visual Indicator for Status */}
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`h-2.5 w-24 rounded-full bg-slate-800 overflow-hidden border border-slate-700`}>
+                                                        <div className={`h-full ${statusColor}`} style={{ width: isPast ? '100%' : '100%' }} />
+                                                    </div>
+                                                    <span className={`text-xs font-bold uppercase tracking-wider ${dateColor}`}>
+                                                        {statusText}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 text-sm text-slate-400 mt-1">
+                                                {event.daysDiff !== null && (
+                                                    <Badge variant="secondary" className="bg-slate-800 text-slate-300 border-slate-700">
+                                                        {event.daysDiff === 0 ? "Oggi" : (event.daysDiff > 0 ? `Mancano ${event.daysDiff} gg` : `Scaduto da ${Math.abs(event.daysDiff)} gg`)}
+                                                    </Badge>
+                                                )}
+                                                <span className="bg-slate-800 px-2 py-0.5 rounded text-xs border border-slate-700 font-mono">
+                                                    Originale: {event.data}
+                                                </span>
+                                                {event.ref && (
+                                                    <span className="flex items-center gap-1 ml-2">
+                                                        <span className="w-1 h-1 rounded-full bg-slate-600" />
+                                                        Ref: {event.ref}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
-                                )
+                                );
                             })}
                         </div>
-                        <Card className="bg-slate-900 border-slate-800">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2 text-slate-200">
-                                    <MapPin className="h-5 w-5 text-red-500" />
-                                    Sopralluogo
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="grid gap-4 md:grid-cols-2">
-                                <div>
-                                    <span className="text-sm font-medium text-slate-400">Previsto</span>
-                                    <p className="font-semibold text-slate-100">{data['5_scadenze'][0]?.sopralluogo?.previsto}</p>
-                                </div>
-                                <div>
-                                    <span className="text-sm font-medium text-slate-400">Obbligatorio</span>
-                                    <p className="font-semibold text-slate-100">{data['5_scadenze'][0]?.sopralluogo?.obbligatorio}</p>
-                                </div>
-                                <div className="md:col-span-2">
-                                    <span className="text-sm font-medium text-slate-400">Modalità</span>
-                                    <p className="text-sm text-slate-300">{data['5_scadenze'][0]?.sopralluogo?.modalita}</p>
-                                </div>
-                            </CardContent>
-                        </Card>
+
                         <SemanticAnalysisBlock data={data['5_scadenze']} sectionId="5_scadenze" />
                         <DeepDive
                             sectionId="5_scadenze"
@@ -1158,7 +1245,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['10_punteggi'][0]} sectionId="10_punteggi">
-                            <SuggerimentiPunteggioBlock tips={data['10_punteggi'][0]?.suggerimenti_progettuali_punteggio} />
+
                         </SemanticAnalysisBlock>
                         <DeepDive
                             sectionId="10_punteggi"
@@ -1170,111 +1257,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                     </div>
                 );
 
-            case '5_scadenze':
-                // Sort timeline events
-                const sortedEvents = data['5_scadenze'][0]?.timeline?.map((event: any) => {
-                    const parsedDate = parseItalianDate(event.data);
-                    return { ...event, parsedDate, daysDiff: parsedDate ? getDaysDifference(parsedDate) : null };
-                }).sort((a: any, b: any) => {
-                    if (!a.parsedDate) return 1;
-                    if (!b.parsedDate) return -1;
-                    return a.parsedDate.getTime() - b.parsedDate.getTime();
-                }) || [];
 
-                return (
-                    <div className="space-y-8">
-                        <div className="flex justify-between items-center">
-                            <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
-                                <Calendar className="h-8 w-8 text-red-500" />
-                                Timeline e Scadenze
-                            </h2>
-                            <div className="text-sm text-slate-400 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
-                                {sortedEvents.length} Eventi Rilevati
-                            </div>
-                        </div>
-
-                        <div className="grid gap-4">
-                            {sortedEvents.map((event: any, i: number) => {
-                                const isPast = event.daysDiff !== null && event.daysDiff < 0;
-                                const isUrgent = event.daysDiff !== null && event.daysDiff >= 0 && event.daysDiff <= 7;
-                                const isFuture = event.daysDiff !== null && event.daysDiff > 7;
-
-                                let statusColor = "text-slate-400 border-slate-700 bg-slate-800";
-                                let statusText = "Data Rilevata";
-                                let dateColor = "text-slate-400";
-
-                                if (isPast) {
-                                    statusColor = "text-red-400 border-red-900 bg-red-950/20";
-                                    statusText = "Scaduto";
-                                    dateColor = "text-red-400";
-                                } else if (isUrgent) {
-                                    statusColor = "text-amber-400 border-amber-900 bg-amber-950/20";
-                                    statusText = "In Scadenza";
-                                    dateColor = "text-amber-400";
-                                } else if (isFuture) {
-                                    statusColor = "text-emerald-400 border-emerald-900 bg-emerald-950/20";
-                                    statusText = "Programmato";
-                                    dateColor = "text-emerald-400";
-                                }
-
-                                return (
-                                    <div key={i} className={`relative flex flex-col md:flex-row gap-6 p-6 rounded-xl border bg-slate-900 transition-all hover:shadow-lg ${isUrgent ? 'border-amber-500/50 shadow-amber-900/10' : 'border-slate-800'}`}>
-                                        {/* Date Column */}
-                                        <div className="flex-shrink-0 flex md:flex-col items-center justify-center gap-2 md:gap-0 min-w-[100px] border-b md:border-b-0 md:border-r border-slate-800 pb-4 md:pb-0 md:pr-6">
-                                            {event.parsedDate ? (
-                                                <>
-                                                    <span className={`text-4xl font-bold ${dateColor}`}>{event.parsedDate.getDate()}</span>
-                                                    <span className="text-sm uppercase tracking-wider font-semibold text-slate-500">
-                                                        {event.parsedDate.toLocaleString('it-IT', { month: 'short' })} '{event.parsedDate.getFullYear().toString().substr(2)}
-                                                    </span>
-                                                </>
-                                            ) : (
-                                                <Calendar className="h-10 w-10 text-slate-600 mb-1" />
-                                            )}
-                                        </div>
-
-                                        {/* Content Column */}
-                                        <div className="flex-1 flex flex-col justify-center">
-                                            <div className="flex flex-wrap justify-between items-start gap-4 mb-2">
-                                                <h3 className="text-xl font-semibold text-slate-200">{event.evento}</h3>
-                                                <Badge variant="outline" className={`${statusColor} flex items-center gap-1.5`}>
-                                                    <div className={`w-1.5 h-1.5 rounded-full bg-current`} />
-                                                    {statusText}
-                                                    {event.daysDiff !== null && (
-                                                        <span className="opacity-75 border-l border-current pl-1.5 ml-1.5">
-                                                            {event.daysDiff === 0 ? "Oggi" : (event.daysDiff > 0 ? `Tra ${event.daysDiff} gg` : `${Math.abs(event.daysDiff)} gg fa`)}
-                                                        </span>
-                                                    )}
-                                                </Badge>
-                                            </div>
-
-                                            <div className="flex items-center gap-2 text-sm text-slate-400 mt-1">
-                                                <span className="bg-slate-800 px-2 py-0.5 rounded text-xs border border-slate-700 font-mono">
-                                                    Originale: {event.data}
-                                                </span>
-                                                {event.ref && (
-                                                    <span className="flex items-center gap-1">
-                                                        <span className="w-1 h-1 rounded-full bg-slate-600" />
-                                                        Ref: {event.ref}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        <SemanticAnalysisBlock data={data['5_scadenze']} sectionId="5_scadenze" />
-                        <DeepDive
-                            sectionId="5_scadenze"
-                            existingQA={data.deep_dives?.['5_scadenze']}
-                            onAskQuestion={onAskQuestion}
-                            isGlobalLoading={isGlobalLoading}
-                            exampleQuestion={DEEP_DIVE_EXAMPLES['5_scadenze']}
-                        />
-                    </div>
-                );
 
             case '11_pena_esclusione':
                 return (
@@ -1337,7 +1320,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['12_offerta_tecnica'][0]} sectionId="12_offerta_tecnica">
-                            <SuggerimentiOffertaBlock suggestions={data['12_offerta_tecnica'][0]?.suggerimenti_progettuali_offerta} />
+
                         </SemanticAnalysisBlock>
                         <DeepDive
                             sectionId="12_offerta_tecnica"

@@ -16,7 +16,7 @@ export interface AnalysisResult {
         consorzi_stabili: string;
         avvalimento: string;
         subappalto: string;
-    }> & GeniusData;
+    } & GeniusData>;
     "3_sintesi": {
         oggetto: string;
         stazione_appaltante?: string; // New field
@@ -37,14 +37,14 @@ export interface AnalysisResult {
         imposta_bollo: { importo: string; modalita: string; ref: string; };
         firma_formato: { formato: string; piattaforma: string; ref: string; };
         elenco_documenti: Array<{ documento: string; descrizione: string; ref: string; }>;
-    }> & GeniusData;
+    } & GeniusData>;
     "4_servizi": Array<{
         lotto: string;
         attivita: string[];
         innovazioni: string;
         fabbisogno: string;
         ref: string;
-    }> & GeniusData;
+    } & GeniusData>;
     "5_scadenze": Array<{
         lotto: string;
         timeline: Array<{
@@ -58,7 +58,7 @@ export interface AnalysisResult {
             modalita: string;
             scadenze: string;
         };
-    }> & GeniusData;
+    } & GeniusData>;
     "6_importi": Array<{
         lotto: string;
         base_asta_totale: number;
@@ -68,27 +68,27 @@ export interface AnalysisResult {
             importo: number;
         }>;
         ref: string;
-    }> & GeniusData;
+    } & GeniusData>;
     "7_durata": Array<{
         lotto: string;
         durata_base: string;
         proroghe: string;
         tempistiche_operative: string;
         ref: string;
-    }> & GeniusData;
+    } & GeniusData>;
     "8_ccnl": Array<{
         lotto: string;
         contratti: string[];
         equivalenze: string;
         clausola_sociale: string;
         ref: string;
-    }> & GeniusData;
+    } & GeniusData>;
     "9_oneri": Array<{
         lotto: string;
         carico_fornitore: string[];
         carico_stazione: string[];
         ref: string;
-    }> & GeniusData;
+    } & GeniusData>;
     "10_punteggi": Array<{
         lotto: string;
         tecnico: number;
@@ -119,14 +119,14 @@ export interface AnalysisResult {
         }>;
         suggerimenti_progettuali?: any[]; // Fallback
         suggerimenti?: any[]; // Fallback
-    }> & GeniusData;
+    } & GeniusData>;
     "11_pena_esclusione": Array<{
         lotto: string;
         elementi: Array<{
             descrizione: string;
             ref: string;
         }>;
-    }> & GeniusData;
+    } & GeniusData>;
     "12_offerta_tecnica": Array<{
         lotto: string;
         documenti: string[];
@@ -140,27 +140,27 @@ export interface AnalysisResult {
         }>;
         suggerimenti_progettuali?: any[]; // Fallback
         suggerimenti?: any[]; // Fallback
-    }> & GeniusData;
+    } & GeniusData>;
     "13_offerta_economica": Array<{
         lotto: string;
         documenti: string[];
         formattazione_modalita: string;
         ref: string;
-    }> & GeniusData;
+    } & GeniusData>;
     "14_note_importanti": Array<{
         lotto: string;
         note: Array<{
             nota: string;
             ref: string;
         }>;
-    }> & GeniusData;
+    } & GeniusData>;
     "15_remunerazione": Array<{
         lotto: string;
         modalita: string;
         pagamenti: string;
         clausole: string;
         ref: string;
-    }> & GeniusData;
+    } & GeniusData>;
     "16_sla_penali": Array<{
         lotto: string;
         sla: Array<{
@@ -179,13 +179,13 @@ export interface AnalysisResult {
         clausole_cumulative: string;
         elenco_testuale?: string;
         ref: string;
-    }> & GeniusData;
+    } & GeniusData>;
     "17_ambiguita_punti_da_chiarire": Array<{
         lotto: string;
         ambiguita: Array<{ descrizione: string; riferimento_documento: string; tipo: string }>;
         punti_da_chiarire: Array<{ quesito_suggerito: string; contesto: string; motivazione: string }>;
         ref: string;
-    }> & GeniusData;
+    } & GeniusData>;
     deep_dives?: {
         [sectionId: string]: Array<{
             question: string;

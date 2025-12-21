@@ -547,10 +547,10 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                         </Card>
                         <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>
-                                <CardTitle>Scenario e Contesto</CardTitle>
+                                <CardTitle className="text-slate-200">Scenario e Contesto</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-300 leading-relaxed">{data['3_sintesi'].scenario}</p>
+                                <p className="text-slate-200 leading-relaxed">{data['3_sintesi'].scenario}</p>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['3_sintesi']} sectionId="3_sintesi" />

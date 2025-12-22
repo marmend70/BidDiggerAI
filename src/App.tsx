@@ -244,7 +244,7 @@ function App() {
           if (memberData) {
             console.log("Setting Org Role to:", memberData.role);
             setOrgRole(memberData.role);
-            setOrgName(memberData.organizations?.name);
+            setOrgName((memberData.organizations as any)?.name);
           }
         }
 
@@ -1335,7 +1335,7 @@ function App() {
       if (finalTenderId) {
         await supabase.from('tender_activities').insert({
           tender_id: finalTenderId,
-          user_id: session.user.id,
+          user_id: session?.user?.id,
           action_type: 'section_update',
           details: {
             section: SECTIONS_MAP[sectionId]?.label || sectionId,

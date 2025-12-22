@@ -127,7 +127,7 @@ export function TeamSettings({ currentUserId, organizationId }: TeamSettingsProp
                 .from('organization_members')
                 .insert({
                     organization_id: organizationId,
-                    user_id: userProfile.id,
+                    user_id: (userProfile as any).id,
                     role: 'member'
                 });
 

@@ -398,10 +398,10 @@ export function TenderListItem({
                     onOpen(item.result_json, item.tender_id);
                 }}
                 /* GRID UPDATED layout */
-                className="group grid grid-cols-[1.1fr,1.3fr,1.8fr,1.5fr,1.3fr,1.3fr] gap-3 p-4 border-b border-slate-800/50 hover:bg-slate-800/30 transition-all items-start last:border-0 relative"
+                className="group flex flex-col md:grid md:grid-cols-[1.1fr,1.3fr,1.8fr,1.5fr,1.3fr,1.3fr] gap-3 p-4 border-b border-slate-800/50 hover:bg-slate-800/30 transition-all items-start last:border-0 relative"
             >
                 {/* COLUMN 1: STATO */}
-                <div onClick={(e) => e.stopPropagation()} className="flex flex-col items-center gap-2 interactive-area pt-1">
+                <div onClick={(e) => e.stopPropagation()} className="flex flex-col items-center gap-2 interactive-area pt-1 w-full md:w-auto order-1 md:order-none mb-2 md:mb-0">
                     <div className="relative inline-block w-full group/status">
                         <div className={cn(
                             "flex items-center justify-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wide transition-colors cursor-pointer hover:opacity-80 w-full",
@@ -474,8 +474,8 @@ export function TenderListItem({
                 </div>
 
                 {/* COLUMN 2: ENTE / CIG */}
-                <div className="flex flex-col gap-1 pt-1">
-                    <h3 className="text-slate-200 font-bold text-xs line-clamp-2" title={item.ente}>
+                <div className="flex flex-col gap-1 pt-1 w-full md:w-auto order-2 md:order-none">
+                    <h3 className="text-slate-200 font-bold text-xs line-clamp-2 md:line-clamp-2" title={item.ente}>
                         {item.ente || "N/D"}
                     </h3>
                     {item.cig && (
@@ -486,14 +486,14 @@ export function TenderListItem({
                 </div>
 
                 {/* COLUMN 3: OGGETTO */}
-                <div className="pr-2 pt-1">
+                <div className="pr-2 pt-1 w-full md:w-auto order-3 md:order-none mb-2 md:mb-0">
                     <p className="text-xs text-slate-300 line-clamp-3 leading-relaxed" title={item.object}>
                         {item.object || item.title}
                     </p>
                 </div>
 
                 {/* COLUMN 4: NOTE */}
-                <div className="interactive-area relative">
+                <div className="interactive-area relative w-full md:w-auto order-6 md:order-none mt-2 md:mt-0">
                     <textarea
                         className="w-full bg-slate-900/50 border border-slate-700 rounded-md text-xs text-slate-300 p-2 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none transition-all placeholder:text-slate-600"
                         placeholder="Note..."
@@ -509,10 +509,10 @@ export function TenderListItem({
                 </div>
 
                 {/* COLUMN 5: TIMELINE */}
-                <div className="pr-2 flex flex-col gap-3 pt-1">
+                <div className="pr-2 flex flex-row md:flex-col gap-3 pt-1 w-full md:w-auto order-4 md:order-none justify-between md:justify-start items-center md:items-stretch border-t border-slate-800/50 md:border-none pt-2 md:pt-1 mt-1 md:mt-0">
                     {/* 1. SCADENZA OFFERTA */}
-                    <div>
-                        <div className="flex items-center justify-between mb-1">
+                    <div className="flex-1 md:flex-none">
+                        <div className="flex items-center gap-2 md:justify-between mb-1">
                             <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Offerta</span>
                             <span className={cn(
                                 "text-[10px] font-bold",
@@ -533,8 +533,8 @@ export function TenderListItem({
 
                     {/* 2. SCADENZA QUESITI */}
                     {deadlineQuesitiDate && (
-                        <div>
-                            <div className="flex items-center justify-between mb-0.5">
+                        <div className="flex-1 md:flex-none">
+                            <div className="flex items-center gap-2 md:justify-between mb-0.5">
                                 <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Quesiti</span>
                                 <span className={cn(
                                     "text-[10px] font-medium",
@@ -548,27 +548,27 @@ export function TenderListItem({
                 </div>
 
                 {/* COLUMN 6: RESPONSABILI & ACTIONS */}
-                <div className="flex items-center justify-between interactive-area pt-1">
+                <div className="flex items-center justify-between interactive-area pt-1 w-full md:w-auto order-5 md:order-none border-t border-slate-800/50 md:border-none pt-2 md:pt-1 mt-1 md:mt-0">
                     <div className="flex items-center gap-2">
                         {renderOwnerCircle('owner_comm', 'COMM', 'bg-blue-600')}
                         {renderOwnerCircle('owner_tech', 'TEC', 'bg-purple-600')}
                         {renderOwnerCircle('owner_admin', 'AMM', 'bg-orange-600')}
                     </div>
 
-                    <div className="flex flex-col gap-1 items-end ml-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                    <div className="flex flex-row md:flex-col gap-2 md:gap-1 items-end ml-2 opacity-100 md:opacity-80 group-hover:opacity-100 transition-opacity">
                         <button
                             onClick={(e) => onExport(e, item.result_json)}
-                            className="p-1 text-slate-500 hover:text-emerald-400 hover:bg-emerald-950/30 rounded transition-colors"
+                            className="p-1.5 md:p-1 text-slate-500 hover:text-emerald-400 hover:bg-emerald-950/30 rounded transition-colors"
                             title="Esporta Report"
                         >
-                            <Download className="w-3.5 h-3.5" />
+                            <Download className="w-4 h-4 md:w-3.5 md:h-3.5" />
                         </button>
                         <button
                             onClick={(e) => onDelete(e, item.tender_id)}
-                            className="p-1 text-slate-500 hover:text-red-400 hover:bg-red-950/30 rounded transition-colors"
+                            className="p-1.5 md:p-1 text-slate-500 hover:text-red-400 hover:bg-red-950/30 rounded transition-colors"
                             title="Elimina"
                         >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4 md:w-3.5 md:h-3.5" />
                         </button>
                     </div>
                 </div>

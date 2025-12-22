@@ -738,7 +738,7 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
             {/* TABLE HEADER */}
             <div className="bg-slate-900/50 rounded-t-xl border border-slate-800 border-b-0 overflow-hidden">
                 {/* MODIFIED GRID TO MATCH TENDERLISTITEM */}
-                <div className="grid grid-cols-[1.1fr,1.3fr,1.8fr,1.5fr,1.3fr,1.3fr] gap-3 p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <div className="hidden md:grid grid-cols-[1.1fr,1.3fr,1.8fr,1.5fr,1.3fr,1.3fr] gap-3 p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
                     <div>Stato Decisionale</div>
                     <div>Ente Appaltante</div>
                     <div>Oggetto (Sintesi)</div>

@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Scan, MessageSquare, LayoutDashboard, Settings, ArrowRight, CheckCircle2, ChevronRight, Play, Check, AlertTriangle, Sparkles, FileText } from 'lucide-react';
+import { Scan, MessageSquare, LayoutDashboard, Settings, ArrowRight, CheckCircle2, ChevronRight, Play, Check, AlertTriangle, Sparkles, FileText, Users, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import logo from '../assets/logo-final.png';
 
 interface LandingPageProps {
     onLogin: () => void;
@@ -357,7 +358,7 @@ export function LandingPage({ onLogin, onRegister }: LandingPageProps) {
             )}>
                 <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <img src="/logo.png" alt="Bid Digger Logo" className="w-10 h-10 object-contain" />
+                        <img src={logo} alt="Bid Digger Logo" className="w-10 h-10 object-contain" />
                         <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">Bid Digger</span>
                     </div>
 
@@ -366,13 +367,14 @@ export function LandingPage({ onLogin, onRegister }: LandingPageProps) {
                         <button onClick={() => scrollToSection('genius')} className="hover:text-white transition-colors">Genius Mode</button>
                         <button onClick={() => scrollToSection('assistant')} className="hover:text-white transition-colors">AI Assistant</button>
                         <button onClick={() => scrollToSection('dashboard')} className="hover:text-white transition-colors">Dashboard</button>
+                        <button onClick={() => scrollToSection('collaboration')} className="hover:text-white transition-colors">Workspace & Collaboration</button>
                         <button onClick={() => scrollToSection('config')} className="hover:text-white transition-colors">Configurazioni</button>
                     </div>
 
                     <div className="flex items-center gap-4">
                         <Button
                             variant="ghost"
-                            className="text-slate-300 hover:text-white hidden sm:flex"
+                            className="text-slate-300 hover:text-white flex"
                             onClick={onLogin}
                         >
                             Accedi
@@ -599,6 +601,112 @@ export function LandingPage({ onLogin, onRegister }: LandingPageProps) {
                 </div>
             </section>
 
+
+            {/* --- TEAM & WORKSPACE SECTION --- */}
+            <section id="collaboration" className="py-32 px-6 bg-slate-950 relative overflow-hidden">
+                {/* Background Glow */}
+                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-900/10 rounded-full blur-[120px] -z-10"></div>
+
+                <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
+                    <div className="order-2 lg:order-1 relative">
+                        <div className="relative w-full max-w-lg mx-auto bg-slate-900 rounded-xl border border-slate-800 shadow-2xl p-6 overflow-hidden transform rotate-2 hover:rotate-0 transition-transform duration-500">
+                            {/* Header */}
+                            <div className="flex justify-between items-center mb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-blue-600/20 flex items-center justify-center border border-blue-600/30">
+                                        <Users className="w-5 h-5 text-blue-400" />
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-slate-200">Team Gare Pubbliche</div>
+                                        <div className="text-xs text-slate-500">Workspace Aziendale</div>
+                                    </div>
+                                </div>
+                                <div className="flex -space-x-2">
+                                    {/* Avatars */}
+                                    <div className="w-8 h-8 rounded-full bg-slate-700 border-2 border-slate-900 flex items-center justify-center text-xs font-bold text-slate-300">MV</div>
+                                    <div className="w-8 h-8 rounded-full bg-indigo-900 border-2 border-slate-900 flex items-center justify-center text-xs font-bold text-indigo-200">GL</div>
+                                    <div className="w-8 h-8 rounded-full bg-blue-600 border-2 border-slate-900 flex items-center justify-center text-xs text-white font-bold">+3</div>
+                                </div>
+                            </div>
+
+                            {/* Content Mock */}
+                            <div className="space-y-4">
+                                <div className="bg-slate-950/50 rounded-lg p-4 border border-slate-800">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <Activity className="w-3 h-3 text-slate-500" />
+                                        <span className="text-xs font-bold text-slate-500 uppercase">Activity Log</span>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="flex gap-3 items-start text-sm relative pl-4 border-l border-slate-800">
+                                            <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-blue-500 ring-4 ring-slate-950"></div>
+                                            <div>
+                                                <span className="text-slate-200 font-bold">Marco V.</span>
+                                                <span className="text-slate-400"> ha modificato lo stato in </span>
+                                                <span className="text-amber-400 font-medium">In Valutazione</span>
+                                                <div className="text-[10px] text-slate-600 mt-0.5">2 min fa</div>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-3 items-start text-sm relative pl-4 border-l border-slate-800">
+                                            <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-purple-500 ring-4 ring-slate-950"></div>
+                                            <div>
+                                                <span className="text-slate-200 font-bold">Giulia L.</span>
+                                                <span className="text-slate-400"> ha assegnato un responsabile tecnico alla gara </span>
+                                                <span className="text-slate-200 font-medium">Cloud PA</span>
+                                                <div className="text-[10px] text-slate-600 mt-0.5">15 min fa</div>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-3 items-start text-sm relative pl-4 border-l border-slate-800">
+                                            <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-green-500 ring-4 ring-slate-950"></div>
+                                            <div>
+                                                <span className="text-slate-200 font-bold">Luca B.</span>
+                                                <span className="text-slate-400"> ha inserito una nota nella sezione </span>
+                                                <span className="text-slate-200 font-medium">Criteri e Punteggi</span>
+                                                <div className="text-[10px] text-slate-600 mt-0.5">32 min fa</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="order-1 lg:order-2 space-y-8">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-950/30 border border-blue-900/50 rounded-full text-xs font-semibold text-blue-400 uppercase tracking-widest">
+                            <Users className="w-3 h-3" /> Collaboration
+                        </div>
+                        <h2 className="text-4xl md:text-5xl font-bold text-white leading-tight">
+                            Il tuo Ufficio Gare <br />
+                            <span className="text-blue-500">Condiviso e Sincronizzato</span>
+                        </h2>
+                        <p className="text-lg text-slate-400 leading-relaxed">
+                            Crea un workspace dedicato per il tuo team.
+                            Invita colleghi a condividere e collaborare e tieni traccia di chi fa cosa con un registro attività aggiornato.
+                        </p>
+
+                        <div className="space-y-6 pt-2">
+                            <div className="flex gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center border border-slate-700 flex-shrink-0">
+                                    <LayoutDashboard className="w-6 h-6 text-slate-300" />
+                                </div>
+                                <div>
+                                    <h4 className="text-lg font-bold text-white">Multi-Workspace</h4>
+                                    <p className="text-slate-400 text-sm">Passa da un ambiente all'altro con un click. Ideale per gruppi di lavoro o singoli consulenti.</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center border border-slate-700 flex-shrink-0">
+                                    <Activity className="w-6 h-6 text-slate-300" />
+                                </div>
+                                <div>
+                                    <h4 className="text-lg font-bold text-white">Tracciamento Azioni</h4>
+                                    <p className="text-slate-400 text-sm">Saprai sempre chi ha cambiato uno stato, caricato un doc o modificato una nota.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             {/* --- SETTINGS SECTION --- */}
             <section id="config" className="py-24 bg-slate-950 border-t border-slate-900 px-6">
                 <div className="max-w-4xl mx-auto text-center space-y-6 mb-16">
@@ -611,7 +719,9 @@ export function LandingPage({ onLogin, onRegister }: LandingPageProps) {
                 <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-6">
                     {/* Config Cards */}
                     {[
-                        { title: 'Modello AI', desc: 'Scegli tra Rapid (Flash) o High-Reasoning (Pro) in base alla complessità.', icon: Settings },
+                        {
+                            title: 'Modello AI', desc: "Modelli AI di ultima generazione, al servizio dell'analisi strutturale e semantica.", icon: Settings
+                        },
                         { title: 'Sezioni Export', desc: 'Seleziona quali capitoli includere nel report Word finale.', icon: LayoutDashboard },
                         { title: 'Personalizzazioni', desc: 'Definisci i nomi dei responsabili e le tue preferenze di analisi.', icon: CheckCircle2 },
                     ].map((item, i) => (
@@ -627,7 +737,7 @@ export function LandingPage({ onLogin, onRegister }: LandingPageProps) {
             {/* --- CTA FOOTER --- */}
             <section className="py-20 px-6 border-t border-slate-800 text-center">
                 <div className="max-w-3xl mx-auto space-y-8">
-                    <h2 className="text-4xl font-bold text-white">Pronto a vincere più gare?</h2>
+                    <h2 className="text-4xl font-bold text-white">Pronto a imparare un nuovo modo per gareggiare?</h2>
                     <p className="text-xl text-slate-400">Inizia ora la tua prova gratuita. Nessun impegno.</p>
                     <Button
                         size="lg"

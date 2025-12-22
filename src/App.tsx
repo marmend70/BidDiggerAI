@@ -7,6 +7,7 @@ import { Login } from '@/components/Login';
 import { AdminPage } from '@/components/AdminPage';
 import { ArchivePage } from '@/components/ArchivePage';
 import { TeamSettings } from '@/components/TeamSettings';
+import { UpdatePassword } from '@/components/UpdatePassword';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -168,7 +169,14 @@ function App() {
     }
   };
 
+  const [isRecoveryMode, setIsRecoveryMode] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const url = window.location.href;
+    return url.includes('type=recovery') || url.includes('update-password');
+  });
+
   useEffect(() => {
+    // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
@@ -189,7 +197,10 @@ function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecoveryMode(true);
+      }
       setSession(session);
       if (session?.user) {
         fetchUserData(session.user.id);
@@ -360,6 +371,10 @@ function App() {
     // Optimistic Update
     setUserOrganizationId(newOrgId);
 
+    // IMPORTANT: Clear current analysis state to prevent data leakage between workspaces
+    setAnalysisData(null);
+    setActiveSection('dashboard'); // Reset to dashboard/home
+
     try {
       // Persist preference
       await supabase
@@ -370,12 +385,8 @@ function App() {
       // Reload data to reflect new workspace context (credits, tenders, role)
       await fetchUserData(session.user.id);
 
-      // Reset navigation to Dashboard or appropriate page
-      if (activeSection === 'team' || activeSection === 'configurazioni') {
-        // Stay there? Or go home? 
-        // Tenders need refresh. Dashboard component renders tenders.
-        // If I am in 'team', I need to check if I am allowed (I should be, as I am member).
-      }
+      // Reload window to ensure clean state if needed, or just let React handle it
+      // window.location.reload(); // Optional: force reload if state is too complex
     } catch (err) {
       console.error("Error switching workspace:", err);
       alert("Errore cambio workspace");
@@ -1370,6 +1381,10 @@ function App() {
     }
   };
 
+  if (isRecoveryMode) {
+    return <UpdatePassword />;
+  }
+
   if (!session) {
     if (showLogin) {
       return <Login onOpenContact={() => setContactModalOpen(true)} />;
@@ -1482,28 +1497,29 @@ function App() {
         defaultStructuredModelId={userPreferences.structured_model}
         defaultSemanticModelId={userPreferences.semantic_model}
       />
+      <div className="flex flex-col items-center gap-2 mb-4 shrink-0">
+        <div className="inline-block px-4 py-2 bg-[#1e1e2d] text-indigo-400 rounded-full text-sm font-semibold border border-slate-700 flex items-center gap-2 shadow-sm">
+          <span>{userOrganizationId ? "Crediti Workspace" : "Crediti disponibili"}: {userCredits}</span>
+          <button onClick={() => setShowPricingModal(true)} className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-500 transition-colors">
+            Ricarica
+          </button>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-slate-500">
+          <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700">
+            Account: {session?.user?.email}
+          </span>
+          {orgRole && (
+            <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-amber-500">
+              Team: {orgRole === 'owner' ? 'Proprietario' : (orgRole === 'admin' ? 'Amministratore' : 'Membro')}
+              {orgName && <span className="text-slate-500 ml-1">| {orgName}</span>}
+            </span>
+          )}
+        </div>
+      </div>
+
       {!analysisData && activeSection !== 'configurazioni' && activeSection !== 'archivio' && activeSection !== 'team' ? (
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-center mb-8 relative">
-            <div className="flex flex-col items-center gap-2 mb-4">
-              <div className="inline-block px-4 py-2 bg-[#1e1e2d] text-indigo-400 rounded-full text-sm font-semibold border border-slate-700 flex items-center gap-2 shadow-sm">
-                <span>{userOrganizationId ? "Crediti Workspace" : "Crediti disponibili"}: {userCredits}</span>
-                <button onClick={() => setShowPricingModal(true)} className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-500 transition-colors">
-                  Ricarica
-                </button>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-slate-500">
-                <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700">
-                  Account: {userRole === 'admin' ? 'Admin (System)' : 'Standard'}
-                </span>
-                {orgRole && (
-                  <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-amber-500">
-                    Team: {orgRole === 'owner' ? 'Proprietario' : (orgRole === 'admin' ? 'Amministratore' : 'Membro')}
-                    {orgName && <span className="text-slate-500 ml-1">| {orgName}</span>}
-                  </span>
-                )}
-              </div>
-            </div>
             <h1 className="text-4xl font-bold text-slate-100 mb-4">Benvenuto in Bid Digger</h1>
             <p className="text-lg text-slate-400 max-w-2xl mx-auto">
               Carica i documenti di gara e lascia che la nostra AI li analizzi per te.

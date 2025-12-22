@@ -18,6 +18,7 @@ import {
 import { Footer } from './Footer';
 import { GuideModal } from './GuideModal';
 import { WorkspaceSwitcher, type Organization } from './WorkspaceSwitcher';
+import logo from '../assets/logo-final.png';
 import { SECTIONS_MAP, MENU_ORDER, SECTION_BATCH_MAP } from '@/constants';
 
 interface LayoutProps {
@@ -64,7 +65,7 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
             <div className="p-6 bg-slate-950 shadow-sm z-10 space-y-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-amber-500 flex items-center gap-2">
-                        <img src="/logo.png" alt="Bid Digger Logo" className="h-8 w-8 object-contain" />
+                        <img src={logo} alt="Bid Digger Logo" className="h-8 w-8 object-contain" />
                         Bid Digger AI
                     </h1>
                     <p className="text-xs text-slate-400 mt-1">AI Tender Analysis</p>
@@ -336,7 +337,7 @@ export function Layout(props: LayoutProps) {
             {/* Mobile Header */}
             <div className="md:hidden h-16 bg-slate-900 flex items-center justify-between px-4 flex-shrink-0 z-20">
                 <div className="flex items-center gap-2">
-                    <img src="/logo.png" alt="Bid Digger Logo" className="h-8 w-8 object-contain" />
+                    <img src={logo} alt="Bid Digger Logo" className="h-8 w-8 object-contain" />
                     <span className="text-white font-bold text-lg">Bid Digger AI</span>
                 </div>
                 <button

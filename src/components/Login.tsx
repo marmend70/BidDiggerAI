@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, UploadCloud, Sliders, FileText, MessageSquare, AlertTriangle, Sparkles, X } from 'lucide-react';
 import { TERMS_AND_CONDITIONS, PRIVACY_POLICY } from '@/constants/legalText';
 import { LegalModal } from './LegalModal';
+import logo from '../assets/logo-final.png';
 
 interface LoginProps {
     onOpenContact?: () => void;
@@ -23,6 +24,16 @@ export function Login({ onOpenContact }: LoginProps = {}) {
     const [error, setError] = useState<string | null>(null);
     const [showConfirmation, setShowConfirmation] = useState(false);
 
+    // Carousel State
+    const [currentStep, setCurrentStep] = useState(0);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentStep((prev) => (prev + 1) % 6);
+        }, 3000); // 3 seconds per step
+        return () => clearInterval(timer);
+    }, []);
+
 
     // Consents State
     const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -30,7 +41,7 @@ export function Login({ onOpenContact }: LoginProps = {}) {
     const [acceptedAiLimits, setAcceptedAiLimits] = useState(false);
 
     // Modal State
-    const [modalOpen, setModalOpen] = useState<'APP_TERMS' | 'PRIVACY' | null>(null);
+    const [modalOpen, setModalOpen] = useState<'APP_TERMS' | 'PRIVACY' | 'RESET_PASSWORD' | null>(null);
     const [registrationActive, setRegistrationActive] = useState(true);
 
     useEffect(() => {
@@ -107,6 +118,24 @@ export function Login({ onOpenContact }: LoginProps = {}) {
         }
     };
 
+    const handlePasswordReset = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/#update-password`,
+            });
+            if (error) throw error;
+            setShowConfirmation(true); // Reuse confirmation view or a new one
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
 
 
     return (
@@ -118,7 +147,7 @@ export function Login({ onOpenContact }: LoginProps = {}) {
 
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-12">
-                        <img src="/logo.png" alt="Bid Digger Logo" className="h-12 w-12 object-contain" />
+                        <img src={logo} alt="Bid Digger Logo" className="h-12 w-12 object-contain" />
                         <span className="text-3xl font-bold tracking-tight">Bid Digger AI</span>
                     </div>
 
@@ -129,58 +158,63 @@ export function Login({ onOpenContact }: LoginProps = {}) {
                         </span>
                     </h1>
 
-                    <div className="space-y-8 mt-4">
-                        <div className="flex gap-5 items-start">
-                            <div className="h-12 w-12 rounded-xl bg-slate-800/80 flex items-center justify-center border border-slate-700 flex-shrink-0 shadow-lg backdrop-blur-sm">
-                                <UploadCloud className="h-6 w-6 text-amber-500" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-xl text-white mb-1">Carica i documenti</h3>
-                                <p className="text-slate-300 text-base leading-relaxed">Trascina i PDF del bando, del disciplinare e del capitolato direttamente nell'area di upload.</p>
-                            </div>
+                    <div className="mt-12 relative h-[400px]">
+                        <div className={`transition-all duration-700 ease-in-out ${currentStep === 5 ? 'opacity-0 scale-95 blur-sm' : 'opacity-100 scale-100'}`}>
+                            {[
+                                {
+                                    icon: UploadCloud, color: "text-amber-500", bg: "bg-amber-500/10 border-amber-500/20",
+                                    title: "1. Carica i documenti",
+                                    desc: "Trascina i PDF del bando, del disciplinare e del capitolato."
+                                },
+                                {
+                                    icon: Sliders, color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20",
+                                    title: "2. Seleziona i parametri",
+                                    desc: "Scegli quali informazioni estrarre: requisiti, scadenze, costi."
+                                },
+                                {
+                                    icon: FileText, color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20",
+                                    title: "3. Ottieni la sintesi",
+                                    desc: "Consulta la dashboard con i dati chiave ed esporta il report."
+                                },
+                                {
+                                    icon: MessageSquare, color: "text-purple-400", bg: "bg-purple-500/10 border-purple-500/20",
+                                    title: "4. Interroga i documenti",
+                                    desc: "Hai bisogno di più dettagli? Chiedi all'AI di approfondire."
+                                },
+                                {
+                                    icon: Sparkles, color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/20",
+                                    title: "5. Prova Gratuita",
+                                    desc: "2 Analisi Complete in omaggio. Nessuna carta di credito."
+                                }
+                            ].map((slide, index) => (
+                                <div
+                                    key={index}
+                                    className={`transition-all duration-700 ease-in-out transform flex items-center gap-4 p-2 rounded-xl border border-transparent mb-6 ${index === currentStep
+                                        ? "opacity-100 scale-105 translate-x-4 bg-slate-800/40 border-slate-700/50 shadow-2xl shadow-blue-900/10"
+                                        : "opacity-30 scale-95 blur-[1px]"
+                                        }`}
+                                >
+                                    <div className={`h-12 w-12 rounded-xl ${slide.bg} flex items-center justify-center border flex-shrink-0 backdrop-blur-sm transition-colors duration-500`}>
+                                        <slide.icon className={`h-6 w-6 ${index === currentStep ? slide.color : 'text-slate-500'}`} />
+                                    </div>
+                                    <div>
+                                        <h3 className={`font-bold text-lg transition-colors duration-500 ${index === currentStep ? 'text-white' : 'text-slate-500'}`}>{slide.title}</h3>
+                                        <p className={`text-slate-400 text-sm leading-relaxed transition-all duration-700 ${index === currentStep ? 'opacity-100 max-h-20 mt-1 block' : 'opacity-0 max-h-0 hidden'}`}>{slide.desc}</p>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
 
-                        <div className="flex gap-5 items-start">
-                            <div className="h-12 w-12 rounded-xl bg-slate-800/80 flex items-center justify-center border border-slate-700 flex-shrink-0 shadow-lg backdrop-blur-sm">
-                                <Sliders className="h-6 w-6 text-blue-400" />
+                        {/* Grand Finale Logo Reveal */}
+                        <div className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-1000 ease-out ${currentStep === 5 ? 'opacity-100 scale-100 z-50' : 'opacity-0 scale-50 -z-10'}`}>
+                            <div className="relative">
+                                {/* Glow removed to prevent border artifacts */}
+                                <img src={logo} alt="Bid Digger Logo" className="h-64 w-64 object-contain relative z-10" />
                             </div>
-                            <div>
-                                <h3 className="font-bold text-xl text-white mb-1">Seleziona i parametri</h3>
-                                <p className="text-slate-300 text-base leading-relaxed">Scegli quali informazioni estrarre: requisiti tecnici, scadenze, costi o vincoli amministrativi.</p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-5 items-start">
-                            <div className="h-12 w-12 rounded-xl bg-slate-800/80 flex items-center justify-center border border-slate-700 flex-shrink-0 shadow-lg backdrop-blur-sm">
-                                <FileText className="h-6 w-6 text-emerald-400" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-xl text-white mb-1">Ottieni la sintesi</h3>
-                                <p className="text-slate-300 text-base leading-relaxed">Consulta la dashboard con i dati chiave strutturati ed esporta il report decisionale.</p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-5 items-start">
-                            <div className="h-12 w-12 rounded-xl bg-slate-800/80 flex items-center justify-center border border-slate-700 flex-shrink-0 shadow-lg backdrop-blur-sm">
-                                <MessageSquare className="h-6 w-6 text-purple-400" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-xl text-white mb-1">Interroga i documenti</h3>
-                                <p className="text-slate-300 text-base leading-relaxed">Hai bisogno di più dettagli? Aggiungi domande specifiche all'AI e approfondisci qualsiasi punto del bando.</p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-5 items-start">
-                            <div className="h-12 w-12 rounded-xl bg-slate-800/80 flex items-center justify-center border border-slate-700 flex-shrink-0 shadow-lg backdrop-blur-sm">
-                                <Sparkles className="h-6 w-6 text-yellow-400" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-xl text-white mb-1">Prova Gratuita</h3>
-                                <p className="text-slate-300 text-base leading-relaxed">
-                                    Registrazione libera con <strong>2 Analisi Complete</strong> in omaggio. <br />
-                                    Nessuna carta di credito richiesta per iniziare.
-                                </p>
-                            </div>
+                            <h2 className="text-6xl font-black text-white mt-8 tracking-tight relative z-10">
+                                Bid Digger <span className="text-blue-500">AI</span>
+                            </h2>
+                            <p className="text-slate-400 text-xl mt-4 relative z-10 animate-fade-in-up">Il futuro delle Gare d'Appalto</p>
                         </div>
                     </div>
                 </div>
@@ -195,7 +229,7 @@ export function Login({ onOpenContact }: LoginProps = {}) {
                 <Card className="w-full max-w-md border-none shadow-xl bg-white/80 backdrop-blur-sm">
                     <CardHeader className="space-y-1">
                         <div className="flex lg:hidden items-center justify-center gap-2 mb-6">
-                            <img src="/logo.png" alt="Bid Digger Logo" className="h-10 w-10 object-contain" />
+                            <img src={logo} alt="Bid Digger Logo" className="h-10 w-10 object-contain" />
                             <span className="text-2xl font-bold tracking-tight text-slate-900">Bid Digger AI</span>
                         </div>
                         <CardTitle className="text-2xl font-bold text-center text-slate-900">Benvenuto</CardTitle>
@@ -236,7 +270,7 @@ export function Login({ onOpenContact }: LoginProps = {}) {
                                         <TabsTrigger value="register">Registrati</TabsTrigger>
                                     </TabsList>
 
-                                    <TabsContent value="login">
+                                    <TabsContent value="login" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                                         <form onSubmit={handleLogin} className="space-y-4">
                                             <div className="space-y-2">
                                                 <Input
@@ -257,6 +291,15 @@ export function Login({ onOpenContact }: LoginProps = {}) {
                                                     required
                                                     className="bg-white"
                                                 />
+                                            </div>
+                                            <div className="flex justify-end">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setModalOpen('RESET_PASSWORD')}
+                                                    className="text-xs text-slate-500 hover:text-slate-800 underline"
+                                                >
+                                                    Password dimenticata?
+                                                </button>
                                             </div>
                                             {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-md border border-red-100">{error}</div>}
                                             <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800" disabled={loading}>
@@ -451,6 +494,57 @@ export function Login({ onOpenContact }: LoginProps = {}) {
                 title={modalOpen === 'APP_TERMS' ? 'Termini e Condizioni' : 'Privacy Policy'}
                 content={modalOpen === 'APP_TERMS' ? TERMS_AND_CONDITIONS : PRIVACY_POLICY}
             />
+
+            {/* Password Reset Modal */}
+            {modalOpen === 'RESET_PASSWORD' && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <Card className="w-full max-w-md bg-white shadow-2xl">
+                        <CardHeader>
+                            <div className="flex justify-between items-start">
+                                <CardTitle className="text-xl">Recupera Password</CardTitle>
+                                <button onClick={() => setModalOpen(null)} className="text-slate-400 hover:text-slate-600">
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                            <CardDescription>
+                                Inserisci la tua email. Ti invieremo un link per impostare una nuova password.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {showConfirmation && !error ? (
+                                <div className="text-center py-4 space-y-4">
+                                    <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                        <MessageSquare className="h-6 w-6 text-green-600" />
+                                    </div>
+                                    <p className="text-slate-600 text-sm">
+                                        Se l'indirizzo <strong>{email}</strong> è registrato, riceverai a breve una email con le istruzioni.
+                                    </p>
+                                    <Button variant="outline" onClick={() => { setModalOpen(null); setShowConfirmation(false); }} className="w-full">
+                                        Torna al Login
+                                    </Button>
+                                </div>
+                            ) : (
+                                <form onSubmit={handlePasswordReset} className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Input
+                                            type="email"
+                                            placeholder="nome@azienda.com"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            required
+                                            className="bg-white"
+                                        />
+                                    </div>
+                                    {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-md border border-red-100">{error}</div>}
+                                    <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800" disabled={loading}>
+                                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Invia Link di Recupero'}
+                                    </Button>
+                                </form>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
 
         </div>

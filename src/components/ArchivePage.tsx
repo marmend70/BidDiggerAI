@@ -358,7 +358,7 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
 
     // --- FILTER LOGIC ---
     type TabType = 'TUTTE' | 'SCADENZA' | 'DA_ASSEGNARE' | 'IN_VALUTAZIONE' | 'DECISA_GO' | 'DECISA_NO_GO' | 'ASSEGNATA' | 'PRESENTATA';
-    const [activeTab, setActiveTab] = useState<TabType>('TUTTE');
+    const [currentTab, setCurrentTab] = useState<TabType>('TUTTE');
 
     const getOfferDeadline = (analysis: AnalysisResult): string | null => {
         const timeline = analysis['5_scadenze']?.[0]?.timeline || [];
@@ -723,7 +723,7 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
                             <DropdownMenuTrigger className="flex items-center justify-between w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-200">
                                 <span className="flex items-center gap-2">
                                     <Filter className="h-4 w-4 text-slate-400" />
-                                    {TAB_LABELS[activeTab as keyof typeof TAB_LABELS] || 'Filtra per stato'}
+                                    {TAB_LABELS[currentTab as keyof typeof TAB_LABELS] || 'Filtra per stato'}
                                 </span>
                                 <ChevronDown className="h-4 w-4 text-slate-400" />
                             </DropdownMenuTrigger>
@@ -731,10 +731,10 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
                                 {Object.entries(TAB_LABELS).map(([key, label]) => (
                                     <DropdownMenuItem
                                         key={key}
-                                        onClick={() => setActiveTab(key)}
+                                        onClick={() => setCurrentTab(key as TabType)}
                                         className={cn(
                                             "cursor-pointer hover:bg-slate-800 focus:bg-slate-800 py-3",
-                                            activeTab === key && "text-amber-500 bg-slate-800 font-medium"
+                                            currentTab === key && "text-amber-500 bg-slate-800 font-medium"
                                         )}
                                     >
                                         {label}
@@ -747,45 +747,45 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
                     {/* Tabs */}
                     {/* Tabs Scroll Container */}
                     <div className="hidden md:flex items-center gap-6 mt-6 border-b border-slate-800 overflow-x-auto pb-0">
-                        <button onClick={() => setActiveTab('TUTTE')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", activeTab === 'TUTTE' ? "text-amber-500" : "text-slate-400 hover:text-slate-200")}>
+                        <button onClick={() => setCurrentTab('TUTTE')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", currentTab === 'TUTTE' ? "text-amber-500" : "text-slate-400 hover:text-slate-200")}>
                             Tutte <span className="ml-1 text-xs opacity-70">({analyses.length})</span>
                             {activeTab === 'TUTTE' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-amber-500" />}
                         </button>
 
-                        <button onClick={() => setActiveTab('IN_VALUTAZIONE')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", activeTab === 'IN_VALUTAZIONE' ? "text-amber-500" : "text-slate-400 hover:text-slate-200")}>
+                        <button onClick={() => setCurrentTab('IN_VALUTAZIONE')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", currentTab === 'IN_VALUTAZIONE' ? "text-amber-500" : "text-slate-400 hover:text-slate-200")}>
                             In Valutazione <span className="ml-1 text-xs opacity-70">({analyses.filter(a => a.tenders?.tender_status === 'In valutazione').length})</span>
-                            {activeTab === 'IN_VALUTAZIONE' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-amber-500" />}
+                            {currentTab === 'IN_VALUTAZIONE' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-amber-500" />}
                         </button>
 
-                        <button onClick={() => setActiveTab('DECISA_GO')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", activeTab === 'DECISA_GO' ? "text-green-500" : "text-slate-400 hover:text-green-400")}>
+                        <button onClick={() => setCurrentTab('DECISA_GO')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", currentTab === 'DECISA_GO' ? "text-green-500" : "text-slate-400 hover:text-green-400")}>
                             Go <span className="ml-1 text-xs opacity-70">({analyses.filter(a => a.tenders?.tender_status === 'Decisa: Go').length})</span>
-                            {activeTab === 'DECISA_GO' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-green-500" />}
+                            {currentTab === 'DECISA_GO' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-green-500" />}
                         </button>
 
-                        <button onClick={() => setActiveTab('DECISA_NO_GO')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", activeTab === 'DECISA_NO_GO' ? "text-red-500" : "text-slate-400 hover:text-red-400")}>
+                        <button onClick={() => setCurrentTab('DECISA_NO_GO')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", currentTab === 'DECISA_NO_GO' ? "text-red-500" : "text-slate-400 hover:text-red-400")}>
                             No Go <span className="ml-1 text-xs opacity-70">({analyses.filter(a => a.tenders?.tender_status === 'Decisa: No Go').length})</span>
-                            {activeTab === 'DECISA_NO_GO' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-red-500" />}
+                            {currentTab === 'DECISA_NO_GO' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-red-500" />}
                         </button>
 
-                        <button onClick={() => setActiveTab('ASSEGNATA')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", activeTab === 'ASSEGNATA' ? "text-blue-500" : "text-slate-400 hover:text-blue-400")}>
+                        <button onClick={() => setCurrentTab('ASSEGNATA')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", currentTab === 'ASSEGNATA' ? "text-blue-500" : "text-slate-400 hover:text-blue-400")}>
                             Assegnata <span className="ml-1 text-xs opacity-70">({analyses.filter(a => a.tenders?.tender_status === 'Assegnata').length})</span>
-                            {activeTab === 'ASSEGNATA' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-500" />}
+                            {currentTab === 'ASSEGNATA' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-500" />}
                         </button>
 
-                        <button onClick={() => setActiveTab('PRESENTATA')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", activeTab === 'PRESENTATA' ? "text-purple-500" : "text-slate-400 hover:text-purple-400")}>
+                        <button onClick={() => setCurrentTab('PRESENTATA')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", currentTab === 'PRESENTATA' ? "text-purple-500" : "text-slate-400 hover:text-purple-400")}>
                             Presentata <span className="ml-1 text-xs opacity-70">({analyses.filter(a => a.tenders?.tender_status === 'Presentata').length})</span>
-                            {activeTab === 'PRESENTATA' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-purple-500" />}
+                            {currentTab === 'PRESENTATA' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-purple-500" />}
                         </button>
 
                         <div className="w-px h-6 bg-slate-800 mx-2" />
 
-                        <button onClick={() => setActiveTab('SCADENZA')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", activeTab === 'SCADENZA' ? "text-amber-500" : "text-slate-400 hover:text-slate-200")}>
+                        <button onClick={() => setCurrentTab('SCADENZA')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", currentTab === 'SCADENZA' ? "text-amber-500" : "text-slate-400 hover:text-slate-200")}>
                             In Scadenza <span className="ml-1 text-xs opacity-70">({countScadenza})</span>
-                            {activeTab === 'SCADENZA' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-amber-500" />}
+                            {currentTab === 'SCADENZA' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-amber-500" />}
                         </button>
-                        <button onClick={() => setActiveTab('DA_ASSEGNARE')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", activeTab === 'DA_ASSEGNARE' ? "text-amber-500" : "text-slate-400 hover:text-slate-200")}>
+                        <button onClick={() => setCurrentTab('DA_ASSEGNARE')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", currentTab === 'DA_ASSEGNARE' ? "text-amber-500" : "text-slate-400 hover:text-slate-200")}>
                             Da Assegnare <span className="ml-1 text-xs opacity-70">({countDaAssegnare})</span>
-                            {activeTab === 'DA_ASSEGNARE' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-amber-500" />}
+                            {currentTab === 'DA_ASSEGNARE' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-amber-500" />}
                         </button>
                     </div>
                 </div>

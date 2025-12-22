@@ -51,6 +51,7 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
     const [selectedAnalysis, setSelectedAnalysis] = useState<AnalysisResult | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [notification, setNotification] = useState<{ isOpen: boolean; title: string; message: string; type: 'success' | 'info' } | null>(null);
+    const [fetchError, setFetchError] = useState<string | null>(null);
 
     useEffect(() => {
         fetchAnalyses();
@@ -58,6 +59,7 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
 
     const fetchAnalyses = async () => {
         setIsLoading(true);
+        setFetchError(null);
         try {
             let query = supabase
                 .from('analyses')
@@ -112,8 +114,9 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
             }
 
             setAnalyses(uniqueAnalyses);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error fetching analyses:', error);
+            setFetchError(error.message || "Errore sconosciuto nel caricamento");
         } finally {
             setIsLoading(false);
         }
@@ -593,9 +596,24 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
     };
 
     if (isLoading) {
+        <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 text-amber-500 animate-spin" />
+        </div>
+        );
+    }
+
+    if (fetchError) {
         return (
-            <div className="flex items-center justify-center h-64">
-                <Loader2 className="h-8 w-8 text-amber-500 animate-spin" />
+            <div className="flex flex-col items-center justify-center h-64 text-red-400 p-4 text-center">
+                <AlertCircle className="h-10 w-10 mb-2" />
+                <h3 className="font-bold text-lg">Errore di caricamento</h3>
+                <p className="text-sm text-slate-400 mb-4">{fetchError}</p>
+                <button
+                    onClick={fetchAnalyses}
+                    className="px-4 py-2 bg-slate-800 rounded-md hover:bg-slate-700 text-white text-sm"
+                >
+                    Riprova
+                </button>
             </div>
         );
     }

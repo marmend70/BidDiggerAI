@@ -215,7 +215,7 @@ function App() {
       // 1. Fetch Preferences & Plan & Role & Organization
       const { data: profile } = await supabase
         .from('profiles')
-        .select('preferences, plan_type, credits, role, app_role, default_organization_id')
+        .select('preferences, plan_type, credits, role, default_organization_id')
         .eq('id', userId)
         .single();
 
@@ -223,7 +223,7 @@ function App() {
 
       if (profile) {
         // Check app_role first (main source), then fallback to role
-        const effectiveRole = profile.app_role || profile.role;
+        const effectiveRole = (profile as any).app_role || profile.role;
         console.log("DEBUG: Profile roles - app_role:", profile.app_role, "role:", profile.role);
 
         if (effectiveRole) {

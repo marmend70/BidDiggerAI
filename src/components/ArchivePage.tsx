@@ -411,7 +411,7 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
             if (!matchesSearch) return false;
 
             // 2. Tab Filter
-            if (activeTab === 'SCADENZA') {
+            if (currentTab === 'SCADENZA') {
                 const deadline = getOfferDeadline(a.result_json);
                 if (!deadline) return false;
                 // Parse date
@@ -431,16 +431,16 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
                 return days >= 0 && days <= 20;
             }
 
-            if (activeTab === 'DA_ASSEGNARE') {
+            if (currentTab === 'DA_ASSEGNARE') {
                 return a.tenders?.tender_status === 'Assegnata' &&
                     (!a.tenders.owner_tech || !a.tenders.owner_admin || !a.tenders.owner_comm);
             }
 
-            if (activeTab === 'IN_VALUTAZIONE') return a.tenders?.tender_status === 'In valutazione';
-            if (activeTab === 'DECISA_GO') return a.tenders?.tender_status === 'Decisa: Go';
-            if (activeTab === 'DECISA_NO_GO') return a.tenders?.tender_status === 'Decisa: No Go';
-            if (activeTab === 'ASSEGNATA') return a.tenders?.tender_status === 'Assegnata';
-            if (activeTab === 'PRESENTATA') return a.tenders?.tender_status === 'Presentata';
+            if (currentTab === 'IN_VALUTAZIONE') return a.tenders?.tender_status === 'In valutazione';
+            if (currentTab === 'DECISA_GO') return a.tenders?.tender_status === 'Decisa: Go';
+            if (currentTab === 'DECISA_NO_GO') return a.tenders?.tender_status === 'Decisa: No Go';
+            if (currentTab === 'ASSEGNATA') return a.tenders?.tender_status === 'Assegnata';
+            if (currentTab === 'PRESENTATA') return a.tenders?.tender_status === 'Presentata';
 
             return true;
         })
@@ -749,7 +749,7 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
                     <div className="hidden md:flex items-center gap-6 mt-6 border-b border-slate-800 overflow-x-auto pb-0">
                         <button onClick={() => setCurrentTab('TUTTE')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", currentTab === 'TUTTE' ? "text-amber-500" : "text-slate-400 hover:text-slate-200")}>
                             Tutte <span className="ml-1 text-xs opacity-70">({analyses.length})</span>
-                            {activeTab === 'TUTTE' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-amber-500" />}
+                            {currentTab === 'TUTTE' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-amber-500" />}
                         </button>
 
                         <button onClick={() => setCurrentTab('IN_VALUTAZIONE')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", currentTab === 'IN_VALUTAZIONE' ? "text-amber-500" : "text-slate-400 hover:text-slate-200")}>

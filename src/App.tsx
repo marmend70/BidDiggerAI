@@ -6,6 +6,7 @@ import { LandingPage } from '@/components/LandingPage';
 import { Login } from '@/components/Login';
 import { AdminPage } from '@/components/AdminPage';
 import { ArchivePage } from '@/components/ArchivePage';
+import { TeamSettings } from '@/components/TeamSettings';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -128,6 +129,11 @@ function App() {
   const [userPlan, setUserPlan] = useState<'trial' | 'pro'>('trial');
   const [userCredits, setUserCredits] = useState<number>(0); // Credits state
   const [userRole, setUserRole] = useState<string>('user'); // Store role
+  const [orgRole, setOrgRole] = useState<string | null>(null); // NEW: Store Workspace Role
+  const [orgName, setOrgName] = useState<string | null>(null); // NEW: Store Workspace Name
+  const [orgOwnerEmail, setOrgOwnerEmail] = useState<string | null>(null); // NEW: Store Owner Email
+  const [userOrganizationId, setUserOrganizationId] = useState<string | null>(null); // NEW: Team Support
+  const [myOrganizations, setMyOrganizations] = useState<any[]>([]); // NEW: List of available workspaces
   const [tenderCount, setTenderCount] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showPricingModal, setShowPricingModal] = useState(false);
@@ -195,12 +201,14 @@ function App() {
 
   const fetchUserData = async (userId: string) => {
     try {
-      // 1. Fetch Preferences & Plan & Role
+      // 1. Fetch Preferences & Plan & Role & Organization
       const { data: profile } = await supabase
         .from('profiles')
-        .select('preferences, plan_type, credits, role, app_role')
+        .select('preferences, plan_type, credits, role, app_role, default_organization_id')
         .eq('id', userId)
         .single();
+
+      let currentOrgId = null;
 
       if (profile) {
         // Check app_role first (main source), then fallback to role
@@ -217,6 +225,74 @@ function App() {
         } else {
           console.warn("Credits not found or not a number:", profile.credits);
         }
+
+        // Set Organization
+        if (profile.default_organization_id) {
+          console.log("Setting Organization ID to:", profile.default_organization_id);
+          setUserOrganizationId(profile.default_organization_id);
+          setUserOrganizationId(profile.default_organization_id);
+          currentOrgId = profile.default_organization_id;
+
+          // Fetch Organization Role
+          const { data: memberData } = await supabase
+            .from('organization_members')
+            .select('role')
+            .eq('organization_id', profile.default_organization_id)
+            .eq('user_id', userId)
+            .single();
+
+          if (memberData) {
+            console.log("Setting Org Role to:", memberData.role);
+            setOrgRole(memberData.role);
+            setOrgName(memberData.organizations?.name);
+          }
+        }
+
+        // FETCH ALL MY ORGANIZATIONS (For Switcher)
+        let formattedOrgs: any[] = [];
+
+        try {
+          // Priority: Try Optimized RPC (if set up)
+          const { data: rpcData, error: rpcError } = await supabase.rpc('get_user_organizations');
+          if (rpcError) throw rpcError;
+
+          if (rpcData) {
+            formattedOrgs = rpcData.map((item: any) => ({
+              id: item.org_id,
+              name: item.org_name,
+              role: item.user_role,
+              isPersonal: item.is_personal,
+              ownerEmail: item.owner_email // NEW: Map Owner Email
+            }));
+          }
+        } catch (err) {
+          console.warn("RPC fetch failed, using fallback:", err);
+
+          // Fallback: Standard Table Select
+          const { data: fallbackData } = await supabase
+            .from('organization_members')
+            .select(`
+                role,
+                organization_id,
+                organizations (
+                  id,
+                  name,
+                  created_by
+                )
+              `)
+            .eq('user_id', userId);
+
+          if (fallbackData) {
+            formattedOrgs = fallbackData.map((item: any) => ({
+              id: item.organizations?.id,
+              name: item.organizations?.name,
+              role: item.role,
+              isPersonal: item.organizations?.created_by === userId
+            }));
+          }
+        }
+
+        setMyOrganizations(formattedOrgs.filter((o: any) => o.id));
 
         if (profile.preferences) {
           setUserPreferences({
@@ -240,14 +316,23 @@ function App() {
       }
 
       // 2. Fetch Tender Count
-      const { count, error: countError } = await supabase
+      // Updated to fetch based on Organization ID if available
+      let countQuery = supabase
         .from('tenders')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId);
+        .select('*', { count: 'exact', head: true });
+
+      if (currentOrgId) {
+        countQuery = countQuery.eq('organization_id', currentOrgId);
+      } else {
+        countQuery = countQuery.eq('user_id', userId);
+      }
+
+      const { count, error: countError } = await countQuery;
 
       if (!countError && count !== null) {
         setTenderCount(count);
       }
+
 
       if (!countError && count !== null) {
         setTenderCount(count);
@@ -266,6 +351,34 @@ function App() {
 
     } catch (err) {
       console.error('Error fetching user data:', err);
+    }
+  };
+
+  const handleWorkspaceSwitch = async (newOrgId: string | null) => {
+    if (!session?.user || !newOrgId) return;
+
+    // Optimistic Update
+    setUserOrganizationId(newOrgId);
+
+    try {
+      // Persist preference
+      await supabase
+        .from('profiles')
+        .update({ default_organization_id: newOrgId })
+        .eq('id', session.user.id);
+
+      // Reload data to reflect new workspace context (credits, tenders, role)
+      await fetchUserData(session.user.id);
+
+      // Reset navigation to Dashboard or appropriate page
+      if (activeSection === 'team' || activeSection === 'configurazioni') {
+        // Stay there? Or go home? 
+        // Tenders need refresh. Dashboard component renders tenders.
+        // If I am in 'team', I need to check if I am allowed (I should be, as I am member).
+      }
+    } catch (err) {
+      console.error("Error switching workspace:", err);
+      alert("Errore cambio workspace");
     }
   };
 
@@ -681,12 +794,28 @@ function App() {
       // Exclude 'faq' as it's not a standard analysis section
       const missing = req.filter(k => k !== 'faq' && k !== '0_snapshot' && !got.includes(k) && !finalJson[k]); // Check both existence and truthiness
 
+
       if (missing.length > 0) {
         console.warn("Analysis incomplete. Missing:", missing);
         setResumeSections(missing);
         setShowResumeModal(true);
+      } else {
+        // --- ACTIVITY LOGGING: DONE ---
+        // Log only if fully complete or at least "done" with this run
+        supabase.from('tender_activities').insert({
+          tender_id: tenderId,
+          user_id: session.user.id,
+          action_type: 'analysis_run',
+          details: { batch_count: results.length }
+        }).then(({ error }) => {
+          if (error) console.error('Error logging analysis_run:', error);
+        });
       }
     }
+
+    // Inject tender_id into the local state for future updates
+    setAnalysisData(prev => prev ? { ...prev, tender_id: tenderId } : { ...finalJson, tender_id: tenderId });
+
   };
 
 
@@ -853,7 +982,8 @@ function App() {
         .insert({
           user_id: session.user.id,
           title: title,
-          status: 'analyzing'
+          status: 'analyzing',
+          organization_id: userOrganizationId // Inject Organization ID
         })
         .select()
         .single();
@@ -872,6 +1002,16 @@ function App() {
         .insert(documentsToInsert);
 
       if (docsError) throw docsError;
+
+      if (docsError) throw docsError;
+
+      // --- ACTIVITY LOGGING: CREATED ---
+      await supabase.from('tender_activities').insert({
+        tender_id: tender.id,
+        user_id: session.user.id,
+        action_type: 'created',
+        details: { title: title }
+      });
 
       setProgressMessage('Estrazione e salvataggio testo...');
 
@@ -912,7 +1052,10 @@ function App() {
 
       // DEDUCT CREDIT (1 per Analysis) - SKIP IF RESUMING
       // DEDUCT CREDIT (1 per Analysis)
-      const { error: creditError } = await supabase.rpc('deduct_user_credits', { count: 1 });
+      const { error: creditError } = await supabase.rpc('deduct_user_credits', {
+        count: 1,
+        org_id: userOrganizationId || null
+      });
       if (creditError) {
         console.error("Credit deduction failed:", creditError);
       } else {
@@ -1176,6 +1319,33 @@ function App() {
     } catch (err) {
       console.error("Error saving user notes:", err);
     }
+
+    // 3. Activity Logging (Async, don't block)
+    try {
+      const tId = (updatedData as any).tender_id || (updatedData as any).tenderId;
+      // If we have a tender ID directly (best), use it.
+      // If not, and we have analysisId, resolve it.
+      let finalTenderId = tId;
+
+      if (!finalTenderId && (updatedData as any).id) {
+        const { data: aData } = await supabase.from('analyses').select('tender_id').eq('id', (updatedData as any).id).single();
+        if (aData) finalTenderId = aData.tender_id;
+      }
+
+      if (finalTenderId) {
+        await supabase.from('tender_activities').insert({
+          tender_id: finalTenderId,
+          user_id: session.user.id,
+          action_type: 'section_update',
+          details: {
+            section: SECTIONS_MAP[sectionId]?.label || sectionId,
+            note_snippet: notes.length > 50 ? notes.substring(0, 50) + '...' : notes
+          }
+        });
+      }
+    } catch (logErr) {
+      console.warn('Failed to log section update:', logErr);
+    }
   };
 
 
@@ -1224,6 +1394,10 @@ function App() {
       onOpenContact={() => setContactModalOpen(true)}
       onOpenChatAssistant={() => setShowChatAssistant(true)}
       userRole={userRole}
+      orgRole={orgRole} // PASSING THE MISSING PROP
+      myOrganizations={myOrganizations} // MISSING PROP ADDED
+      currentOrgId={userOrganizationId} // MISSING PROP ADDED
+      onWorkspaceSwitch={handleWorkspaceSwitch} // MISSING PROP ADDED
     >
       <UpgradeModal
         isOpen={showUpgradeModal}
@@ -1308,14 +1482,27 @@ function App() {
         defaultStructuredModelId={userPreferences.structured_model}
         defaultSemanticModelId={userPreferences.semantic_model}
       />
-      {!analysisData && activeSection !== 'configurazioni' && activeSection !== 'archivio' ? (
+      {!analysisData && activeSection !== 'configurazioni' && activeSection !== 'archivio' && activeSection !== 'team' ? (
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-center mb-8 relative">
-            <div className="inline-block mb-4 px-4 py-2 bg-[#1e1e2d] text-indigo-400 rounded-full text-sm font-semibold border border-slate-700 flex items-center gap-2 shadow-sm">
-              <span>Crediti disponibili: {userCredits}</span>
-              <button onClick={() => setShowPricingModal(true)} className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-500 transition-colors">
-                Ricarica
-              </button>
+            <div className="flex flex-col items-center gap-2 mb-4">
+              <div className="inline-block px-4 py-2 bg-[#1e1e2d] text-indigo-400 rounded-full text-sm font-semibold border border-slate-700 flex items-center gap-2 shadow-sm">
+                <span>{userOrganizationId ? "Crediti Workspace" : "Crediti disponibili"}: {userCredits}</span>
+                <button onClick={() => setShowPricingModal(true)} className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-500 transition-colors">
+                  Ricarica
+                </button>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-slate-500">
+                <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700">
+                  Account: {userRole === 'admin' ? 'Admin (System)' : 'Standard'}
+                </span>
+                {orgRole && (
+                  <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-amber-500">
+                    Team: {orgRole === 'owner' ? 'Proprietario' : (orgRole === 'admin' ? 'Amministratore' : 'Membro')}
+                    {orgName && <span className="text-slate-500 ml-1">| {orgName}</span>}
+                  </span>
+                )}
+              </div>
             </div>
             <h1 className="text-4xl font-bold text-slate-100 mb-4">Benvenuto in Bid Digger</h1>
             <p className="text-lg text-slate-400 max-w-2xl mx-auto">
@@ -1372,11 +1559,17 @@ function App() {
       ) : activeSection === 'archivio' ? (
         <ArchivePage
           userId={session.user.id}
+          organizationId={userOrganizationId} // Pass Organization ID
           userPreferences={userPreferences}
-          onLoadAnalysis={(data) => {
-            setAnalysisData(data);
+          onLoadAnalysis={(data, tenderId) => {
+            setAnalysisData({ ...data, tender_id: tenderId });
             setActiveSection('3_sintesi');
           }}
+        />
+      ) : activeSection === 'team' ? (
+        <TeamSettings
+          currentUserId={session.user.id}
+          organizationId={userOrganizationId}
         />
       ) : (
         <Dashboard

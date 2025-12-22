@@ -240,4 +240,22 @@ export interface UserProfile {
     credits: number; // Added for credit system
     preferences?: UserPreferences;
     role?: string; // Added for admin functionality
+    default_organization_id?: string; // Added for Team/Organization support
+}
+
+export interface TenderActivity {
+    id: string;
+    tender_id: string;
+    user_id: string;
+    action_type: 'created' | 'analysis_run' | 'status_change' | 'dashboard_note' | 'section_update';
+    details: {
+        old_status?: string;
+        new_status?: string;
+        section?: string;
+        note_snippet?: string;
+        [key: string]: any;
+    };
+    created_at: string;
+    // Joined fields
+    user_email?: string;
 }

@@ -12,10 +12,12 @@ import {
     X,
     Bot,
     Zap,
-    BookOpen
+    BookOpen,
+    Building
 } from 'lucide-react';
 import { Footer } from './Footer';
 import { GuideModal } from './GuideModal';
+import { WorkspaceSwitcher, type Organization } from './WorkspaceSwitcher';
 import { SECTIONS_MAP, MENU_ORDER, SECTION_BATCH_MAP } from '@/constants';
 
 interface LayoutProps {
@@ -30,6 +32,11 @@ interface LayoutProps {
     onOpenContact?: () => void;
     onOpenChatAssistant?: () => void;
     userRole?: string;
+    orgRole?: string | null;
+    // Switcher Props
+    myOrganizations?: Organization[];
+    currentOrgId?: string | null;
+    onWorkspaceSwitch?: (id: string | null) => void;
 }
 
 interface SidebarContentProps {
@@ -43,18 +50,34 @@ interface SidebarContentProps {
     onNewAnalysis?: () => void;
     onOpenChatAssistant?: () => void;
     userRole?: string;
+    orgRole?: string | null;
     onOpenGuide: () => void;
+    // Switcher Props
+    myOrganizations?: Organization[];
+    currentOrgId?: string | null;
+    onWorkspaceSwitch?: (id: string | null) => void;
 }
 
-function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant, userRole, onOpenGuide }: SidebarContentProps) {
+function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant, userRole, orgRole, onOpenGuide, myOrganizations, currentOrgId, onWorkspaceSwitch }: SidebarContentProps) {
     return (
         <div className="flex flex-col h-full text-white">
-            <div className="p-6 bg-slate-950 shadow-sm z-10">
-                <h1 className="text-2xl font-bold tracking-tight text-amber-500 flex items-center gap-2">
-                    <img src="/logo.png" alt="Bid Digger Logo" className="h-8 w-8 object-contain" />
-                    Bid Digger AI
-                </h1>
-                <p className="text-xs text-slate-400 mt-1">AI Tender Analysis</p>
+            <div className="p-6 bg-slate-950 shadow-sm z-10 space-y-4">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-amber-500 flex items-center gap-2">
+                        <img src="/logo.png" alt="Bid Digger Logo" className="h-8 w-8 object-contain" />
+                        Bid Digger AI
+                    </h1>
+                    <p className="text-xs text-slate-400 mt-1">AI Tender Analysis</p>
+                </div>
+
+                {/* WORKSPACE SWITCHER */}
+                {myOrganizations && onWorkspaceSwitch && (
+                    <WorkspaceSwitcher
+                        organizations={myOrganizations}
+                        currentOrgId={currentOrgId || null}
+                        onSwitch={onWorkspaceSwitch}
+                    />
+                )}
             </div>
             <nav className="px-4 pb-6 space-y-1 flex-1 overflow-y-auto bg-slate-900 pt-4">
                 {MENU_ORDER.map((sectionId, index) => {
@@ -201,6 +224,7 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                     Bid Digger Dashboard
                 </button>
 
+
                 <button
                     onClick={onOpenChatAssistant}
                     disabled={!data || isAnalyzing}
@@ -227,6 +251,21 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                     <FilePlus className="h-4 w-4" />
                     Nuova Analisi
                 </button>
+
+                {/* Workspace Button - Visible to Team Members, Owners, Admins, or System Admins */}
+                {((orgRole === 'owner' || orgRole === 'admin' || orgRole === 'member') || userRole?.toLowerCase() === 'admin') && (
+                    <button
+                        onClick={() => !isAnalyzing && onSectionClick?.('team')}
+                        disabled={isAnalyzing}
+                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors my-2 ${activeSection === 'team'
+                            ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.15)]'
+                            : 'text-blue-400/80 hover:text-blue-300 hover:bg-blue-500/10 border border-transparent'
+                            }`}
+                    >
+                        <Building className={`h-4 w-4 transition-transform duration-300 group-hover:scale-110 ${activeSection === 'team' ? 'text-blue-400' : 'text-blue-400/80 group-hover:text-blue-300'}`} />
+                        <span className="font-medium">Bid Digger Workspace</span>
+                    </button>
+                )}
 
                 <button
                     onClick={async () => {
@@ -286,7 +325,11 @@ export function Layout(props: LayoutProps) {
                     onNewAnalysis={props.onNewAnalysis}
                     onOpenChatAssistant={onOpenChatAssistant}
                     userRole={userRole}
+                    orgRole={props.orgRole}
                     onOpenGuide={() => setIsGuideOpen(true)} // PASS HANDLER
+                    myOrganizations={props.myOrganizations}
+                    currentOrgId={props.currentOrgId}
+                    onWorkspaceSwitch={props.onWorkspaceSwitch}
                 />
             </aside>
 
@@ -343,10 +386,14 @@ export function Layout(props: LayoutProps) {
                                 setIsMobileMenuOpen(false);
                             }}
                             userRole={userRole}
+                            orgRole={props.orgRole}
                             onOpenGuide={() => {
                                 setIsGuideOpen(true);
                                 setIsMobileMenuOpen(false);
                             }}
+                            myOrganizations={props.myOrganizations}
+                            currentOrgId={props.currentOrgId}
+                            onWorkspaceSwitch={props.onWorkspaceSwitch}
                         />
                     </div>
                 </div>

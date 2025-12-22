@@ -13,7 +13,8 @@ import { cn } from '@/lib/utils';
 
 interface ArchivePageProps {
     userId: string;
-    onLoadAnalysis: (data: AnalysisResult) => void;
+    organizationId?: string | null; // NEW: Organization Support
+    onLoadAnalysis: (data: AnalysisResult, tenderId: string) => void;
     userPreferences?: UserPreferences;
 }
 
@@ -44,7 +45,7 @@ const TENDER_STATUSES = [
     'Presentata'
 ];
 
-export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: ArchivePageProps) {
+export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPreferences }: ArchivePageProps) {
     const [analyses, setAnalyses] = useState<ArchivedAnalysis[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedAnalysis, setSelectedAnalysis] = useState<AnalysisResult | null>(null);
@@ -53,12 +54,12 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
 
     useEffect(() => {
         fetchAnalyses();
-    }, [userId]);
+    }, [userId, organizationId]);
 
     const fetchAnalyses = async () => {
         setIsLoading(true);
         try {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('analyses')
                 .select(`
           id,
@@ -68,6 +69,7 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
             tenders!inner (
               title,
               user_id,
+              organization_id,
 
               tender_status,
               owner,
@@ -80,11 +82,36 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
               notes
             )
         `)
-                .eq('tenders.user_id', userId)
                 .order('created_at', { ascending: false });
 
+            // CONDITIONAL FILTER: Team vs Personal
+            if (organizationId) {
+                query = query.eq('tenders.organization_id', organizationId);
+            } else {
+                query = query.eq('tenders.user_id', userId);
+            }
+
+            const { data, error } = await query;
+
             if (error) throw error;
-            setAnalyses((data || []) as any);
+
+            // DEDUPLICATION: Ensure only one card per tender (the most recent one due to sorting)
+            const uniqueAnalyses: any[] = [];
+            const seenTenders = new Set<string>();
+
+            if (data) {
+                for (const item of data) {
+                    // Check tender_id. 
+                    // Note: 'item' is analysis, 'item.tenders' is joined data.
+                    // We use the explicit 'tender_id' column on the analysis row.
+                    if (!seenTenders.has(item.tender_id)) {
+                        seenTenders.add(item.tender_id);
+                        uniqueAnalyses.push(item);
+                    }
+                }
+            }
+
+            setAnalyses(uniqueAnalyses);
         } catch (error) {
             console.error('Error fetching analyses:', error);
         } finally {
@@ -232,6 +259,18 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
                     message: 'La gara è stata contrassegnata come "Assegnata". È ora possibile definire i responsabili (Commerciale, Tecnico, Amministrativo) cliccando sulle icone "+" nella colonna Responsabili.'
                 });
             }
+
+            // --- ACTIVITY LOGGING ---
+            await supabase.from('tender_activities').insert({
+                tender_id: tenderId,
+                user_id: userId,
+                action_type: 'status_change',
+                details: {
+                    old_status: analysis.tenders.tender_status || 'In valutazione',
+                    new_status: newStatus
+                }
+            });
+
         } catch (error) {
             console.error('Error updating status:', error);
             alert('Errore nell\'aggiornamento dello stato');
@@ -271,6 +310,17 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
                 .eq('id', tenderId);
 
             if (error) throw error;
+
+            // --- ACTIVITY LOGGING ---
+            await supabase.from('tender_activities').insert({
+                tender_id: tenderId,
+                user_id: userId,
+                action_type: 'dashboard_note',
+                details: {
+                    note_snippet: notes.length > 50 ? notes.substring(0, 50) + '...' : notes
+                }
+            });
+
         } catch (error) {
             console.error('Error updating notes:', error);
         }
@@ -553,20 +603,8 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
 
 
     // Handle Load/Open
-    const handleOpen = (rawData: any) => {
+    const handleOpen = (rawData: any, tenderId?: string) => {
         // ADAPTER LOGIC FOR ARCHIVED DATA (Keep existing adapter logic)
-        // ... (Logic from before, just wrapped in function if needed, or inline)
-        // For brevity, I'll copy the core adapter block here or just call onLoadAnalysis directly if adapter is not needed?
-        // The previous code had a huge block of logic inside onClick. I should preserve it.
-        // Let's refactor that block into a proper function to keep JSX clean.
-
-        const key = Object.keys(rawData).find(k => k.startsWith('3_sintesi')); // just a check
-        // We can just re-use the exact logic from previous version.
-
-        // Wait, to avoid massive copy-paste in this single tool call,
-        // I will assume the adapter logic is complex and I should have kept it.
-        // But I am REPLACING the whole JSX block. So I need to re-implement the adapter function.
-
         // RE-INJECT ADAPTER LOGIC HERE
         const data = { ...rawData };
         // (Paste the Genius Recovery / Alias Logic here - for now simplifying to direct load 
@@ -605,7 +643,7 @@ export function ArchivePage({ userId, onLoadAnalysis, userPreferences }: Archive
             }
         });
 
-        onLoadAnalysis(data);
+        onLoadAnalysis(data, tenderId || '');
         alert("Analisi caricata correttamente!");
     };
 

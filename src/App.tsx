@@ -244,7 +244,7 @@ function App() {
           if (memberData) {
             console.log("Setting Org Role to:", memberData.role);
             setOrgRole(memberData.role);
-            setOrgName((memberData.organizations as any)?.name);
+            setOrgName((memberData as any).organizations?.name);
           }
         }
 

@@ -309,7 +309,7 @@ export function Layout(props: LayoutProps) {
     };
 
     return (
-        <div className="flex h-screen bg-slate-950 overflow-hidden flex-col md:flex-row">
+        <div className="flex h-[100dvh] bg-slate-950 overflow-hidden flex-col md:flex-row">
             {/* GUIDE MODAL */}
             <GuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
 

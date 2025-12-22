@@ -139,7 +139,7 @@ export function Login({ onOpenContact }: LoginProps = {}) {
 
 
     return (
-        <div className="min-h-screen w-full flex">
+        <div className="min-h-[100dvh] w-full flex">
             {/* Left Side - Branding & Intro */}
             <div className="hidden lg:flex w-1/2 bg-slate-900 relative overflow-hidden flex-col justify-between p-12 text-white">
                 <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-10"></div>

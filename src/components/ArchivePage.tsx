@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Trash2, FileText, Download, Search, Loader2, Archive } from 'lucide-react';
+import { Trash2, FileText, Download, Search, Loader2, Archive, ChevronDown, Filter } from 'lucide-react';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { AnalysisResult, UserPreferences } from '@/types';
 import { SummaryModal } from './SummaryModal';
 import { exportToDocx } from '@/lib/exportUtils';
@@ -44,6 +50,20 @@ const TENDER_STATUSES = [
     'Assegnata',
     'Presentata'
 ];
+
+const TAB_LABELS = {
+    'TUTTE': 'Tutte',
+    'DA_VALUTARE': 'Da Valutare',
+    'INTERESSANTE': 'Interessante',
+    'NON_INTERESSANTE': 'Non Interessante',
+    'PARTECIPAZIONE': 'Partecipazione',
+    'AGGIUDICATA': 'Aggiudicata',
+    'PERSA': 'Persa',
+    'ASSEGNATA': 'Assegnata',
+    'PRESENTATA': 'Presentata',
+    'SCADENZA': 'In Scadenza',
+    'DA_ASSEGNARE': 'Da Assegnare'
+};
 
 export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPreferences }: ArchivePageProps) {
     const [analyses, setAnalyses] = useState<ArchivedAnalysis[]>([]);
@@ -494,46 +514,35 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
 
     const handleDownloadReport = async () => {
         try {
+            // Column Configuration
+            const reportCols = userPreferences?.report_columns || {};
+            const availableCols = [
+                { key: 'id', label: 'ID Gara', default: true },
+                { key: 'ente', label: 'Ente / Stazione Appaltante', default: true },
+                { key: 'oggetto', label: 'Oggetto', default: true },
+                { key: 'importo', label: 'Importo', default: true }, // Added Importo
+                { key: 'scadenza', label: 'Scadenza', default: true },
+                { key: 'stato', label: 'Stato', default: true },
+                { key: 'responsabili', label: 'Responsabili', default: false },
+                { key: 'note', label: 'Note', default: false },
+            ];
+
+            const activeCols = availableCols.filter(col =>
+                reportCols[col.key] !== undefined ? reportCols[col.key] : col.default
+            );
+
+            const colWidth = Math.floor(100 / activeCols.length);
+
             const tableRows = [
                 // Header Row
                 new TableRow({
-                    children: [
+                    children: activeCols.map(col =>
                         new TableCell({
-                            children: [new Paragraph({ children: [new TextRun({ text: "ID Gara", bold: true })] })],
-                            width: { size: 10, type: WidthType.PERCENTAGE },
+                            children: [new Paragraph({ children: [new TextRun({ text: col.label, bold: true })] })],
+                            width: { size: colWidth, type: WidthType.PERCENTAGE },
                             shading: { fill: "EEEEEE" }
-                        }),
-                        new TableCell({
-                            children: [new Paragraph({ children: [new TextRun({ text: "Oggetto", bold: true })] })],
-                            width: { size: 30, type: WidthType.PERCENTAGE },
-                            shading: { fill: "EEEEEE" }
-                        }),
-                        new TableCell({
-                            children: [new Paragraph({ children: [new TextRun({ text: "Ente / Stazione Appaltante", bold: true })] })],
-                            width: { size: 20, type: WidthType.PERCENTAGE },
-                            shading: { fill: "EEEEEE" }
-                        }),
-                        new TableCell({
-                            children: [new Paragraph({ children: [new TextRun({ text: "Scadenza Offerta", bold: true })] })],
-                            width: { size: 15, type: WidthType.PERCENTAGE },
-                            shading: { fill: "EEEEEE" }
-                        }),
-                        new TableCell({
-                            children: [new Paragraph({ children: [new TextRun({ text: "Stato", bold: true })] })],
-                            width: { size: 10, type: WidthType.PERCENTAGE },
-                            shading: { fill: "EEEEEE" }
-                        }),
-                        new TableCell({
-                            children: [new Paragraph({ children: [new TextRun({ text: "Responsabile", bold: true })] })],
-                            width: { size: 15, type: WidthType.PERCENTAGE },
-                            shading: { fill: "EEEEEE" }
-                        }),
-                        new TableCell({
-                            children: [new Paragraph({ children: [new TextRun({ text: "Note", bold: true })] })],
-                            width: { size: 10, type: WidthType.PERCENTAGE },
-                            shading: { fill: "EEEEEE" }
-                        }),
-                    ],
+                        })
+                    ),
                 }),
                 // Data Rows
                 ...filteredAnalyses.map(a => {
@@ -541,20 +550,53 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
                     const object = a.result_json['3_sintesi']?.oggetto || a.tenders.title || "N/D";
                     const entity = a.result_json['3_sintesi']?.stazione_appaltante || a.result_json['3_sintesi']?.ente || "N/D";
                     const status = a.tenders.tender_status || "In valutazione";
-                    const owner = a.tenders.owner || "-";
+                    const owner = a.tenders.owner || "-"; // Legacy single owner/generic
+                    // For specific owners if needed:
+                    // const tech = a.tenders.owner_tech || "";
+                    // const admin = a.tenders.owner_admin || "";
+                    // const comm = a.tenders.owner_comm || "";
+                    // const combinedOwner = [tech, admin, comm].filter(Boolean).join(", ") || owner;
+
                     const id = a.tenders.numeric_id ? `#${a.tenders.numeric_id}` : "N/D";
                     const notes = a.tenders.notes || "-";
 
+                    // Importo Logic
+                    let price = "N/D";
+                    if (a.result_json['6_importi']) {
+                        const total = a.result_json['6_importi'][0]?.base_asta_totale;
+                        if (total) {
+                            price = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(total);
+                        }
+                    }
+
+                    const cellData: Record<string, string> = {
+                        id: String(id),
+                        ente: entity,
+                        oggetto: object,
+                        importo: price,
+                        scadenza: deadline,
+                        stato: status,
+                        responsabili: owner,
+                        note: notes
+                    };
+
                     return new TableRow({
-                        children: [
-                            new TableCell({ children: [new Paragraph({ text: String(id) })] }),
-                            new TableCell({ children: [new Paragraph({ text: object })] }),
-                            new TableCell({ children: [new Paragraph({ text: entity })] }),
-                            new TableCell({ children: [new Paragraph({ text: deadline })] }),
-                            new TableCell({ children: [new Paragraph({ text: status })] }),
-                            new TableCell({ children: [new Paragraph({ text: owner })] }),
-                            new TableCell({ children: [new Paragraph({ text: notes })] }),
-                        ],
+                        children: activeCols.map(col => {
+                            if (col.key === 'responsabili') {
+                                return new TableCell({
+                                    children: [
+                                        new Paragraph({ text: `Commerciale: ${a.tenders.owner_comm || "-"}` }),
+                                        new Paragraph({ text: `Tecnico: ${a.tenders.owner_tech || "-"}` }),
+                                        new Paragraph({ text: `Amministrativo: ${a.tenders.owner_admin || "-"}` }),
+                                    ],
+                                    width: { size: colWidth, type: WidthType.PERCENTAGE },
+                                });
+                            }
+                            return new TableCell({
+                                children: [new Paragraph({ text: cellData[col.key] || "-" })],
+                                width: { size: colWidth, type: WidthType.PERCENTAGE },
+                            });
+                        }),
                     });
                 })
             ];
@@ -675,9 +717,36 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
                         <Archive className="h-6 w-6 text-amber-500" />
                         Bid Digger Dashboard
                     </h1>
+                    {/* Mobile Dropdown */}
+                    <div className="md:hidden mt-6">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger className="flex items-center justify-between w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-200">
+                                <span className="flex items-center gap-2">
+                                    <Filter className="h-4 w-4 text-slate-400" />
+                                    {TAB_LABELS[activeTab as keyof typeof TAB_LABELS] || 'Filtra per stato'}
+                                </span>
+                                <ChevronDown className="h-4 w-4 text-slate-400" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-[calc(100vw-32px)] bg-slate-900 border-slate-700 text-slate-200">
+                                {Object.entries(TAB_LABELS).map(([key, label]) => (
+                                    <DropdownMenuItem
+                                        key={key}
+                                        onClick={() => setActiveTab(key)}
+                                        className={cn(
+                                            "cursor-pointer hover:bg-slate-800 focus:bg-slate-800 py-3",
+                                            activeTab === key && "text-amber-500 bg-slate-800 font-medium"
+                                        )}
+                                    >
+                                        {label}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+
                     {/* Tabs */}
                     {/* Tabs Scroll Container */}
-                    <div className="flex items-center gap-6 mt-6 border-b border-slate-800 overflow-x-auto pb-0">
+                    <div className="hidden md:flex items-center gap-6 mt-6 border-b border-slate-800 overflow-x-auto pb-0">
                         <button onClick={() => setActiveTab('TUTTE')} className={cn("pb-3 text-sm font-medium whitespace-nowrap transition-all relative", activeTab === 'TUTTE' ? "text-amber-500" : "text-slate-400 hover:text-slate-200")}>
                             Tutte <span className="ml-1 text-xs opacity-70">({analyses.length})</span>
                             {activeTab === 'TUTTE' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-amber-500" />}

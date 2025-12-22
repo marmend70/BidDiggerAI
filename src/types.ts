@@ -231,6 +231,9 @@ export interface UserPreferences {
     owners_comm?: string[];
     retention_days?: number;
     sector?: string; // NEW
+    report_columns?: {
+        [key: string]: boolean;
+    };
 }
 
 export interface UserProfile {

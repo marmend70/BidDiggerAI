@@ -2174,6 +2174,57 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardContent>
                         </Card >
 
+                        {/* Report Columns Configuration */}
+                        <Card className="bg-slate-900 border-slate-800">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-slate-200">
+                                    <FileText className="h-5 w-5 text-blue-500" />
+                                    Configurazione Report Sintetico
+                                </CardTitle>
+                                <CardDescription className="text-slate-400">Seleziona le colonne da includere nel report Excel/Word generato dalla Dashboard.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {[
+                                        { key: 'id', label: 'ID Gara', default: true },
+                                        { key: 'ente', label: 'Ente / Stazione Appaltante', default: true },
+                                        { key: 'oggetto', label: 'Oggetto della Gara', default: true },
+                                        { key: 'importo', label: 'Importo a Base d\'Asta', default: true },
+                                        { key: 'scadenza', label: 'Scadenza Offerta', default: true },
+                                        { key: 'stato', label: 'Stato Decisionale', default: true },
+                                        { key: 'note', label: 'Note', default: false },
+                                        { key: 'responsabili', label: 'Responsabili Assegnati', default: false },
+                                    ].map((col) => {
+                                        const isChecked = userPreferences?.report_columns?.[col.key] !== undefined
+                                            ? userPreferences.report_columns[col.key]
+                                            : col.default;
+
+                                        return (
+                                            <div key={col.key} className="flex items-center justify-between p-3 bg-slate-800/50 rounded border border-slate-700">
+                                                <span className="text-sm text-slate-300 font-medium">{col.label}</span>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isChecked}
+                                                    onChange={(e) => {
+                                                        if (onUpdatePreferences && userPreferences) {
+                                                            onUpdatePreferences({
+                                                                ...userPreferences,
+                                                                report_columns: {
+                                                                    ...userPreferences.report_columns,
+                                                                    [col.key]: e.target.checked
+                                                                }
+                                                            });
+                                                        }
+                                                    }}
+                                                    className="h-4 w-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500 bg-slate-800 cursor-pointer"
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </CardContent>
+                        </Card>
+
                         {/* Data Retention Configuration */}
                         <Card className="bg-slate-900 border-slate-800">
                             <CardHeader>

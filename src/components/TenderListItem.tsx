@@ -402,6 +402,11 @@ export function TenderListItem({
             >
                 {/* COLUMN 1: STATO */}
                 <div onClick={(e) => e.stopPropagation()} className="flex flex-col items-center gap-2 interactive-area pt-1 w-full md:w-auto order-1 md:order-none mb-2 md:mb-0">
+                    {/* Tender ID */}
+                    <span className="text-xs font-mono font-bold text-slate-500 bg-slate-900/50 px-2 py-0.5 rounded border border-slate-800">
+                        #{item.numericId}
+                    </span>
+
                     <div className="relative inline-block w-full group/status">
                         <div className={cn(
                             "flex items-center justify-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wide transition-colors cursor-pointer hover:opacity-80 w-full",

@@ -224,7 +224,7 @@ function App() {
       if (profile) {
         // Check app_role first (main source), then fallback to role
         const effectiveRole = (profile as any).app_role || profile.role;
-        console.log("DEBUG: Profile roles - app_role:", profile.app_role, "role:", profile.role);
+        console.log("DEBUG: Profile roles - app_role:", (profile as any).app_role, "role:", profile.role);
 
         if (effectiveRole) {
           console.log("DEBUG: Setting User Role to:", effectiveRole);

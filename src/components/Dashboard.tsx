@@ -2266,6 +2266,50 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardContent>
                         </Card>
 
+                        {/* ID Gara Management */}
+                        <Card className="bg-slate-900 border-slate-800">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-slate-200">
+                                    <Activity className="h-5 w-5 text-purple-500" />
+                                    Gestione ID Gara
+                                </CardTitle>
+                                <CardDescription className="text-slate-400">Opzioni avanzate per la numerazione delle gare.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex items-center justify-between p-4 bg-slate-800/30 rounded border border-slate-700 hover:border-slate-600 transition-colors">
+                                    <div className="space-y-1">
+                                        <h4 className="text-sm font-semibold text-slate-200 text-left">Reinizializza Contatore (#ID)</h4>
+                                        <p className="text-xs text-slate-500 max-w-sm text-left">
+                                            Reimposta il contatore sequenziale degli ID a 1.
+                                            <br />
+                                            <span className="text-amber-500">Attenzione: Usare solo se l'archivio è vuoto o se si desidera ripartire da 1.</span>
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={async () => {
+                                            if (!confirm("ATTENZIONE: Sei sicuro di voler resettare il contatore degli ID a 1?\n\nQuesta operazione non può essere annullata.")) return;
+
+                                            try {
+                                                const { error } = await supabase.rpc('reset_tender_id_sequence');
+                                                if (error) {
+                                                    console.error("RPC Error:", error);
+                                                    alert("Errore: Impossibile resettare il contatore.\n\nAssicurati di aver eseguito lo script SQL fornito per creare la funzione 'reset_tender_id_sequence' nel database.");
+                                                } else {
+                                                    alert("Successo: Il contatore ID è stato resettato a 1.");
+                                                }
+                                            } catch (e) {
+                                                console.error("Exception:", e);
+                                                alert("Si è verificato un errore imprevisto.");
+                                            }
+                                        }}
+                                        className="px-4 py-2 bg-slate-800 hover:bg-red-900/30 text-slate-300 hover:text-red-400 border border-slate-600 hover:border-red-800 rounded-md text-sm font-medium transition-colors"
+                                    >
+                                        Reinizializza a 1
+                                    </button>
+                                </div>
+                            </CardContent>
+                        </Card>
+
                         {/* Helper function to render Owner Management Cards */}
                         {[
                             { title: "Responsabili Tecnici", key: 'owners_tech', dbColumn: 'owner_tech', desc: "Gestisci l'elenco dei Responsabili Tecnici." },

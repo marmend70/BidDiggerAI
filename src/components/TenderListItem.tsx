@@ -117,7 +117,7 @@ export function TenderListItem({
                         setLatestActivity({ ...data, user_email: email } as TenderActivity);
                     }
                 } catch (error) {
-                    // Silent catch
+                    console.error("DEBUG: Activity Fetch Error:", error);
                 }
             };
             fetchLatestEnhanced();

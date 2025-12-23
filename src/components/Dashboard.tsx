@@ -18,6 +18,7 @@ import { DeepDive } from './DeepDive';
 import { UserNotesBlock } from './UserNotesBlock';
 import { SECTIONS_MAP, MENU_ORDER, DEEP_DIVE_EXAMPLES, SECTION_BATCH_MAP, AVAILABLE_MODELS, SECTORS } from '@/constants';
 import { supabase } from '@/lib/supabase';
+import { EditableField } from '@/components/ui/EditableField';
 
 // Helper for parsing Italian dates
 const parseItalianDate = (dateStr: string): Date | null => {
@@ -93,6 +94,7 @@ interface DashboardProps {
     userPreferences?: UserPreferences;
     onUpdatePreferences?: (newPreferences: UserPreferences) => void;
     loadingBatches?: string[];
+    onUpdateAnalysisField?: (section: string, path: (string | number)[], value: any) => Promise<void>;
 }
 
 const SemanticAnalysisBlock = ({ data, sectionId, children }: { data?: { semantic_analysis?: string, rischi_rilevati?: any[] | any, suggerimenti?: any[] | any } | any, sectionId: string, children?: React.ReactNode }) => {
@@ -364,7 +366,7 @@ const SuggerimentiOffertaBlock = ({ suggestions }: { suggestions?: Array<{ propo
 // I'll add 'Star' to the imports first block if I can, but I only edited constants import.
 // I will use 'Award' for 'Aspetti Rilevanti' essentially as a proxy for Star.
 
-export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading, userPreferences, onUpdatePreferences, loadingBatches = [], onUpdateUserNotes }: DashboardProps) {
+export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading, userPreferences, onUpdatePreferences, loadingBatches = [], onUpdateUserNotes, onUpdateAnalysisField }: DashboardProps) {
     const [editingFaqIndex, setEditingFaqIndex] = React.useState<number | null>(null);
     const [editingOwnerState, setEditingOwnerState] = React.useState<{ list: 'owners_tech' | 'owners_admin' | 'owners_comm', index: number } | null>(null);
 
@@ -441,7 +443,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 {data['1_requisiti_partecipazione'][0]?.ordine_generale?.map((req, i) => (
                                     <Card key={i} className="hover:shadow-md transition-shadow bg-slate-900 border-slate-800">
                                         <CardContent className="pt-6">
-                                            <p className="text-sm text-slate-300">{req.requisito}</p>
+                                            <div className="text-sm text-slate-300">
+                                                <EditableField
+                                                    value={req.requisito}
+                                                    onSave={(val) => onUpdateAnalysisField?.('1_requisiti_partecipazione', ['1_requisiti_partecipazione', 0, 'ordine_generale', i, 'requisito'], val) || Promise.resolve()}
+                                                    type="textarea"
+                                                />
+                                            </div>
                                             <Badge variant="outline" className="mt-2 text-xs bg-slate-800 text-slate-400 border-slate-700">{req.ref}</Badge>
                                         </CardContent>
                                     </Card>
@@ -459,7 +467,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 {data['1_requisiti_partecipazione'][0]?.ordine_speciale?.map((req, i) => (
                                     <Card key={i} className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow bg-slate-900 border-slate-800">
                                         <CardContent className="pt-6">
-                                            <p className="text-sm text-slate-300">{req.requisito}</p>
+                                            <div className="text-sm text-slate-300">
+                                                <EditableField
+                                                    value={req.requisito}
+                                                    onSave={(val) => onUpdateAnalysisField?.('1_requisiti_partecipazione', ['1_requisiti_partecipazione', 0, 'ordine_speciale', i, 'requisito'], val) || Promise.resolve()}
+                                                    type="textarea"
+                                                />
+                                            </div>
                                             <Badge variant="outline" className="mt-2 text-xs bg-blue-950/30 text-blue-300 border-blue-900/50">{req.ref}</Badge>
                                         </CardContent>
                                     </Card>
@@ -477,7 +491,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 {data['1_requisiti_partecipazione'][0]?.idoneita_professionale?.map((req, i) => (
                                     <Card key={i} className="hover:shadow-md transition-shadow bg-slate-900 border-slate-800">
                                         <CardContent className="pt-6">
-                                            <p className="text-sm text-slate-300">{req.requisito}</p>
+                                            <div className="text-sm text-slate-300">
+                                                <EditableField
+                                                    value={req.requisito}
+                                                    onSave={(val) => onUpdateAnalysisField?.('1_requisiti_partecipazione', ['1_requisiti_partecipazione', 0, 'idoneita_professionale', i, 'requisito'], val) || Promise.resolve()}
+                                                    type="textarea"
+                                                />
+                                            </div>
                                             <Badge variant="outline" className="mt-2 text-xs bg-purple-950/30 text-purple-300 border-purple-900/50">{req.ref}</Badge>
                                         </CardContent>
                                     </Card>
@@ -495,7 +515,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 {data['1_requisiti_partecipazione'][0]?.capacita_tecnica?.map((req, i) => (
                                     <Card key={i} className="hover:shadow-md transition-shadow bg-slate-900 border-slate-800">
                                         <CardContent className="pt-6">
-                                            <p className="text-sm text-slate-300">{req.requisito}</p>
+                                            <div className="text-sm text-slate-300">
+                                                <EditableField
+                                                    value={req.requisito}
+                                                    onSave={(val) => onUpdateAnalysisField?.('1_requisiti_partecipazione', ['1_requisiti_partecipazione', 0, 'capacita_tecnica', i, 'requisito'], val) || Promise.resolve()}
+                                                    type="textarea"
+                                                />
+                                            </div>
                                             <Badge variant="outline" className="mt-2 text-xs bg-green-950/30 text-green-300 border-green-900/50">{req.ref}</Badge>
                                         </CardContent>
                                     </Card>
@@ -549,16 +575,40 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardTitle className="text-amber-500">Oggetto dell'Appalto</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-lg font-medium text-amber-100">{data['3_sintesi'].oggetto}</p>
+                                <div className="text-lg font-medium text-amber-100">
+                                    <EditableField
+                                        value={data['3_sintesi'].oggetto}
+                                        onSave={(val) => onUpdateAnalysisField?.('3_sintesi', ['3_sintesi', 'oggetto'], val) || Promise.resolve()}
+                                        type="textarea"
+                                    />
+                                </div>
                                 <div className="flex gap-4 mt-4">
-                                    <Badge variant="secondary" className="bg-slate-900 text-amber-500 border-amber-900">
-                                        CIG: {data['3_sintesi'].codici.cig}
+                                    <Badge variant="secondary" className="bg-slate-900 text-amber-500 border-amber-900 h-auto py-1">
+                                        <div className="flex items-center gap-1">
+                                            <span className="opacity-70">CIG:</span>
+                                            <EditableField
+                                                value={data['3_sintesi'].codici.cig}
+                                                onSave={(val) => onUpdateAnalysisField?.('3_sintesi', ['3_sintesi', 'codici', 'cig'], val) || Promise.resolve()}
+                                            />
+                                        </div>
                                     </Badge>
-                                    <Badge variant="secondary" className="bg-slate-900 text-amber-500 border-amber-900">
-                                        CUP: {data['3_sintesi'].codici.cup}
+                                    <Badge variant="secondary" className="bg-slate-900 text-amber-500 border-amber-900 h-auto py-1">
+                                        <div className="flex items-center gap-1">
+                                            <span className="opacity-70">CUP:</span>
+                                            <EditableField
+                                                value={data['3_sintesi'].codici.cup}
+                                                onSave={(val) => onUpdateAnalysisField?.('3_sintesi', ['3_sintesi', 'codici', 'cup'], val) || Promise.resolve()}
+                                            />
+                                        </div>
                                     </Badge>
-                                    <Badge variant="secondary" className="bg-slate-900 text-amber-500 border-amber-900">
-                                        CPV: {data['3_sintesi'].codici.cpv}
+                                    <Badge variant="secondary" className="bg-slate-900 text-amber-500 border-amber-900 h-auto py-1">
+                                        <div className="flex items-center gap-1">
+                                            <span className="opacity-70">CPV:</span>
+                                            <EditableField
+                                                value={data['3_sintesi'].codici.cpv}
+                                                onSave={(val) => onUpdateAnalysisField?.('3_sintesi', ['3_sintesi', 'codici', 'cpv'], val) || Promise.resolve()}
+                                            />
+                                        </div>
                                     </Badge>
                                 </div>
                             </CardContent>
@@ -568,7 +618,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardTitle className="text-slate-200">Scenario e Contesto</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-200 leading-relaxed">{data['3_sintesi'].scenario}</p>
+                                <div className="text-slate-200 leading-relaxed">
+                                    <EditableField
+                                        value={data['3_sintesi'].scenario}
+                                        onSave={(val) => onUpdateAnalysisField?.('3_sintesi', ['3_sintesi', 'scenario'], val) || Promise.resolve()}
+                                        type="textarea"
+                                    />
+                                </div>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['3_sintesi']} sectionId="3_sintesi" />
@@ -792,7 +848,11 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                         {data['4_servizi'][0]?.attivita?.map((att, i) => (
                                             <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
                                                 <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0" />
-                                                {att}
+                                                <EditableField
+                                                    value={att}
+                                                    onSave={(val) => onUpdateAnalysisField?.('4_servizi', ['4_servizi', 0, 'attivita', i], val) || Promise.resolve()}
+                                                    type="textarea"
+                                                />
                                             </li>
                                         ))}
                                     </ul>
@@ -806,7 +866,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-sm text-slate-300">{data['4_servizi'][0]?.innovazioni}</p>
+                                    <div className="text-sm text-slate-300">
+                                        <EditableField
+                                            value={data['4_servizi'][0]?.innovazioni}
+                                            onSave={(val) => onUpdateAnalysisField?.('4_servizi', ['4_servizi', 0, 'innovazioni'], val) || Promise.resolve()}
+                                            type="textarea"
+                                        />
+                                    </div>
                                 </CardContent>
                             </Card>
                         </div>
@@ -815,7 +881,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardTitle className="text-slate-200">Fabbisogno Stimato</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-300">{data['4_servizi'][0]?.fabbisogno}</p>
+                                <div className="text-slate-300">
+                                    <EditableField
+                                        value={data['4_servizi'][0]?.fabbisogno}
+                                        onSave={(val) => onUpdateAnalysisField?.('4_servizi', ['4_servizi', 0, 'fabbisogno'], val) || Promise.resolve()}
+                                        type="textarea"
+                                    />
+                                </div>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['4_servizi']} sectionId="4_servizi" />
@@ -835,9 +907,9 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
 
             case '5_scadenze':
                 // Sort timeline events
-                const sortedEvents = data['5_scadenze'][0]?.timeline?.map((event: any) => {
+                const sortedEvents = data['5_scadenze'][0]?.timeline?.map((event: any, index: number) => {
                     const parsedDate = parseItalianDate(event.data);
-                    return { ...event, parsedDate, daysDiff: parsedDate ? getDaysDifference(parsedDate) : null };
+                    return { ...event, parsedDate, daysDiff: parsedDate ? getDaysDifference(parsedDate) : null, originalIndex: index };
                 }).sort((a: any, b: any) => {
                     if (!a.parsedDate) return 1;
                     if (!b.parsedDate) return -1;
@@ -913,7 +985,12 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                         {/* Content Column */}
                                         <div className="flex-1 flex flex-col justify-center">
                                             <div className="flex flex-wrap justify-between items-start gap-4 mb-2">
-                                                <h3 className="text-xl font-semibold text-slate-200">{event.evento}</h3>
+                                                <div className="text-xl font-semibold text-slate-200">
+                                                    <EditableField
+                                                        value={event.evento}
+                                                        onSave={(val) => onUpdateAnalysisField?.('5_scadenze', ['5_scadenze', 0, 'timeline', event.originalIndex, 'evento'], val) || Promise.resolve()}
+                                                    />
+                                                </div>
 
                                                 {/* New Visual Indicator for Status */}
                                                 <div className="flex items-center gap-2">
@@ -932,9 +1009,15 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                         {event.daysDiff === 0 ? "Oggi" : (event.daysDiff > 0 ? `Mancano ${event.daysDiff} gg` : `Scaduto da ${Math.abs(event.daysDiff)} gg`)}
                                                     </Badge>
                                                 )}
-                                                <span className="bg-slate-800 px-2 py-0.5 rounded text-xs border border-slate-700 font-mono">
-                                                    Originale: {event.data}
+                                                <span className="bg-slate-800 px-2 py-0.5 rounded text-xs border border-slate-700 font-mono flex items-center gap-1">
+                                                    Originale:
+                                                    <EditableField
+                                                        value={event.data}
+                                                        onSave={(val) => onUpdateAnalysisField?.('5_scadenze', ['5_scadenze', 0, 'timeline', event.originalIndex, 'data'], val) || Promise.resolve()}
+                                                        className="min-w-[80px]"
+                                                    />
                                                 </span>
+
                                                 {event.ref && (
                                                     <span className="flex items-center gap-1 ml-2">
                                                         <span className="w-1 h-1 rounded-full bg-slate-600" />
@@ -975,7 +1058,12 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardContent className="pt-6 text-center">
                                     <p className="text-sm font-medium text-green-300 mb-1">Base d'Asta Totale</p>
                                     <p className="text-3xl font-bold text-green-400">
-                                        {new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(data['6_importi'][0]?.base_asta_totale || 0)}
+                                        <EditableField
+                                            value={data['6_importi'][0]?.base_asta_totale}
+                                            onSave={(val) => onUpdateAnalysisField?.('6_importi', ['6_importi', 0, 'base_asta_totale'], Number(val)) || Promise.resolve()}
+                                            type="number"
+                                            displayFormatter={(val) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(Number(val))}
+                                        />
                                     </p>
                                 </CardContent>
                             </Card>
@@ -983,7 +1071,12 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardContent className="pt-6 text-center">
                                     <p className="text-sm font-medium text-slate-400 mb-1">Costi della Manodopera</p>
                                     <p className="text-2xl font-semibold text-slate-200">
-                                        {new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(data['6_importi'][0]?.costi_manodopera || 0)}
+                                        <EditableField
+                                            value={data['6_importi'][0]?.costi_manodopera}
+                                            onSave={(val) => onUpdateAnalysisField?.('6_importi', ['6_importi', 0, 'costi_manodopera'], Number(val)) || Promise.resolve()}
+                                            type="number"
+                                            displayFormatter={(val) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(Number(val))}
+                                        />
                                     </p>
                                 </CardContent>
                             </Card>
@@ -1003,9 +1096,19 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     <TableBody>
                                         {data['6_importi'][0]?.dettaglio?.map((item, i) => (
                                             <TableRow key={i} className="border-slate-800 hover:bg-slate-800/50">
-                                                <TableCell className="font-medium text-slate-300">{item.voce}</TableCell>
+                                                <TableCell className="font-medium text-slate-300">
+                                                    <EditableField
+                                                        value={item.voce}
+                                                        onSave={(val) => onUpdateAnalysisField?.('6_importi', ['6_importi', 0, 'dettaglio', i, 'voce'], val) || Promise.resolve()}
+                                                    />
+                                                </TableCell>
                                                 <TableCell className="text-right font-mono text-slate-300">
-                                                    {new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(item.importo)}
+                                                    <EditableField
+                                                        value={item.importo}
+                                                        onSave={(val) => onUpdateAnalysisField?.('6_importi', ['6_importi', 0, 'dettaglio', i, 'importo'], Number(val)) || Promise.resolve()}
+                                                        type="number"
+                                                        displayFormatter={(val) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(Number(val))}
+                                                    />
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -1041,7 +1144,12 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     <CardTitle className="text-slate-200">Durata Base</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-xl font-semibold text-slate-100">{data['7_durata'][0]?.durata_base}</p>
+                                    <p className="text-xl font-semibold text-slate-100">
+                                        <EditableField
+                                            value={data['7_durata'][0]?.durata_base}
+                                            onSave={(val) => onUpdateAnalysisField?.('7_durata', ['7_durata', 0, 'durata_base'], val) || Promise.resolve()}
+                                        />
+                                    </p>
                                 </CardContent>
                             </Card>
                             <Card className="bg-slate-900 border-slate-800">
@@ -1049,7 +1157,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     <CardTitle className="text-slate-200">Opzioni di Proroga</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-slate-300">{data['7_durata'][0]?.proroghe}</p>
+                                    <div className="text-slate-300">
+                                        <EditableField
+                                            value={data['7_durata'][0]?.proroghe}
+                                            onSave={(val) => onUpdateAnalysisField?.('7_durata', ['7_durata', 0, 'proroghe'], val) || Promise.resolve()}
+                                            type="textarea"
+                                        />
+                                    </div>
                                 </CardContent>
                             </Card>
                         </div>
@@ -1058,7 +1172,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardTitle className="text-slate-200">Tempistiche Operative</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-300">{data['7_durata'][0]?.tempistiche_operative}</p>
+                                <div className="text-slate-300">
+                                    <EditableField
+                                        value={data['7_durata'][0]?.tempistiche_operative}
+                                        onSave={(val) => onUpdateAnalysisField?.('7_durata', ['7_durata', 0, 'tempistiche_operative'], val) || Promise.resolve()}
+                                        type="textarea"
+                                    />
+                                </div>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['7_durata']} sectionId="7_durata" />
@@ -1091,13 +1211,23 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <div className="flex flex-wrap gap-2">
                                     {data['8_ccnl'][0]?.contratti?.map((c, i) => (
                                         <Badge key={i} variant="secondary" className="text-sm py-1 px-3 bg-slate-800 text-slate-200 border-slate-700">
-                                            {c}
+                                            <EditableField
+                                                value={c}
+                                                onSave={(val) => onUpdateAnalysisField?.('8_ccnl', ['8_ccnl', 0, 'contratti', i], val) || Promise.resolve()}
+                                                className="min-w-[50px]"
+                                            />
                                         </Badge>
                                     ))}
                                 </div>
                                 <div className="mt-4">
                                     <h4 className="text-sm font-semibold text-slate-200 mb-1">Equivalenze</h4>
-                                    <p className="text-sm text-slate-400">{data['8_ccnl'][0]?.equivalenze}</p>
+                                    <div className="text-sm text-slate-400">
+                                        <EditableField
+                                            value={data['8_ccnl'][0]?.equivalenze}
+                                            onSave={(val) => onUpdateAnalysisField?.('8_ccnl', ['8_ccnl', 0, 'equivalenze'], val) || Promise.resolve()}
+                                            type="textarea"
+                                        />
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
@@ -1106,7 +1236,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardTitle className="text-slate-200">Clausola Sociale</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-300">{data['8_ccnl'][0]?.clausola_sociale}</p>
+                                <div className="text-slate-300">
+                                    <EditableField
+                                        value={data['8_ccnl'][0]?.clausola_sociale}
+                                        onSave={(val) => onUpdateAnalysisField?.('8_ccnl', ['8_ccnl', 0, 'clausola_sociale'], val) || Promise.resolve()}
+                                        type="textarea"
+                                    />
+                                </div>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['8_ccnl']} sectionId="8_ccnl" />
@@ -1141,7 +1277,11 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                         {data['9_oneri'][0]?.carico_fornitore?.map((item, i) => (
                                             <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
                                                 <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0" />
-                                                {item}
+                                                <EditableField
+                                                    value={item}
+                                                    onSave={(val) => onUpdateAnalysisField?.('9_oneri', ['9_oneri', 0, 'carico_fornitore', i], val) || Promise.resolve()}
+                                                    type="textarea"
+                                                />
                                             </li>
                                         ))}
                                     </ul>
@@ -1156,7 +1296,11 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                         {data['9_oneri'][0]?.carico_stazione?.map((item, i) => (
                                             <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
                                                 <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-green-500 flex-shrink-0" />
-                                                {item}
+                                                <EditableField
+                                                    value={item}
+                                                    onSave={(val) => onUpdateAnalysisField?.('9_oneri', ['9_oneri', 0, 'carico_stazione', i], val) || Promise.resolve()}
+                                                    type="textarea"
+                                                />
                                             </li>
                                         ))}
                                     </ul>
@@ -1190,19 +1334,37 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             <Card className="bg-pink-950/20 border-pink-900">
                                 <CardContent className="pt-6 text-center">
                                     <p className="text-sm font-medium text-pink-300 mb-1">Punteggio Tecnico</p>
-                                    <p className="text-4xl font-bold text-pink-400">{data['10_punteggi'][0]?.tecnico}</p>
+                                    <p className="text-4xl font-bold text-pink-400">
+                                        <EditableField
+                                            value={data['10_punteggi'][0]?.tecnico}
+                                            onSave={(val) => onUpdateAnalysisField?.('10_punteggi', ['10_punteggi', 0, 'tecnico'], Number(val)) || Promise.resolve()}
+                                            type="number"
+                                        />
+                                    </p>
                                 </CardContent>
                             </Card>
                             <Card className="bg-blue-950/20 border-blue-900">
                                 <CardContent className="pt-6 text-center">
                                     <p className="text-sm font-medium text-blue-300 mb-1">Punteggio Economico</p>
-                                    <p className="text-4xl font-bold text-blue-400">{data['10_punteggi'][0]?.economico}</p>
+                                    <p className="text-4xl font-bold text-blue-400">
+                                        <EditableField
+                                            value={data['10_punteggi'][0]?.economico}
+                                            onSave={(val) => onUpdateAnalysisField?.('10_punteggi', ['10_punteggi', 0, 'economico'], Number(val)) || Promise.resolve()}
+                                            type="number"
+                                        />
+                                    </p>
                                 </CardContent>
                             </Card>
                             <Card className="bg-slate-900 border-slate-800">
                                 <CardContent className="pt-6 text-center">
                                     <p className="text-sm font-medium text-slate-400 mb-1">Soglia Sbarramento</p>
-                                    <p className="text-4xl font-bold text-slate-200">{data['10_punteggi'][0]?.soglia_sbarramento}</p>
+                                    <p className="text-4xl font-bold text-slate-200">
+                                        <EditableField
+                                            value={data['10_punteggi'][0]?.soglia_sbarramento}
+                                            onSave={(val) => onUpdateAnalysisField?.('10_punteggi', ['10_punteggi', 0, 'soglia_sbarramento'], Number(val)) || Promise.resolve()}
+                                            type="number"
+                                        />
+                                    </p>
                                 </CardContent>
                             </Card>
                         </div>
@@ -1217,18 +1379,52 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     {data['10_punteggi'][0]?.criteri_tecnici?.map((criterio, i) => (
                                         <div key={i} className="border-b border-slate-800 last:border-0 pb-4 last:pb-0">
                                             <div className="flex justify-between items-start mb-2">
-                                                <h4 className="font-semibold text-slate-200">{criterio.criterio}</h4>
-                                                <Badge className="bg-slate-800 text-slate-200">{criterio.punti_max} pt</Badge>
+                                                <h4 className="font-semibold text-slate-200 flex-1 mr-4">
+                                                    <EditableField
+                                                        value={criterio.criterio}
+                                                        onSave={(val) => onUpdateAnalysisField?.('10_punteggi', ['10_punteggi', 0, 'criteri_tecnici', i, 'criterio'], val) || Promise.resolve()}
+                                                        type="textarea"
+                                                    />
+                                                </h4>
+                                                <Badge className="bg-slate-800 text-slate-200">
+                                                    <EditableField
+                                                        value={criterio.punti_max}
+                                                        onSave={(val) => onUpdateAnalysisField?.('10_punteggi', ['10_punteggi', 0, 'criteri_tecnici', i, 'punti_max'], Number(val)) || Promise.resolve()}
+                                                        type="number"
+                                                        displayFormatter={(v) => v + ' pt'}
+                                                        className="min-w-[40px]"
+                                                    />
+                                                </Badge>
                                             </div>
-                                            <p className="text-sm text-slate-400 mb-3">{criterio.descrizione}</p>
+                                            <div className="text-sm text-slate-400 mb-3">
+                                                <EditableField
+                                                    value={criterio.descrizione}
+                                                    onSave={(val) => onUpdateAnalysisField?.('10_punteggi', ['10_punteggi', 0, 'criteri_tecnici', i, 'descrizione'], val) || Promise.resolve()}
+                                                    type="textarea"
+                                                />
+                                            </div>
                                             {criterio.subcriteri && criterio.subcriteri.length > 0 && (
                                                 <div className="bg-slate-800/50 p-3 rounded-md">
                                                     <p className="text-xs font-semibold text-slate-500 mb-2 uppercase">Sub-criteri</p>
                                                     <ul className="space-y-1">
                                                         {criterio.subcriteri.map((sub, j) => (
-                                                            <li key={j} className="text-sm flex justify-between text-slate-300">
-                                                                <span>{sub.descrizione}</span>
-                                                                <span className="font-mono text-slate-500">{sub.punti_max} pt</span>
+                                                            <li key={j} className="text-sm flex justify-between text-slate-300 items-start">
+                                                                <span className="flex-1 mr-4">
+                                                                    <EditableField
+                                                                        value={sub.descrizione}
+                                                                        onSave={(val) => onUpdateAnalysisField?.('10_punteggi', ['10_punteggi', 0, 'criteri_tecnici', i, 'subcriteri', j, 'descrizione'], val) || Promise.resolve()}
+                                                                        type="textarea"
+                                                                    />
+                                                                </span>
+                                                                <span className="font-mono text-slate-500">
+                                                                    <EditableField
+                                                                        value={sub.punti_max}
+                                                                        onSave={(val) => onUpdateAnalysisField?.('10_punteggi', ['10_punteggi', 0, 'criteri_tecnici', i, 'subcriteri', j, 'punti_max'], Number(val)) || Promise.resolve()}
+                                                                        type="number"
+                                                                        displayFormatter={(v) => v + ' pt'}
+                                                                        className="min-w-[30px]"
+                                                                    />
+                                                                </span>
                                                             </li>
                                                         ))}
                                                     </ul>
@@ -1311,7 +1507,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             {data['11_pena_esclusione'][0]?.elementi?.map((item, i) => (
                                 <Card key={i} className="border-l-4 border-l-red-500 bg-slate-900 border-slate-800">
                                     <CardContent className="pt-6">
-                                        <p className="text-slate-200 font-medium">{item.descrizione}</p>
+                                        <div className="text-slate-200 font-medium">
+                                            <EditableField
+                                                value={item.descrizione}
+                                                onSave={(val) => onUpdateAnalysisField?.('11_pena_esclusione', ['11_pena_esclusione', 0, 'elementi', i, 'descrizione'], val) || Promise.resolve()}
+                                                type="textarea"
+                                            />
+                                        </div>
                                         <Badge variant="outline" className="mt-2 bg-red-950/30 text-red-300 border-red-900/50">
                                             {item.ref}
                                         </Badge>
@@ -1350,7 +1552,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     {data['12_offerta_tecnica'][0]?.documenti?.map((doc, i) => (
                                         <li key={i} className="flex items-start gap-3 p-3 bg-slate-800/50 rounded-md">
                                             <CheckSquare className="h-5 w-5 text-blue-500 mt-0.5" />
-                                            <span className="text-sm text-slate-300">{doc}</span>
+                                            <div className="text-sm text-slate-300 w-full">
+                                                <EditableField
+                                                    value={doc}
+                                                    onSave={(val) => onUpdateAnalysisField?.('12_offerta_tecnica', ['12_offerta_tecnica', 0, 'documenti', i], val) || Promise.resolve()}
+                                                    type="textarea"
+                                                />
+                                            </div>
                                         </li>
                                     ))}
                                 </ul>
@@ -1361,7 +1569,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardTitle className="text-slate-200">Modalità di Presentazione</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-300 whitespace-pre-line">{data['12_offerta_tecnica'][0]?.formattazione_modalita}</p>
+                                <div className="text-slate-300 whitespace-pre-line">
+                                    <EditableField
+                                        value={data['12_offerta_tecnica'][0]?.formattazione_modalita}
+                                        onSave={(val) => onUpdateAnalysisField?.('12_offerta_tecnica', ['12_offerta_tecnica', 0, 'formattazione_modalita'], val) || Promise.resolve()}
+                                        type="textarea"
+                                    />
+                                </div>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['12_offerta_tecnica'][0]} sectionId="12_offerta_tecnica">
@@ -1397,7 +1611,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     {data['13_offerta_economica'][0]?.documenti?.map((doc, i) => (
                                         <li key={i} className="flex items-start gap-3 p-3 bg-slate-800/50 rounded-md">
                                             <CheckSquare className="h-5 w-5 text-green-500 mt-0.5" />
-                                            <span className="text-sm text-slate-300">{doc}</span>
+                                            <div className="text-sm text-slate-300 w-full">
+                                                <EditableField
+                                                    value={doc}
+                                                    onSave={(val) => onUpdateAnalysisField?.('13_offerta_economica', ['13_offerta_economica', 0, 'documenti', i], val) || Promise.resolve()}
+                                                    type="textarea"
+                                                />
+                                            </div>
                                         </li>
                                     ))}
                                 </ul>
@@ -1408,7 +1628,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardTitle className="text-slate-200">Modalità di Presentazione</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-slate-300 whitespace-pre-line">{data['13_offerta_economica'][0]?.formattazione_modalita}</p>
+                                <div className="text-slate-300 whitespace-pre-line">
+                                    <EditableField
+                                        value={data['13_offerta_economica'][0]?.formattazione_modalita}
+                                        onSave={(val) => onUpdateAnalysisField?.('13_offerta_economica', ['13_offerta_economica', 0, 'formattazione_modalita'], val) || Promise.resolve()}
+                                        type="textarea"
+                                    />
+                                </div>
                             </CardContent>
                         </Card>
                         <SemanticAnalysisBlock data={data['13_offerta_economica']} sectionId="13_offerta_economica" />
@@ -1438,8 +1664,14 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <Card key={i} className="bg-amber-950/20 border-amber-900/50">
                                     <CardContent className="pt-6 flex gap-4">
                                         <AlertCircle className="h-6 w-6 text-amber-500 flex-shrink-0" />
-                                        <div>
-                                            <p className="text-amber-200 font-medium">{note.nota}</p>
+                                        <div className="w-full">
+                                            <div className="text-amber-200 font-medium">
+                                                <EditableField
+                                                    value={note.nota}
+                                                    onSave={(val) => onUpdateAnalysisField?.('14_note_importanti', ['14_note_importanti', 0, 'note', i, 'nota'], val) || Promise.resolve()}
+                                                    type="textarea"
+                                                />
+                                            </div>
                                             <Badge variant="outline" className="mt-2 bg-amber-950/40 text-amber-400 border-amber-800">
                                                 {note.ref}
                                             </Badge>
@@ -1476,7 +1708,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     <CardTitle className="text-slate-200">Modalità</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-slate-300">{data['15_remunerazione'][0]?.modalita}</p>
+                                    <div className="text-slate-300">
+                                        <EditableField
+                                            value={data['15_remunerazione'][0]?.modalita}
+                                            onSave={(val) => onUpdateAnalysisField?.('15_remunerazione', ['15_remunerazione', 0, 'modalita'], val) || Promise.resolve()}
+                                            type="textarea"
+                                        />
+                                    </div>
                                 </CardContent>
                             </Card>
                             <Card className="bg-slate-900 border-slate-800">
@@ -1484,7 +1722,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     <CardTitle className="text-slate-200">Pagamenti</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-slate-300">{data['15_remunerazione'][0]?.pagamenti}</p>
+                                    <div className="text-slate-300">
+                                        <EditableField
+                                            value={data['15_remunerazione'][0]?.pagamenti}
+                                            onSave={(val) => onUpdateAnalysisField?.('15_remunerazione', ['15_remunerazione', 0, 'pagamenti'], val) || Promise.resolve()}
+                                            type="textarea"
+                                        />
+                                    </div>
                                 </CardContent>
                             </Card>
                             <Card className="bg-slate-900 border-slate-800">
@@ -1492,7 +1736,13 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     <CardTitle className="text-slate-200">Clausole</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-slate-300">{data['15_remunerazione'][0]?.clausole}</p>
+                                    <div className="text-slate-300">
+                                        <EditableField
+                                            value={data['15_remunerazione'][0]?.clausole}
+                                            onSave={(val) => onUpdateAnalysisField?.('15_remunerazione', ['15_remunerazione', 0, 'clausole'], val) || Promise.resolve()}
+                                            type="textarea"
+                                        />
+                                    </div>
                                 </CardContent>
                             </Card>
                         </div>
@@ -1527,17 +1777,51 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     {data['16_sla_penali'][0]?.sla?.length > 0 ? (
                                         data['16_sla_penali'][0].sla.map((s: any, i: number) => (
                                             <div key={i} className="p-3 bg-slate-800/50 rounded border border-slate-700 text-sm text-slate-300">
-                                                {s.servizio && <p><strong className="text-slate-100">Servizio:</strong> {s.servizio}</p>}
-                                                <p><strong>Indicatore:</strong> {s.indicatore || '-'}</p>
-                                                <p><strong>Soglia:</strong> {s.soglia || '-'}</p>
-                                                {s.priorita && <p><strong>Priorità:</strong> <Badge variant="outline" className="text-xs border-slate-600 text-slate-400">{s.priorita}</Badge></p>}
-                                                {s.penale_correlata && <p className="mt-1 text-red-400 font-medium"><strong>Penale:</strong> {s.penale_correlata}</p>}
+                                                {s.servizio && <p className="mb-1"><strong className="text-slate-100">Servizio:</strong>
+                                                    <EditableField
+                                                        value={s.servizio}
+                                                        onSave={(val) => onUpdateAnalysisField?.('16_sla_penali', ['16_sla_penali', 0, 'sla', i, 'servizio'], val) || Promise.resolve()}
+                                                        className="ml-1 inline-block"
+                                                    />
+                                                </p>}
+                                                <p className="mb-1"><strong>Indicatore:</strong>
+                                                    <EditableField
+                                                        value={s.indicatore || '-'}
+                                                        onSave={(val) => onUpdateAnalysisField?.('16_sla_penali', ['16_sla_penali', 0, 'sla', i, 'indicatore'], val) || Promise.resolve()}
+                                                        className="ml-1 inline-block"
+                                                    />
+                                                </p>
+                                                <p className="mb-1"><strong>Soglia:</strong>
+                                                    <EditableField
+                                                        value={s.soglia || '-'}
+                                                        onSave={(val) => onUpdateAnalysisField?.('16_sla_penali', ['16_sla_penali', 0, 'sla', i, 'soglia'], val) || Promise.resolve()}
+                                                        className="ml-1 inline-block"
+                                                    />
+                                                </p>
+                                                {s.priorita && <p className="mb-1"><strong>Priorità:</strong> <Badge variant="outline" className="text-xs border-slate-600 text-slate-400">
+                                                    <EditableField
+                                                        value={s.priorita}
+                                                        onSave={(val) => onUpdateAnalysisField?.('16_sla_penali', ['16_sla_penali', 0, 'sla', i, 'priorita'], val) || Promise.resolve()}
+                                                        className="min-w-[50px]"
+                                                    />
+                                                </Badge></p>}
+                                                {s.penale_correlata && <p className="mt-1 text-red-400 font-medium flex items-center gap-1"><strong>Penale:</strong>
+                                                    <EditableField
+                                                        value={s.penale_correlata}
+                                                        onSave={(val) => onUpdateAnalysisField?.('16_sla_penali', ['16_sla_penali', 0, 'sla', i, 'penale_correlata'], val) || Promise.resolve()}
+                                                        className="ml-1 inline-block"
+                                                    />
+                                                </p>}
                                             </div>
                                         ))
                                     ) : (
                                         data['16_sla_penali'][0]?.elenco_testuale ? (
                                             <div className="p-4 bg-slate-800/50 rounded border border-slate-700 text-sm text-slate-300 prose prose-sm prose-invert max-w-none">
-                                                <ReactMarkdown>{data['16_sla_penali'][0].elenco_testuale}</ReactMarkdown>
+                                                <EditableField
+                                                    value={data['16_sla_penali'][0].elenco_testuale}
+                                                    onSave={(val) => onUpdateAnalysisField?.('16_sla_penali', ['16_sla_penali', 0, 'elenco_testuale'], val) || Promise.resolve()}
+                                                    type="textarea"
+                                                />
                                             </div>
                                         ) : (
                                             <p className="text-slate-500 italic">Nessun SLA specifico rilevato.</p>
@@ -1555,9 +1839,29 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     {data['16_sla_penali'][0]?.penali?.length > 0 ? (
                                         data['16_sla_penali'][0].penali.map((p: any, i: number) => (
                                             <div key={i} className="p-3 bg-red-950/20 rounded border border-red-900/50 text-sm text-slate-300">
-                                                <p><strong>Descrizione:</strong> {p.descrizione}</p>
-                                                <p><strong>Calcolo:</strong> {p.calcolo}</p>
-                                                {p.sla_associato && <p className="text-xs text-slate-500 mt-1">SLA: {p.sla_associato}</p>}
+                                                <p className="mb-1"><strong>Descrizione:</strong>
+                                                    <EditableField
+                                                        value={p.descrizione}
+                                                        onSave={(val) => onUpdateAnalysisField?.('16_sla_penali', ['16_sla_penali', 0, 'penali', i, 'descrizione'], val) || Promise.resolve()}
+                                                        type="textarea"
+                                                        className="ml-1 inline-block w-full"
+                                                    />
+                                                </p>
+                                                <p className="mb-1"><strong>Calcolo:</strong>
+                                                    <EditableField
+                                                        value={p.calcolo}
+                                                        onSave={(val) => onUpdateAnalysisField?.('16_sla_penali', ['16_sla_penali', 0, 'penali', i, 'calcolo'], val) || Promise.resolve()}
+                                                        type="textarea"
+                                                        className="ml-1 inline-block w-full"
+                                                    />
+                                                </p>
+                                                {p.sla_associato && <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">SLA:
+                                                    <EditableField
+                                                        value={p.sla_associato}
+                                                        onSave={(val) => onUpdateAnalysisField?.('16_sla_penali', ['16_sla_penali', 0, 'penali', i, 'sla_associato'], val) || Promise.resolve()}
+                                                        className="ml-1 inline-block"
+                                                    />
+                                                </p>}
                                             </div>
                                         ))
                                     ) : (
@@ -1566,7 +1870,14 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </div>
                                 <div className="mt-4 p-3 bg-slate-800 rounded text-sm flex items-start gap-2 text-slate-300">
                                     <Info className="h-4 w-4 text-slate-500 mt-0.5" />
-                                    <div><strong>Clausole Cumulative:</strong> {data['16_sla_penali'][0]?.clausole_cumulative || "Non specificato"}</div>
+                                    <div className="flex-1"><strong>Clausole Cumulative:</strong>
+                                        <EditableField
+                                            value={data['16_sla_penali'][0]?.clausole_cumulative || "Non specificato"}
+                                            onSave={(val) => onUpdateAnalysisField?.('16_sla_penali', ['16_sla_penali', 0, 'clausole_cumulative'], val) || Promise.resolve()}
+                                            type="textarea"
+                                            className="ml-1 inline-block"
+                                        />
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>

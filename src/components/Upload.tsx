@@ -62,7 +62,10 @@ export function Upload({ onUpload, isUploading, userTier = 'trial', userCredits 
                     <Alert variant="warning" className="mb-6 bg-amber-950/30 border-amber-900/50">
                         <AlertTriangle className="h-4 w-4 text-amber-500" />
                         <AlertDescription className="text-amber-200 text-xs">
-                            Questo software utilizza modelli di Intelligenza Artificiale sperimentali che possono generare imprecisioni. L'analisi è un supporto operativo e non sostituisce la verifica umana.
+                            Questo software utilizza modelli di Intelligenza Artificiale sperimentali che possono generare imprecisioni. L'analisi è un supporto operativo e non sostituisce la verifica umana. Le analisi e le informazioni fornite dall’app hanno finalità esclusivamente di supporto e devono essere considerate indicative e non esaustive.
+                            L’utilizzo dell’app non sostituisce né esclude la lettura integrale e l’interpretazione diretta dei documenti di gara da parte dell’utente.
+                            L’utente resta unico responsabile delle valutazioni, delle decisioni e delle scelte progettuali assunte sulla base dei documenti ufficiali.
+                            L’app non garantisce completezza, assenza di errori o conformità automatica ai requisiti di gara.
                         </AlertDescription>
                     </Alert>
 

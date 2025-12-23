@@ -648,7 +648,8 @@ function App() {
             const match = rows.find(r => r.result_json?._batch_name === batchName);
             if (match) {
               if (existingPartialIds) existingPartialIds.push(match.id);
-              return processResult(match.result_json);
+              // CRITICAL FIX: Inject tender_id so that subsequent updates work!
+              return { ...processResult(match.result_json), tender_id: tenderId };
             }
           }
           // Check failure
@@ -1359,6 +1360,67 @@ function App() {
     }
   };
 
+  const handleUpdateAnalysisField = async (section: string, path: (string | number)[], value: any) => {
+    const tenderId = analysisData?.tender_id;
+    if (!analysisData || !tenderId || !session?.user?.id) return;
+
+    // 1. Deep Clone & Update Local State
+    const newData = JSON.parse(JSON.stringify(analysisData));
+
+    console.log("DEBUG: Updating Field", { section, path, value, tenderId });
+
+    if (!tenderId) {
+      console.error("CRITICAL: tenderId is missing in analysisData!", analysisData);
+      alert("Errore: impossibile salvare (ID gara mancante).");
+      return;
+    }
+
+    // Helper to set deep value
+    let current = newData;
+    for (let i = 0; i < path.length - 1; i++) {
+      const key = path[i];
+      if (current[key] === undefined) {
+        current[key] = typeof path[i + 1] === 'number' ? [] : {};
+      }
+      current = current[key];
+    }
+    current[path[path.length - 1]] = value;
+
+    // Optimistic Update
+    setAnalysisData(newData);
+
+    try {
+      // 2. Persist to DB (Full JSON Update)
+      const { error } = await supabase
+        .from('analyses')
+        .update({ result_json: newData })
+        .eq('tender_id', tenderId);
+
+      if (error) throw error;
+
+      // 3. Log Activity
+      const { error: logError } = await supabase.from('tender_activities').insert({
+        tender_id: tenderId,
+        user_id: session.user.id,
+        action_type: 'section_update',
+        details: {
+          section,
+          field: path.join('.'),
+          new_value: value,
+          timestamp: new Date().toISOString()
+        }
+      });
+
+      if (logError) {
+        console.warn("Soft Error: Failed to log activity (Constraint/RLS?):", logError);
+        // We do typically NOT throw here to preserve the successful data save
+      }
+
+    } catch (err) {
+      console.error("Failed to update field:", err);
+      alert("Errore durante il salvataggio della modifica.");
+    }
+  };
 
   const handleNewAnalysis = () => {
     if (analysisData) {
@@ -1598,6 +1660,7 @@ function App() {
 
           loadingBatches={loadingBatches}
           onUpdateUserNotes={handleUpdateUserNotes}
+          onUpdateAnalysisField={handleUpdateAnalysisField}
         />
       )}
     </Layout>

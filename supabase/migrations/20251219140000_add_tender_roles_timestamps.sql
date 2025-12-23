@@ -1,2 +1,2 @@
-npm run dev:staging
-
+-- This file contained invalid shell commands and has been neutralized.
+-- Original content was: npm run dev:staging

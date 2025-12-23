@@ -1590,8 +1590,7 @@ function App() {
           <div className="text-center mb-8 relative">
             <h1 className="text-4xl font-bold text-slate-100 mb-4">Benvenuto in Bid Digger</h1>
             <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-              Carica i documenti di gara e lascia che la nostra AI li analizzi per te.
-              Estrai requisiti, scadenze e criteri di valutazione in pochi secondi.
+              Seleziona i documenti dai quali vuoi rilevare le informazioni e avvia l'analisi. Bid Digger lavorerà per te. Potrai poi verificarle, modificarle o integrarle se lo ritieni necessario ed estrarre un report docx.
             </p>
           </div>
           <Upload

@@ -270,8 +270,15 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
 
                 <button
                     onClick={async () => {
-                        await import('@/lib/supabase').then(m => m.supabase.auth.signOut());
-                        window.location.reload();
+                        try {
+                            const { supabase } = await import('@/lib/supabase');
+                            await supabase.auth.signOut();
+                        } catch (e) {
+                            console.error("Logout error:", e);
+                        } finally {
+                            localStorage.clear(); // Ensure clean state
+                            window.location.href = '/'; // Force navigation to root
+                        }
                     }}
                     className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300 rounded-md hover:bg-slate-800 hover:text-white border border-transparent"
                 >

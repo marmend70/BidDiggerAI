@@ -186,6 +186,12 @@ JSON SCHEMA:
   if (preferences['5_scadenze']) prompts.push(`
   Chiave: "5_scadenze"
   ISTRUZIONI: Date e Timeline.
+  IMPORTANTE: Cerca la data di scadenza anche se indicata con formulazioni diverse da "Scadenza offerte", come ad esempio:
+  - "FINE PERIODO PER IL CARICAMENTO TELEMATICO DELLA DOCUMENTAZIONE"
+  - "Termine ultimo per il caricamento sulla piattaforma"
+  - "Chiusura telematica"
+  - "Termine perentorio presentazione"
+  Se trovi una di queste diciture, considerala equivalente a Scadenza Offerte.
   ${semanticPreferences['5_scadenze'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['5_scadenze']}` : ''}
 JSON SCHEMA:
   "5_scadenze": {

@@ -1590,7 +1590,7 @@ function App() {
           <div className="text-center mb-8 relative">
             <h1 className="text-4xl font-bold text-slate-100 mb-4">Benvenuto in Bid Digger</h1>
             <p className="text-lg text-slate-400 max-w-4xl mx-auto leading-relaxed">
-              Bid Digger è una piattaforma di analisi sintattica e semantica delle gare d’appalto, progettata per trasformare documenti complessi in informazioni strutturate, condivisibili e verificabili da team di lavoro. Dimentica le ore passate a leggere disciplinari. Bid Digger estrae requisiti, scadenze e criteri in secondi, condividendoli, modificandoli se necessario e fornendoti subito un completo quadro di fattibilità.
+              Seleziona i documenti dai quali vuoi rilevare le informazioni e avvia l'analisi. Bid Digger lavorerà per te. Potrai poi verificarle, modificarle o integrarle se lo ritieni necessario ed estrarre un report docx.
             </p>
           </div>
           <Upload

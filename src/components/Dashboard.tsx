@@ -673,19 +673,40 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardContent className="space-y-4">
                                     <div>
                                         <span className="text-sm font-medium text-slate-400">Importo</span>
-                                        <p className="font-medium text-slate-100">{checklistData.garanzia_provvisoria?.importo || '-'}</p>
+                                        <div className="font-medium text-slate-100">
+                                            <EditableField
+                                                value={checklistData.garanzia_provvisoria?.importo}
+                                                onSave={(val) => onUpdateAnalysisField?.('3b_checklist_amministrativa', ['3b_checklist_amministrativa', 0, 'garanzia_provvisoria', 'importo'], val) || Promise.resolve()}
+                                            />
+                                        </div>
                                     </div>
                                     <div>
                                         <span className="text-sm font-medium text-slate-400">Beneficiario</span>
-                                        <p className="text-slate-100">{checklistData.garanzia_provvisoria?.beneficiario || '-'}</p>
+                                        <div className="text-slate-100">
+                                            <EditableField
+                                                value={checklistData.garanzia_provvisoria?.beneficiario}
+                                                onSave={(val) => onUpdateAnalysisField?.('3b_checklist_amministrativa', ['3b_checklist_amministrativa', 0, 'garanzia_provvisoria', 'beneficiario'], val) || Promise.resolve()}
+                                            />
+                                        </div>
                                     </div>
                                     <div>
                                         <span className="text-sm font-medium text-slate-400">Validità</span>
-                                        <p className="text-slate-100">{checklistData.garanzia_provvisoria?.validita || '-'}</p>
+                                        <div className="text-slate-100">
+                                            <EditableField
+                                                value={checklistData.garanzia_provvisoria?.validita}
+                                                onSave={(val) => onUpdateAnalysisField?.('3b_checklist_amministrativa', ['3b_checklist_amministrativa', 0, 'garanzia_provvisoria', 'validita'], val) || Promise.resolve()}
+                                            />
+                                        </div>
                                     </div>
                                     <div>
                                         <span className="text-sm font-medium text-slate-400">Clausole</span>
-                                        <p className="text-slate-300 text-sm">{checklistData.garanzia_provvisoria?.clausole || '-'}</p>
+                                        <div className="text-slate-300 text-sm">
+                                            <EditableField
+                                                value={checklistData.garanzia_provvisoria?.clausole}
+                                                onSave={(val) => onUpdateAnalysisField?.('3b_checklist_amministrativa', ['3b_checklist_amministrativa', 0, 'garanzia_provvisoria', 'clausole'], val) || Promise.resolve()}
+                                                type="textarea"
+                                            />
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -700,15 +721,23 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
-                                        <div className="flex justify-between">
-                                            <div>
+                                        <div className="flex justify-between items-start gap-4">
+                                            <div className="flex-1">
                                                 <span className="text-sm font-medium text-slate-400">Importo</span>
-                                                <p className="font-medium text-slate-100">{checklistData.contributo_anac?.importo || '-'}</p>
+                                                <div className="font-medium text-slate-100">
+                                                    <EditableField
+                                                        value={checklistData.contributo_anac?.importo}
+                                                        onSave={(val) => onUpdateAnalysisField?.('3b_checklist_amministrativa', ['3b_checklist_amministrativa', 0, 'contributo_anac', 'importo'], val) || Promise.resolve()}
+                                                    />
+                                                </div>
                                             </div>
                                             <div>
-                                                <span className="text-sm font-medium text-slate-400">CIG</span>
-                                                <Badge variant="outline" className="bg-blue-950/30 text-blue-300 border-blue-900/50">
-                                                    {checklistData.contributo_anac?.cig || '-'}
+                                                <span className="text-sm font-medium text-slate-400 block mb-1">CIG</span>
+                                                <Badge variant="outline" className="bg-blue-950/30 text-blue-300 border-blue-900/50 h-auto py-1">
+                                                    <EditableField
+                                                        value={checklistData.contributo_anac?.cig}
+                                                        onSave={(val) => onUpdateAnalysisField?.('3b_checklist_amministrativa', ['3b_checklist_amministrativa', 0, 'contributo_anac', 'cig'], val) || Promise.resolve()}
+                                                    />
                                                 </Badge>
                                             </div>
                                         </div>
@@ -722,14 +751,25 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                             Imposta di Bollo
                                         </CardTitle>
                                     </CardHeader>
-                                    <CardContent className="space-y-2">
+                                    <CardContent className="space-y-4">
                                         <div className="flex justify-between items-center">
                                             <span className="text-sm font-medium text-slate-400">Importo</span>
-                                            <p className="font-medium text-slate-100">{checklistData.imposta_bollo?.importo || '-'}</p>
+                                            <div className="font-medium text-slate-100">
+                                                <EditableField
+                                                    value={checklistData.imposta_bollo?.importo}
+                                                    onSave={(val) => onUpdateAnalysisField?.('3b_checklist_amministrativa', ['3b_checklist_amministrativa', 0, 'imposta_bollo', 'importo'], val) || Promise.resolve()}
+                                                />
+                                            </div>
                                         </div>
                                         <div>
                                             <span className="text-sm font-medium text-slate-400">Modalità</span>
-                                            <p className="text-slate-300 text-sm">{checklistData.imposta_bollo?.modalita || '-'}</p>
+                                            <div className="text-slate-300 text-sm">
+                                                <EditableField
+                                                    value={checklistData.imposta_bollo?.modalita}
+                                                    onSave={(val) => onUpdateAnalysisField?.('3b_checklist_amministrativa', ['3b_checklist_amministrativa', 0, 'imposta_bollo', 'modalita'], val) || Promise.resolve()}
+                                                    type="textarea"
+                                                />
+                                            </div>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -749,14 +789,23 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                     <div>
                                         <span className="text-sm font-medium text-slate-400">Stato</span>
                                         <div className="mt-1">
-                                            <Badge variant={checklistData.sopralluogo?.stato?.toLowerCase().includes('obbligatorio') ? 'destructive' : 'secondary'}>
-                                                {checklistData.sopralluogo?.stato || '-'}
+                                            <Badge variant={checklistData.sopralluogo?.stato?.toLowerCase().includes('obbligatorio') ? 'destructive' : 'secondary'} className="h-auto py-1">
+                                                <EditableField
+                                                    value={checklistData.sopralluogo?.stato}
+                                                    onSave={(val) => onUpdateAnalysisField?.('3b_checklist_amministrativa', ['3b_checklist_amministrativa', 0, 'sopralluogo', 'stato'], val) || Promise.resolve()}
+                                                />
                                             </Badge>
                                         </div>
                                     </div>
                                     <div>
                                         <span className="text-sm font-medium text-slate-400">Modalità</span>
-                                        <p className="text-slate-300 text-sm">{checklistData.sopralluogo?.modalita || '-'}</p>
+                                        <div className="text-slate-300 text-sm">
+                                            <EditableField
+                                                value={checklistData.sopralluogo?.modalita}
+                                                onSave={(val) => onUpdateAnalysisField?.('3b_checklist_amministrativa', ['3b_checklist_amministrativa', 0, 'sopralluogo', 'modalita'], val) || Promise.resolve()}
+                                                type="textarea"
+                                            />
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -772,11 +821,21 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <CardContent className="space-y-4">
                                     <div>
                                         <span className="text-sm font-medium text-slate-400">Formato Firma</span>
-                                        <p className="font-medium text-slate-100">{checklistData.firma_formato?.formato || '-'}</p>
+                                        <div className="font-medium text-slate-100">
+                                            <EditableField
+                                                value={checklistData.firma_formato?.formato}
+                                                onSave={(val) => onUpdateAnalysisField?.('3b_checklist_amministrativa', ['3b_checklist_amministrativa', 0, 'firma_formato', 'formato'], val) || Promise.resolve()}
+                                            />
+                                        </div>
                                     </div>
                                     <div>
                                         <span className="text-sm font-medium text-slate-400">Piattaforma</span>
-                                        <p className="text-slate-100">{checklistData.firma_formato?.piattaforma || '-'}</p>
+                                        <div className="text-slate-100">
+                                            <EditableField
+                                                value={checklistData.firma_formato?.piattaforma}
+                                                onSave={(val) => onUpdateAnalysisField?.('3b_checklist_amministrativa', ['3b_checklist_amministrativa', 0, 'firma_formato', 'piattaforma'], val) || Promise.resolve()}
+                                            />
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -799,10 +858,23 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                                 <div className="mt-0.5">
                                                     <div className="h-5 w-5 rounded border-2 border-slate-600" />
                                                 </div>
-                                                <div>
-                                                    <p className="font-medium text-slate-200">{doc.documento}</p>
-                                                    {doc.descrizione && <p className="text-sm text-slate-400 mt-1">{doc.descrizione}</p>}
-                                                    {doc.ref && <p className="text-xs text-slate-500 mt-1">Ref: {doc.ref}</p>}
+                                                <div className="w-full">
+                                                    <div className="font-medium text-slate-200">
+                                                        <EditableField
+                                                            value={doc.documento}
+                                                            onSave={(val) => onUpdateAnalysisField?.('3b_checklist_amministrativa', ['3b_checklist_amministrativa', 0, 'elenco_documenti', i, 'documento'], val) || Promise.resolve()}
+                                                            type="textarea"
+                                                        />
+                                                    </div>
+                                                    <div className="text-sm text-slate-400 mt-1">
+                                                        <EditableField
+                                                            value={doc.descrizione}
+                                                            placeholder="Descrizione opzionale..."
+                                                            onSave={(val) => onUpdateAnalysisField?.('3b_checklist_amministrativa', ['3b_checklist_amministrativa', 0, 'elenco_documenti', i, 'descrizione'], val) || Promise.resolve()}
+                                                            type="textarea"
+                                                        />
+                                                    </div>
+                                                    {/* Ref is less critical to edit but could be added if needed */}
                                                 </div>
                                             </div>
                                         ))

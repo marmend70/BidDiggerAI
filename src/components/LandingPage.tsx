@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Scan, MessageSquare, LayoutDashboard, Settings, ArrowRight, CheckCircle2, ChevronRight, Play, Check, AlertTriangle, Sparkles, FileText, Users, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import logo from '../assets/logo-final.png';
+import { Footer } from './Footer';
 
 interface LandingPageProps {
     onLogin: () => void;
     onRegister: () => void;
+    onOpenContact: () => void;
 }
 
 // --- ANIMATION COMPONENTS ---
@@ -335,7 +337,7 @@ const DashboardDemo = () => {
 
 // --- MAIN PAGE ---
 
-export function LandingPage({ onLogin, onRegister }: LandingPageProps) {
+export function LandingPage({ onLogin, onRegister, onOpenContact }: LandingPageProps) {
     const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
@@ -748,9 +750,7 @@ export function LandingPage({ onLogin, onRegister }: LandingPageProps) {
                 </div>
             </section>
 
-            <footer className="py-8 border-t border-slate-900 text-center text-slate-600 text-sm bg-slate-950">
-                © 2025 Bid Digger AI. Tutti i diritti riservati.
-            </footer>
+            <Footer onOpenContact={onOpenContact} />
         </div>
     );
 }

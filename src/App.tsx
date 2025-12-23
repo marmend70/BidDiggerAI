@@ -1457,7 +1457,7 @@ function App() {
     if (showLogin) {
       return <Login onOpenContact={() => setContactModalOpen(true)} />;
     }
-    return <LandingPage onLogin={() => setShowLogin(true)} onRegister={() => setShowLogin(true)} />;
+    return <LandingPage onLogin={() => setShowLogin(true)} onRegister={() => setShowLogin(true)} onOpenContact={() => setContactModalOpen(true)} />;
   }
 
   // Admin Route Check

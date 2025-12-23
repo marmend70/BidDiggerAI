@@ -407,10 +407,9 @@ export function LandingPage({ onLogin, onRegister }: LandingPageProps) {
                                 per l'analisi dei bandi di gara.
                             </span>
                         </h1>
-                        <p className="text-xl text-slate-400 leading-relaxed max-w-xl">
-                            Dimentica le ore passate a leggere disciplinari.
-                            Bid Digger estrae requisiti, scadenze e criteri in secondi,
-                            permettendoti di decidere subito se partecipare o no.
+                        <p className="text-lg md:text-xl text-slate-400 leading-relaxed max-w-4xl">
+                            Bid Digger è una piattaforma di analisi sintattica e semantica delle gare d’appalto, progettata per trasformare documenti complessi in informazioni strutturate, condivisibili e verificabili da team di lavoro. <br className="hidden md:block" />
+                            Dimentica le ore passate a leggere disciplinari. Bid Digger estrae requisiti, scadenze, criteri e tanto altro in secondi: li potrai condividere con il tuo team, modificare o integrare se necessario, per avere un completo quadro di fattibilità delle tue gare in valutazione.
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-4 pt-4">

@@ -112,6 +112,12 @@ const DEFAULT_PREFERENCES: UserPreferences = {
 
 
 function App() {
+  // Simple Routing
+  const isAdminRoute = window.location.pathname === '/admin';
+  if (isAdminRoute) {
+    return <AdminPage />;
+  }
+
   const [session, setSession] = useState<Session | null>(null);
   const [activeSection, setActiveSection] = useState('3_sintesi');
   const [snapshotModalOpen, setSnapshotModalOpen] = useState(false);
@@ -215,7 +221,7 @@ function App() {
       // 1. Fetch Preferences & Plan & Role & Organization
       const { data: profile } = await supabase
         .from('profiles')
-        .select('preferences, plan_type, credits, role, default_organization_id')
+        .select('preferences, plan_type, credits, role, app_role, default_organization_id')
         .eq('id', userId)
         .single();
 

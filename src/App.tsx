@@ -112,6 +112,12 @@ const DEFAULT_PREFERENCES: UserPreferences = {
 
 
 function App() {
+  // Simple Routing
+  const isAdminRoute = window.location.pathname === '/admin';
+  if (isAdminRoute) {
+    return <AdminPage />;
+  }
+
   const [session, setSession] = useState<Session | null>(null);
   const [activeSection, setActiveSection] = useState('3_sintesi');
   const [snapshotModalOpen, setSnapshotModalOpen] = useState(false);
@@ -215,7 +221,7 @@ function App() {
       // 1. Fetch Preferences & Plan & Role & Organization
       const { data: profile } = await supabase
         .from('profiles')
-        .select('preferences, plan_type, credits, role, default_organization_id')
+        .select('preferences, plan_type, credits, role, app_role, default_organization_id')
         .eq('id', userId)
         .single();
 
@@ -1580,7 +1586,7 @@ function App() {
       </div>
 
       {!analysisData && activeSection !== 'configurazioni' && activeSection !== 'archivio' && activeSection !== 'team' ? (
-        <div className="flex flex-col items-center justify-center h-full">
+        <div className="flex flex-col items-center justify-start h-full pt-12 md:pt-24">
           <div className="text-center mb-8 relative">
             <h1 className="text-4xl font-bold text-slate-100 mb-4">Benvenuto in Bid Digger</h1>
             <p className="text-lg text-slate-400 max-w-2xl mx-auto">
@@ -1595,10 +1601,19 @@ function App() {
             userCredits={userCredits}
           />
 
-          <div className="mt-8 max-w-3xl mx-auto grid gap-4 md:grid-cols-3 text-left">
+          <div className="mt-8 max-w-5xl mx-auto grid gap-4 md:grid-cols-2 lg:grid-cols-4 text-left">
             <div className="p-4 bg-[#1e1e2d] rounded-lg border border-slate-800 shadow-sm">
               <h3 className="font-semibold text-slate-200 mb-2 flex items-center gap-2">
-                <span className="h-6 w-6 rounded-full bg-amber-400/10 text-amber-500 flex items-center justify-center text-xs font-bold border border-amber-400/20">1</span>
+                <span className="h-6 w-6 rounded-full bg-blue-400/10 text-blue-500 flex items-center justify-center text-xs font-bold border border-blue-400/20">1</span>
+                Configurazioni
+              </h3>
+              <p className="text-sm text-slate-400">
+                La sezione <strong>"Configurazioni"</strong> permette di selezionare i contenuti da analizzare o esportare, oltre ad altri parametri personalizzabili per adattare l'output alle tue esigenze.
+              </p>
+            </div>
+            <div className="p-4 bg-[#1e1e2d] rounded-lg border border-slate-800 shadow-sm">
+              <h3 className="font-semibold text-slate-200 mb-2 flex items-center gap-2">
+                <span className="h-6 w-6 rounded-full bg-amber-400/10 text-amber-500 flex items-center justify-center text-xs font-bold border border-amber-400/20">2</span>
                 Documenti
               </h3>
               <p className="text-sm text-slate-400">
@@ -1607,20 +1622,20 @@ function App() {
             </div>
             <div className="p-4 bg-[#1e1e2d] rounded-lg border border-slate-800 shadow-sm">
               <h3 className="font-semibold text-slate-200 mb-2 flex items-center gap-2">
-                <span className="h-6 w-6 rounded-full bg-blue-400/10 text-blue-500 flex items-center justify-center text-xs font-bold border border-blue-400/20">2</span>
-                Configurazioni
+                <span className="h-6 w-6 rounded-full bg-purple-400/10 text-purple-500 flex items-center justify-center text-xs font-bold border border-purple-400/20">3</span>
+                Verifica
               </h3>
               <p className="text-sm text-slate-400">
-                La sezione <strong>"Configurazioni"</strong> permette di selezionare o deselezionare l'analisi e/o l'export su report per contenuti non necessari.
+                Massimo controllo sui risultati: ogni campo rilevato dall'AI può essere facilmente <strong>modificato, corretto o integrato</strong> manualmente.
               </p>
             </div>
             <div className="p-4 bg-[#1e1e2d] rounded-lg border border-slate-800 shadow-sm">
               <h3 className="font-semibold text-slate-200 mb-2 flex items-center gap-2">
-                <span className="h-6 w-6 rounded-full bg-emerald-400/10 text-emerald-500 flex items-center justify-center text-xs font-bold border border-emerald-400/20">3</span>
+                <span className="h-6 w-6 rounded-full bg-emerald-400/10 text-emerald-500 flex items-center justify-center text-xs font-bold border border-emerald-400/20">4</span>
                 Approfondimenti
               </h3>
               <p className="text-sm text-slate-400">
-                In ogni sezione e in <strong>"Faq e Approfondimenti"</strong> si possono aggiungere ulteriori richieste specifiche all'AI.
+                In ogni sezione e in <strong>"Approfondimenti"</strong> puoi aggiungere richieste specifiche, o chiedere supporto direttamente al <strong>ChatBOT Bid Digger Assistant</strong>.
               </p>
             </div>
           </div>

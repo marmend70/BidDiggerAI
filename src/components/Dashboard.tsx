@@ -97,7 +97,8 @@ interface DashboardProps {
     onUpdateAnalysisField?: (section: string, path: (string | number)[], value: any) => Promise<void>;
 }
 
-const SemanticAnalysisBlock = ({ data, sectionId, children }: { data?: { semantic_analysis?: string, rischi_rilevati?: any[] | any, suggerimenti?: any[] | any } | any, sectionId: string, children?: React.ReactNode }) => {
+const SemanticAnalysisBlock = ({ data, sectionId, children, isGeniusEnabled = true }: { data?: { semantic_analysis?: string, rischi_rilevati?: any[] | any, suggerimenti?: any[] | any } | any, sectionId: string, children?: React.ReactNode, isGeniusEnabled?: boolean }) => {
+    if (!isGeniusEnabled) return null; // HIDDEN if Genius Mode is disabled for this section
     if (!data) return null;
     // EXCLUSION: Don't show Genius Card for these sections (inherent logic)
     if (sectionId === '14_note_importanti' || sectionId === '17_ambiguita_punti_da_chiarire') return null;
@@ -155,7 +156,7 @@ const SemanticAnalysisBlock = ({ data, sectionId, children }: { data?: { semanti
                             Rischi Rilevati
                         </h4>
                         <div className="grid gap-3">
-                            {risks.map((risk, i) => {
+                            {risks.map((risk: any, i: number) => {
                                 // BACKWARD COMPATIBILITY: Handle old string format
                                 if (typeof risk === 'string') {
                                     return (
@@ -193,7 +194,7 @@ const SemanticAnalysisBlock = ({ data, sectionId, children }: { data?: { semanti
                             Suggerimenti Operativi
                         </h4>
                         <div className="space-y-3">
-                            {suggestions.map((sugg, i) => (
+                            {suggestions.map((sugg: any, i: number) => (
                                 <div key={i} className="bg-emerald-950/20 border border-emerald-900 rounded-lg p-3 hover:bg-emerald-900/30 transition-colors">
                                     <div className="flex items-start gap-3">
                                         <CheckSquare className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
@@ -529,7 +530,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </div>
                         </div>
 
-                        <SemanticAnalysisBlock data={data['1_requisiti_partecipazione'][0]} sectionId="1_requisiti_partecipazione" />
+                        <SemanticAnalysisBlock data={data['1_requisiti_partecipazione'][0]} sectionId="1_requisiti_partecipazione" isGeniusEnabled={userPreferences?.semantic_analysis_sections?.['1_requisiti_partecipazione']} />
                         <DeepDive
                             sectionId="1_requisiti_partecipazione"
                             existingQA={data.deep_dives?.['1_requisiti_partecipazione']}
@@ -627,7 +628,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </div>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data['3_sintesi']} sectionId="3_sintesi" />
+                        <SemanticAnalysisBlock data={data['3_sintesi']} sectionId="3_sintesi" isGeniusEnabled={userPreferences?.semantic_analysis_sections?.['3_sintesi']} />
                         <DeepDive
                             sectionId="3_sintesi"
                             existingQA={data.deep_dives?.['3_sintesi']}
@@ -813,7 +814,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             </CardContent>
                         </Card>
 
-                        <SemanticAnalysisBlock data={checklistData} sectionId="3b_checklist_amministrativa" />
+                        <SemanticAnalysisBlock data={checklistData} sectionId="3b_checklist_amministrativa" isGeniusEnabled={userPreferences?.semantic_analysis_sections?.['3b_checklist_amministrativa']} />
                         <DeepDive
                             sectionId="3b_checklist_amministrativa"
                             existingQA={data.deep_dives?.['3b_checklist_amministrativa']}
@@ -890,7 +891,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </div>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data['4_servizi']} sectionId="4_servizi" />
+                        <SemanticAnalysisBlock data={data['4_servizi']} sectionId="4_servizi" isGeniusEnabled={userPreferences?.semantic_analysis_sections?.['4_servizi']} />
                         <DeepDive
                             sectionId="4_servizi"
                             existingQA={data.deep_dives?.['4_servizi']}
@@ -1031,7 +1032,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                             })}
                         </div>
 
-                        <SemanticAnalysisBlock data={data['5_scadenze']} sectionId="5_scadenze" />
+                        <SemanticAnalysisBlock data={data['5_scadenze']} sectionId="5_scadenze" isGeniusEnabled={userPreferences?.semantic_analysis_sections?.['5_scadenze']} />
                         <DeepDive
                             sectionId="5_scadenze"
                             existingQA={data.deep_dives?.['5_scadenze']}
@@ -1116,7 +1117,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </Table>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data['6_importi']} sectionId="6_importi" />
+                        <SemanticAnalysisBlock data={data['6_importi']} sectionId="6_importi" isGeniusEnabled={userPreferences?.semantic_analysis_sections?.['6_importi']} />
                         <DeepDive
                             sectionId="6_importi"
                             existingQA={data.deep_dives?.['6_importi']}
@@ -1181,7 +1182,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </div>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data['7_durata']} sectionId="7_durata" />
+                        <SemanticAnalysisBlock data={data['7_durata']} sectionId="7_durata" isGeniusEnabled={userPreferences?.semantic_analysis_sections?.['7_durata']} />
                         <DeepDive
                             sectionId="7_durata"
                             existingQA={data.deep_dives?.['7_durata']}
@@ -1245,7 +1246,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </div>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data['8_ccnl']} sectionId="8_ccnl" />
+                        <SemanticAnalysisBlock data={data['8_ccnl']} sectionId="8_ccnl" isGeniusEnabled={userPreferences?.semantic_analysis_sections?.['8_ccnl']} />
                         <DeepDive
                             sectionId="8_ccnl"
                             existingQA={data.deep_dives?.['8_ccnl']}
@@ -1307,7 +1308,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </CardContent>
                             </Card>
                         </div>
-                        <SemanticAnalysisBlock data={data['9_oneri']} sectionId="9_oneri" />
+                        <SemanticAnalysisBlock data={data['9_oneri']} sectionId="9_oneri" isGeniusEnabled={userPreferences?.semantic_analysis_sections?.['9_oneri']} />
                         <DeepDive
                             sectionId="9_oneri"
                             existingQA={data.deep_dives?.['9_oneri']}
@@ -1478,7 +1479,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 <p className="text-slate-300">{data['10_punteggi'][0]?.note_economiche}</p>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data['10_punteggi'][0]} sectionId="10_punteggi">
+                        <SemanticAnalysisBlock data={data['10_punteggi'][0]} sectionId="10_punteggi" isGeniusEnabled={userPreferences?.semantic_analysis_sections?.['10_punteggi']}>
                             <SuggerimentiPunteggioBlock tips={data['10_punteggi'][0]?.suggerimenti_progettuali_punteggio} />
                         </SemanticAnalysisBlock>
                         <DeepDive
@@ -1521,7 +1522,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </Card>
                             ))}
                         </div>
-                        <SemanticAnalysisBlock data={data['11_pena_esclusione']} sectionId="11_pena_esclusione" />
+                        <SemanticAnalysisBlock data={data['11_pena_esclusione']} sectionId="11_pena_esclusione" isGeniusEnabled={userPreferences?.semantic_analysis_sections?.['11_pena_esclusione']} />
                         <DeepDive
                             sectionId="11_pena_esclusione"
                             existingQA={data.deep_dives?.['11_pena_esclusione']}
@@ -1578,7 +1579,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </div>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data['12_offerta_tecnica'][0]} sectionId="12_offerta_tecnica">
+                        <SemanticAnalysisBlock data={data['12_offerta_tecnica'][0]} sectionId="12_offerta_tecnica" isGeniusEnabled={userPreferences?.semantic_analysis_sections?.['12_offerta_tecnica']}>
                             <SuggerimentiOffertaBlock suggestions={data['12_offerta_tecnica'][0]?.suggerimenti_progettuali_offerta} />
                         </SemanticAnalysisBlock>
                         <DeepDive
@@ -1637,7 +1638,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </div>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data['13_offerta_economica']} sectionId="13_offerta_economica" />
+                        <SemanticAnalysisBlock data={data['13_offerta_economica']} sectionId="13_offerta_economica" isGeniusEnabled={userPreferences?.semantic_analysis_sections?.['13_offerta_economica']} />
                         <DeepDive
                             sectionId="13_offerta_economica"
                             existingQA={data.deep_dives?.['13_offerta_economica']}
@@ -1680,7 +1681,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </Card>
                             ))}
                         </div>
-                        <SemanticAnalysisBlock data={data['14_note_importanti']} sectionId="14_note_importanti" />
+                        <SemanticAnalysisBlock data={data['14_note_importanti']} sectionId="14_note_importanti" isGeniusEnabled={userPreferences?.semantic_analysis_sections?.['14_note_importanti']} />
                         <DeepDive
                             sectionId="14_note_importanti"
                             existingQA={data.deep_dives?.['14_note_importanti']}
@@ -1746,7 +1747,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </CardContent>
                             </Card>
                         </div>
-                        <SemanticAnalysisBlock data={data['15_remunerazione']} sectionId="15_remunerazione" />
+                        <SemanticAnalysisBlock data={data['15_remunerazione']} sectionId="15_remunerazione" isGeniusEnabled={userPreferences?.semantic_analysis_sections?.['15_remunerazione']} />
                         <DeepDive
                             sectionId="15_remunerazione"
                             existingQA={data.deep_dives?.['15_remunerazione']}
@@ -1881,7 +1882,7 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </div>
                             </CardContent>
                         </Card>
-                        <SemanticAnalysisBlock data={data['16_sla_penali']} sectionId="16_sla_penali" />
+                        <SemanticAnalysisBlock data={data['16_sla_penali']} sectionId="16_sla_penali" isGeniusEnabled={userPreferences?.semantic_analysis_sections?.['16_sla_penali']} />
                         <DeepDive
                             sectionId="16_sla_penali"
                             existingQA={data.deep_dives?.['16_sla_penali']}

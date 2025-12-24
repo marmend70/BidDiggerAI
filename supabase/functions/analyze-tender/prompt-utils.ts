@@ -401,15 +401,15 @@ JSON SCHEMA:
         "documenti": ["doc1 (stringa)", "doc2"],
         "formattazione_modalita": "...",
         "limiti": "...",
-        "criteri_formali": "...",
+        "criteri_formali": "..."${semanticPreferences['12_offerta_tecnica'] ? `,
         "suggerimenti_progettuali_offerta": [
           { "proposta": "...", "tipo": "Baseline/Value Added", "obiettivi": "...", "limiti": "..." }
-        ]
+        ]` : ''}
       }
     ],
       "analysis": {
       "fattori_successo": "...",
-        "strategia_redazione": "..."
+      "strategia_redazione": "..."
     }${semanticPreferences['12_offerta_tecnica'] ? geniusFields : ''}
   }
   Nota: "documenti" DEVE essere un array di stringhe, NON oggetti.`);
@@ -468,15 +468,15 @@ JSON SCHEMA:
           "parametri_legenda": "...",
           "modalita_calcolo": "..."
         },
-        "note_economiche": "...",
+        "note_economiche": "..."${semanticPreferences['10_punteggi'] ? `,
         "suggerimenti_progettuali_punteggio": [
           { "scelta": "...", "priorita": "Alta", "trade_off": "..." }
-        ]
+        ]` : ''}
       }
     ],
       "analysis": {
       "discrezionalita": "...",
-        "ambiguita_valutazione": "..."
+      "ambiguita_valutazione": "..."
     }${semanticPreferences['10_punteggi'] ? geniusFields : ''}
   } `);
 

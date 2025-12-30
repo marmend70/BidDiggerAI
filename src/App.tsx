@@ -1455,9 +1455,25 @@ function App() {
 
   if (!session) {
     if (showLogin) {
-      return <Login onOpenContact={() => setContactModalOpen(true)} />;
+      return (
+        <>
+          <Login onOpenContact={() => setContactModalOpen(true)} />
+          <ContactModal
+            isOpen={contactModalOpen}
+            onClose={() => setContactModalOpen(false)}
+          />
+        </>
+      );
     }
-    return <LandingPage onLogin={() => setShowLogin(true)} onRegister={() => setShowLogin(true)} onOpenContact={() => setContactModalOpen(true)} />;
+    return (
+      <>
+        <LandingPage onLogin={() => setShowLogin(true)} onRegister={() => setShowLogin(true)} onOpenContact={() => setContactModalOpen(true)} />
+        <ContactModal
+          isOpen={contactModalOpen}
+          onClose={() => setContactModalOpen(false)}
+        />
+      </>
+    );
   }
 
   // Admin Route Check

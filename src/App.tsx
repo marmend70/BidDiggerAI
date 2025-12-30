@@ -415,7 +415,7 @@ function App() {
       if (error) throw error;
     } catch (err) {
       console.error('Error updating preferences:', err);
-      alert('Errore nel salvataggio delle preferenze');
+      alert(`Errore nel salvataggio delle preferenze: ${(err as any).message || JSON.stringify(err)}`);
     }
   };
 

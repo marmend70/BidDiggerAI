@@ -94,7 +94,7 @@ JSON SCHEMA:
       "stazione_appaltante": "Nome completo Stazione Appaltante / Amministrazione",
       "oggetto": "Oggetto dell'appalto completo",
           "scopo": "Scopo generale",
-            "scenario": "Descrizione contesto",
+            "scenario": "Sintesi scenario e contesto organizzativo, territoriale, obiettivi principali, utenza di riferimento",
               "codici": { "cig": "...", "cup": "...", "cpv": "..." }
     },
     "analysis": {

@@ -26,24 +26,20 @@ export function GuideModal({ isOpen, onClose }: GuideModalProps) {
             answer: "Il sistema è ottimizzato per documenti lunghi. Tuttavia, per performance ottimali, consigliamo di caricare solo i documenti principali (Disciplinare, Capitolato Tecnico, Schema di Contratto) ed evitare allegati tecnici pesanti o non testuali (es. planimetrie complesse). Il limite consigliato è circa 300 pagine totali per analisi."
         },
         {
+            question: "Posso modificare i dati estratti?",
+            answer: "Certamente. Ogni campo rilevato dall'IA può essere modificato semplicemente cliccandoci sopra. Puoi anche aggiungere Note Personali per ogni sezione. Tutte le modifiche vengono salvate automaticamente e tracciate nel Log Attività del team."
+        },
+        {
+            question: "Come funzionano i Workspace di Team?",
+            answer: "Puoi creare un Workspace per la tua azienda e invitare colleghi. I crediti acquistati sono condivisi con tutto il team. Puoi assegnare ruoli differenziati (es. Amministratore o Membro) e lavorare contemporaneamente sulle stesse gare."
+        },
+        {
             question: "I miei dati sono al sicuro?",
-            answer: "Assolutamente sì. I documenti vengono elaborati in un ambiente sicuro e crittografato. I dati della tua azienda e le analisi generate sono accessibili solo al tuo account e non vengono utilizzati per addestrare modelli pubblici."
+            answer: "Assolutamente sì. I documenti vengono elaborati in un ambiente sicuro e crittografato. I dati della tua azienda e le analisi generate sono accessibili solo al tuo account (o al tuo team) e non vengono utilizzati per addestrare modelli pubblici."
         },
         {
-            question: "Posso modificare i dati estratti dall'IA?",
-            answer: "Al momento i dati estratti sono in sola lettura nella Dashboard. Tuttavia, puoi esportare il report in Word e modificarlo liberamente lì. In caso di dubbi su un dato, usa la funzione \"Deep Dive\" (Chat) per chiedere all'IA di verificare la fonte esatta nel documento."
-        },
-        {
-            question: "Perché vedo una barra rossa sulla scadenza anche se la gara è appena uscita?",
-            answer: "La barra rossa indica che mancano meno di 10 giorni alla scadenza. Se la data estratta ti sembra errata (es. una data passata), verifica che il documento non contenga rifusi o date di vecchie edizioni."
-        },
-        {
-            question: "L'analisi si è bloccata o ha dato errore.",
-            answer: "Se l'analisi fallisce, riprova ricaricando la pagina. Se il problema persiste, prova a caricare un documento alla volta o verifica che il PDF non sia corrotto o protetto da password."
-        },
-        {
-            question: "Non riesco ad assegnare un responsabile alla gara.",
-            answer: "La funzione di assegnazione responsabili si sblocca solo quando lo stato della gara viene impostato su \"Assegnata\". Cambia lo stato dal menu a tendina nella lista gare (es. da \"In Valutazione\" a \"Assegnata\") e le icone \"+\" diventeranno attive."
+            question: "Perché vedo una barra rossa sulla scadenza?",
+            answer: "La barra rossa indica che mancano meno di 10 giorni alla scadenza. È un avviso visivo per segnalare l'urgenza dell'opportunità."
         }
     ];
 
@@ -97,7 +93,7 @@ export function GuideModal({ isOpen, onClose }: GuideModalProps) {
                             <div className="bg-slate-900/50 p-5 rounded-xl border border-slate-800">
                                 <h3 className="font-semibold text-slate-200 mb-3 flex items-center gap-2">
                                     <span className="bg-purple-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span>
-                                    Dashboard
+                                    Menu Navigabile
                                 </h3>
                                 <ul className="space-y-2 text-sm text-slate-400">
                                     <li className="flex gap-2">
@@ -118,7 +114,7 @@ export function GuideModal({ isOpen, onClose }: GuideModalProps) {
                             <div className="bg-slate-900/50 p-5 rounded-xl border border-slate-800">
                                 <h3 className="font-semibold text-slate-200 mb-3 flex items-center gap-2">
                                     <span className="bg-amber-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">3</span>
-                                    Archivio & Timeline
+                                    Dashboard & Timeline
                                 </h3>
                                 <ul className="space-y-2 text-sm text-slate-400">
                                     <li className="flex gap-2">
@@ -157,6 +153,48 @@ export function GuideModal({ isOpen, onClose }: GuideModalProps) {
                                     <li className="flex gap-2">
                                         <span className="text-emerald-400">•</span>
                                         <span>Scarica il <strong>Report Word</strong> completo in ogni momento.</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div className="bg-slate-900/50 p-5 rounded-xl border border-slate-800">
+                                <h3 className="font-semibold text-slate-200 mb-3 flex items-center gap-2">
+                                    <span className="bg-indigo-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">5</span>
+                                    Workspace & Team
+                                </h3>
+                                <ul className="space-y-2 text-sm text-slate-400">
+                                    <li className="flex gap-2">
+                                        <span className="text-indigo-400">•</span>
+                                        <span>Switcher rapido tra <strong>Personale</strong> e <strong>Team</strong>.</span>
+                                    </li>
+                                    <li className="flex gap-2">
+                                        <span className="text-indigo-400">•</span>
+                                        <span>Invita colleghi e assegna ruoli (Admin, Membro).</span>
+                                    </li>
+                                    <li className="flex gap-2">
+                                        <span className="text-indigo-400">•</span>
+                                        <span>I <strong>crediti</strong> sono condivisi nel Workspace di Team.</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div className="bg-slate-900/50 p-5 rounded-xl border border-slate-800">
+                                <h3 className="font-semibold text-slate-200 mb-3 flex items-center gap-2">
+                                    <span className="bg-pink-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">6</span>
+                                    Note & Modifiche
+                                </h3>
+                                <ul className="space-y-2 text-sm text-slate-400">
+                                    <li className="flex gap-2">
+                                        <span className="text-pink-400">•</span>
+                                        <span>Ogni campo è <strong>modificabile</strong>: clicca e scrivi.</span>
+                                    </li>
+                                    <li className="flex gap-2">
+                                        <span className="text-pink-400">•</span>
+                                        <span>Aggiungi <strong>Note Personali</strong> in ogni sezione.</span>
+                                    </li>
+                                    <li className="flex gap-2">
+                                        <span className="text-pink-400">•</span>
+                                        <span>Tutte le modifiche sono <strong>tracciate</strong> nel log attività.</span>
                                     </li>
                                 </ul>
                             </div>
@@ -208,4 +246,3 @@ export function GuideModal({ isOpen, onClose }: GuideModalProps) {
         </Dialog>
     );
 }
-

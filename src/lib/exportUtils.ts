@@ -720,20 +720,42 @@ function createGeniusSection(data: any) {
     if (risks && Array.isArray(risks) && risks.length > 0) {
         geniusContent.push(
             createSubHeading("Rischi Rilevati"),
-            ...risks.flatMap((r: any) => [
-                new Paragraph({
+            ...risks.flatMap((r: any) => {
+                const description = r.rischio || r.descrizione || "Nessuna descrizione";
+                const details: any[] = [];
+
+                details.push(new Paragraph({
                     children: [
                         new TextRun({ text: `[${r.livello?.toUpperCase() || 'INFO'}] `, bold: true, color: r.livello === 'alto' ? 'FF0000' : (r.livello === 'medio' ? 'FFA500' : '000000') }),
-                        new TextRun({ text: r.descrizione, bold: true })
+                        new TextRun({ text: safeText(description), bold: true })
                     ],
                     bullet: { level: 0 }
-                }),
-                new Paragraph({
-                    text: `Impatto: ${r.impatto || '-'} | Mitigazione: ${r.mitigazione || '-'}`,
-                    indent: { left: 720 }, // Indent explanation
-                    spacing: { after: 100 }
-                })
-            ])
+                }));
+
+                // Only show details line if we have extra info
+                let detailsText = "";
+                if (r.impatto || r.mitigazione) {
+                    detailsText += `Impatto: ${r.impatto || '-'} | Mitigazione: ${r.mitigazione || '-'}`;
+                }
+                if (r.fonte) {
+                    if (detailsText) detailsText += " | ";
+                    detailsText += `Fonte: ${r.fonte}`;
+                }
+
+                if (detailsText) {
+                    details.push(new Paragraph({
+                        text: detailsText,
+                        indent: { left: 720 },
+                        spacing: { after: 100 },
+                        run: { size: 20, color: "555555" } // 10pt, dark grey
+                    }));
+                } else {
+                    // Add a small spacer if no details, to separate items slightly
+                    details[0].paragraph.spacing = { after: 100 };
+                }
+
+                return details;
+            })
         );
     }
 

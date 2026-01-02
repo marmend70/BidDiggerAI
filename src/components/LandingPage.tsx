@@ -8,6 +8,7 @@ import logo from '../assets/logo-final.png';
 interface LandingPageProps {
     onLogin: () => void;
     onRegister: () => void;
+    onOpenContact?: () => void;
 }
 
 // --- ANIMATION COMPONENTS ---

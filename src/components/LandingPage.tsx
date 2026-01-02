@@ -9,7 +9,7 @@ import { Footer } from './Footer';
 interface LandingPageProps {
     onLogin: () => void;
     onRegister: () => void;
-    onOpenContact: () => void;
+    onOpenContact?: () => void;
 }
 
 // --- ANIMATION COMPONENTS ---
@@ -443,7 +443,7 @@ export function LandingPage({ onLogin, onRegister, onOpenContact }: LandingPageP
             </section>
 
             {/* --- FEATURES / SCANNER --- */}
-            <section id="features" className="py-24 bg-slate-950/50 border-y border-slate-900 relative">
+            <section id="features" className="py-24 bg-slate-950/50 border-y border-slate-900 relative" >
                 <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-3 gap-12">
                     <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 hover:border-indigo-500/50 transition-all group">
                         <div className="w-14 h-14 bg-indigo-900/30 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
@@ -476,7 +476,7 @@ export function LandingPage({ onLogin, onRegister, onOpenContact }: LandingPageP
             </section>
 
             {/* --- GENIUS MODE SECTION --- */}
-            <section id="genius" className="py-32 px-6">
+            <section id="genius" className="py-32 px-6" >
                 <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
                     <div className="order-2 lg:order-2 relative">
                         {/* Decorative circle */}
@@ -531,7 +531,7 @@ export function LandingPage({ onLogin, onRegister, onOpenContact }: LandingPageP
             </section>
 
             {/* --- ASSISTANT SECTION --- */}
-            <section id="assistant" className="py-32 px-6 bg-gradient-to-b from-[#0B0F19] to-indigo-950/20">
+            <section id="assistant" className="py-32 px-6 bg-gradient-to-b from-[#0B0F19] to-indigo-950/20" >
                 <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
                     <div className="order-2 lg:order-1 relative">
                         {/* Decorative circle */}
@@ -570,7 +570,7 @@ export function LandingPage({ onLogin, onRegister, onOpenContact }: LandingPageP
             </section>
 
             {/* --- DASHBOARD SECTION --- */}
-            <section id="dashboard" className="py-32 px-6">
+            <section id="dashboard" className="py-32 px-6" >
                 <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
                     <div className="space-y-6">
                         <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-950/30 border border-amber-900/50 rounded-full text-xs font-semibold text-amber-500 uppercase tracking-widest">
@@ -604,9 +604,9 @@ export function LandingPage({ onLogin, onRegister, onOpenContact }: LandingPageP
 
 
             {/* --- TEAM & WORKSPACE SECTION --- */}
-            <section id="collaboration" className="py-32 px-6 bg-slate-950 relative overflow-hidden">
+            <section id="collaboration" className="py-32 px-6 bg-slate-950 relative overflow-hidden" >
                 {/* Background Glow */}
-                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-900/10 rounded-full blur-[120px] -z-10"></div>
+                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-900/10 rounded-full blur-[120px] -z-10" ></div>
 
                 <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
                     <div className="order-2 lg:order-1 relative">
@@ -709,7 +709,7 @@ export function LandingPage({ onLogin, onRegister, onOpenContact }: LandingPageP
             </section>
 
             {/* --- SETTINGS SECTION --- */}
-            <section id="config" className="py-24 bg-slate-950 border-t border-slate-900 px-6">
+            <section id="config" className="py-24 bg-slate-950 border-t border-slate-900 px-6" >
                 <div className="max-w-4xl mx-auto text-center space-y-6 mb-16">
                     <h2 className="text-3xl md:text-4xl font-bold text-white">Tutto Configurabile</h2>
                     <p className="text-lg text-slate-400">
@@ -736,7 +736,7 @@ export function LandingPage({ onLogin, onRegister, onOpenContact }: LandingPageP
             </section>
 
             {/* --- CTA FOOTER --- */}
-            <section className="py-20 px-6 border-t border-slate-800 text-center">
+            <section className="py-20 px-6 border-t border-slate-800 text-center" >
                 <div className="max-w-3xl mx-auto space-y-8">
                     <h2 className="text-4xl font-bold text-white">Pronto a imparare un nuovo modo per gareggiare?</h2>
                     <p className="text-xl text-slate-400">Inizia ora la tua prova gratuita. Nessun impegno.</p>

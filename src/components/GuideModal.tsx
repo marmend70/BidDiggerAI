@@ -246,4 +246,3 @@ export function GuideModal({ isOpen, onClose }: GuideModalProps) {
         </Dialog>
     );
 }
-

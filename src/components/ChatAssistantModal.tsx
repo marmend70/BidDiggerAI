@@ -15,9 +15,10 @@ interface ChatAssistantModalProps {
     tenderTitle: string;
     filePaths?: string[];
     analysisContext?: any;
+    onSendMessage: (history: Message[]) => Promise<{ answer: string; error?: string }>;
 }
 
-export function ChatAssistantModal({ isOpen, onClose, tenderId, tenderTitle, filePaths, analysisContext }: ChatAssistantModalProps) {
+export function ChatAssistantModal({ isOpen, onClose, tenderId, tenderTitle, filePaths, analysisContext, onSendMessage }: ChatAssistantModalProps) {
     const [messages, setMessages] = useState<Message[]>([
         { role: 'model', content: "Ciao! Sono il tuo assistente per questa gara. Come posso aiutarti? Posso analizzare i documenti o cercare informazioni aggiornate su internet (scrivi 'Cerca su internet:')." }
     ]);
@@ -55,26 +56,22 @@ export function ChatAssistantModal({ isOpen, onClose, tenderId, tenderTitle, fil
         if (isSearch) setIsSearching(true);
 
         try {
-            const conversationHistory = [...messages, { role: 'user', content: userMsg }];
+            const conversationHistory: Message[] = [...messages, { role: 'user', content: userMsg }];
 
-            const { data, error } = await supabase.functions.invoke('chat-assistant', {
-                body: {
-                    tenderId,
-                    messages: conversationHistory,
-                    model: 'gemini-3-pro-preview',
-                    filePaths, // Pass file paths
-                    analysisContext // Pass context
+            // DELEGATE TO PARENT (App.tsx) for Credit Logic
+            const { answer, error } = await onSendMessage(conversationHistory);
+
+            if (error) {
+                // Determine if it was a user cancellation or real error
+                if (error === 'Cancelled by user') {
+                    // Remove the user's last message if they cancelled payment?
+                    // Or just show a system message.
+                    setMessages(prev => [...prev, { role: 'model', content: "❌ Richiesta annullata." }]);
+                } else {
+                    throw new Error(error);
                 }
-            });
-
-            if (error) throw error;
-
-            if (data && data.error) {
-                throw new Error(data.error);
-            }
-
-            if (data && data.answer) {
-                setMessages(prev => [...prev, { role: 'model', content: data.answer }]);
+            } else if (answer) {
+                setMessages(prev => [...prev, { role: 'model', content: answer }]);
             } else {
                 throw new Error("No answer received");
             }

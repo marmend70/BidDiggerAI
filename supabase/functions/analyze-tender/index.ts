@@ -430,6 +430,36 @@ ${contextString}
          return new Response(JSON.stringify({ answer: finalAnswer }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
+      // --- ACTION: DEDUCT CREDITS ---
+      if (action === 'deduct_credits') {
+         const { amount, userId } = body;
+         if (!amount || amount <= 0) return new Response(JSON.stringify({ error: "Invalid amount" }), { status: 400, headers: corsHeaders });
+
+         // Fetch profile
+         const { data: profile, error: fetchError } = await supabaseClient
+            .from('profiles')
+            .select('credits')
+            .eq('id', userId || (await supabaseClient.auth.getUser()).data.user?.id) // Handle explicit or implicit user
+            .single();
+
+         if (fetchError || !profile) throw new Error("Profile not found");
+
+         const current = profile.credits || 0;
+         if (current < amount) {
+            return new Response(JSON.stringify({ error: "Insufficient credits", success: false }), { status: 400, headers: corsHeaders });
+         }
+
+         const newBalance = current - amount;
+         const { error: updateError } = await supabaseClient
+            .from('profiles')
+            .update({ credits: newBalance })
+            .eq('id', userId || (await supabaseClient.auth.getUser()).data.user?.id);
+
+         if (updateError) throw updateError;
+
+         return new Response(JSON.stringify({ success: true, newBalance }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
       return new Response(JSON.stringify({ error: 'Invalid action' }), { status: 400, headers: corsHeaders });
 
    } catch (error: any) {

@@ -22,16 +22,28 @@ export function GuideModal({ isOpen, onClose }: GuideModalProps) {
             answer: "La Genius Mode è il nostro motore di analisi semantica avanzata. Oltre a estrarre dati \"freddi\" (date, importi), l'IA agisce come un consulente esperto (Bid Manager + Legale), identificando rischi occulti, clausole vessatorie, ambiguità tra i documenti e suggerimenti strategici per massimizzare il punteggio tecnico."
         },
         {
+            question: "Quanto costa un'analisi completa?",
+            answer: "1 Credito = 1 Analisi Completa. Questo include l'estrazione di tutti i dati, l'analisi dei requisiti, la checklist, i punteggi tecnici e 3 approfondimenti mirati. Nessun costo nascosto."
+        },
+        {
+            question: "Come funzionano gli approfondimenti extra?",
+            answer: "Se hai bisogno di più dettagli oltre ai 3 inclusi, il sistema scala automaticamente 0,5 crediti ogni 3 nuovi approfondimenti (o domande al chatbot). Il consumo è sempre mostrato prima di procedere."
+        },
+        {
+            question: "Quanto costa usare la Genius Mode?",
+            answer: "La Genius Mode è un potenziamento opzionale. Attivarla per un'analisi profonda su una o più sezioni specifiche costa 0,5 crediti aggiuntivi. Ti verrà chiesto conferma prima di ogni spesa extra."
+        },
+        {
+            question: "Cosa succede se ho crediti frazionari?",
+            answer: "I crediti frazionari (es. 0,5) rimangono nel tuo saldo e sono perfetti per Genius Mode o approfondimenti extra. Tuttavia, per avviare una nuova analisi completa serve almeno 1 credito intero."
+        },
+        {
             question: "Cosa succede se la gara è molto lunga (es. 300 pagine)?",
             answer: "Il sistema è ottimizzato per documenti lunghi. Tuttavia, per performance ottimali, consigliamo di caricare solo i documenti principali (Disciplinare, Capitolato Tecnico, Schema di Contratto) ed evitare allegati tecnici pesanti o non testuali (es. planimetrie complesse). Il limite consigliato è circa 300 pagine totali per analisi."
         },
         {
             question: "Posso modificare i dati estratti?",
             answer: "Certamente. Ogni campo rilevato dall'IA può essere modificato semplicemente cliccandoci sopra. Puoi anche aggiungere Note Personali per ogni sezione. Tutte le modifiche vengono salvate automaticamente e tracciate nel Log Attività del team."
-        },
-        {
-            question: "Come funzionano i Workspace di Team?",
-            answer: "Puoi creare un Workspace per la tua azienda e invitare colleghi. I crediti acquistati sono condivisi con tutto il team. Puoi assegnare ruoli differenziati (es. Amministratore o Membro) e lavorare contemporaneamente sulle stesse gare."
         },
         {
             question: "I miei dati sono al sicuro?",

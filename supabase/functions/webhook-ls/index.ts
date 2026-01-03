@@ -77,10 +77,10 @@ Deno.serve(async (req) => {
                 Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
             );
 
-            // Get current credits
+            // Get current profile
             const { data: profile, error: fetchError } = await supabase
                 .from('profiles')
-                .select('credits')
+                .select('credits, plan_type')
                 .eq('id', userId)
                 .single();
 
@@ -89,21 +89,46 @@ Deno.serve(async (req) => {
                 return new Response('Error fetching profile', { status: 500 });
             }
 
-            // Handle case where credits is null (first time)
             const currentCredits = profile.credits || 0;
+            const currentPlan = profile.plan_type || 'starter';
+
+            // Map plans to levels
+            const PLAN_LEVELS: Record<string, number> = { 'starter': 1, 'pro': 2, 'agency': 3 };
+            const currentLevel = PLAN_LEVELS[currentPlan] || 1;
+
+            let newLevel = currentLevel;
+            let newPlan = currentPlan;
+
+            // Determine new plan level
+            let purchasedLevel = 1;
+            let purchasedPlan = 'starter';
+            if (productName.includes('Pro')) { purchasedLevel = 2; purchasedPlan = 'pro'; }
+            else if (productName.includes('Agency')) { purchasedLevel = 3; purchasedPlan = 'agency'; }
+
+            // UPGRADE RULE: If purchased level > current level, upgrade.
+            // If purchased level <= current level, keep current level (Agency user buying Starter credits stays Agency).
+            if (purchasedLevel > currentLevel) {
+                newLevel = purchasedLevel;
+                newPlan = purchasedPlan;
+                console.log(`Upgrading user ${userId} from ${currentPlan} to ${newPlan}`);
+            }
+
             const newCredits = currentCredits + creditsToAdd;
 
             const { error: updateError } = await supabase
                 .from('profiles')
-                .update({ credits: newCredits })
+                .update({
+                    credits: newCredits,
+                    plan_type: newPlan
+                })
                 .eq('id', userId);
 
             if (updateError) {
-                console.error('Error updating credits:', updateError);
+                console.error('Error updating credits/plan:', updateError);
                 return new Response('Error updating credits', { status: 500 });
             }
 
-            console.log(`Successfully added ${creditsToAdd} credits to user ${userId}. New balance: ${newCredits}`);
+            console.log(`Successfully processed order for ${userId}. +${creditsToAdd} credits. Plan: ${newPlan}. New Balance: ${newCredits}`);
         } else {
             console.log('No credits associated with this product name.');
         }

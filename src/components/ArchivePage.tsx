@@ -22,6 +22,7 @@ interface ArchivePageProps {
     organizationId?: string | null; // NEW: Organization Support
     onLoadAnalysis: (data: AnalysisResult, tenderId: string) => void;
     userPreferences?: UserPreferences;
+    userPlanType?: string;
 }
 
 interface ArchivedAnalysis {
@@ -65,7 +66,7 @@ const TAB_LABELS = {
     'DA_ASSEGNARE': 'Da Assegnare'
 };
 
-export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPreferences }: ArchivePageProps) {
+export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPreferences, userPlanType }: ArchivePageProps) {
     const [analyses, setAnalyses] = useState<ArchivedAnalysis[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedAnalysis, setSelectedAnalysis] = useState<AnalysisResult | null>(null);
@@ -884,6 +885,7 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
                                 onUpdateOwner={handleUpdateOwnerField}
                                 onUpdateNotes={handleUpdateNotes}
                                 userPreferences={userPreferences || {}} // Fallback to empty object
+                                userPlanType={userPlanType}
                             />
                         );
                     })

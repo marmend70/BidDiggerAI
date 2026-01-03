@@ -241,6 +241,7 @@ export interface UserProfile {
     company_name?: string;
     full_name?: string;
     credits: number; // Added for credit system
+    plan_type?: string; // Added for tier management
     preferences?: UserPreferences;
     role?: string; // Added for admin functionality
     default_organization_id?: string; // Added for Team/Organization support

@@ -1,15 +1,30 @@
 import React from 'react';
 import { X, Check } from 'lucide-react';
 import { LEMON_SQUEEZY_URLS } from '../constants';
+import { PricingModal_Legacy_Tiers } from './PricingModal_Legacy_Tiers';
 
 interface PricingModalProps {
     isOpen: boolean;
     onClose: () => void;
     userId: string | undefined;
+    showTiers?: boolean;
 }
 
-export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, userId }) => {
+export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, userId, showTiers }) => {
     if (!isOpen) return null;
+
+    console.log('[DEBUG] PricingModal showTiers prop:', showTiers);
+
+    // CONDITIONAL RENDER: SHOW TIERS IF ENABLED
+    if (showTiers) {
+        return (
+            <PricingModal_Legacy_Tiers
+                isOpen={isOpen}
+                onClose={onClose}
+                userId={userId}
+            />
+        );
+    }
 
     const handleBuy = (url: string) => {
         if (!userId) {

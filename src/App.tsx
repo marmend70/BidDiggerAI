@@ -23,7 +23,7 @@ import { ModelSelectionModal } from '@/components/ModelSelectionModal';
 import { UpgradeModal } from '@/components/UpgradeModal';
 import { ContactModal } from '@/components/ContactModal';
 import { ScanRetryModal } from '@/components/ScanRetryModal';
-import { PricingModal_Legacy_Tiers as PricingModal } from '@/components/PricingModal_Legacy_Tiers';
+import { PricingModal } from '@/components/PricingModal';
 import { ChatAssistantModal } from '@/components/ChatAssistantModal';
 import { SnapshotModal } from '@/components/SnapshotModal';
 import { AVAILABLE_MODELS, SECTIONS_MAP } from '@/constants';
@@ -140,6 +140,26 @@ function App() {
   // Trial & Logic State
   const [userPlan, setUserPlan] = useState<string>('trial');
   const [userCredits, setUserCredits] = useState<number>(0); // Credits state
+  const [paymentsEnabled, setPaymentsEnabled] = useState(false); // NEW STATE for Pricing Toggle
+
+  // FETCH GLOBAL SETTINGS
+  useEffect(() => {
+    supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'payments_enabled')
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          // Robust boolean conversion (handles boolean or "true" string)
+          const val = data.value;
+          console.log('[DEBUG] PAYMENTS SETTING RAW:', val, typeof val);
+          const resolved = val === true || String(val).toLowerCase() === 'true';
+          console.log('[DEBUG] PAYMENTS SETTING RESOLVED:', resolved);
+          setPaymentsEnabled(resolved);
+        }
+      });
+  }, []);
   const [userRole, setUserRole] = useState<string>('user'); // Store role
   const [orgRole, setOrgRole] = useState<string | null>(null); // NEW: Store Workspace Role
   const [orgName, setOrgName] = useState<string | null>(null); // NEW: Store Workspace Name
@@ -1755,6 +1775,7 @@ function App() {
         isOpen={showPricingModal}
         onClose={() => setShowPricingModal(false)}
         userId={session?.user?.id}
+        showTiers={paymentsEnabled}
       />
       <ChatAssistantModal
         isOpen={showChatAssistant}

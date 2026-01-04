@@ -285,25 +285,33 @@ function App() {
           if (orgData) {
             setOrgName(orgData.name);
 
-            // CREDIT LOGIC: If I am NOT the owner, I see the OWNER'S credits
+            // CREDIT & PLAN LOGIC: If I am NOT the owner, I inherit the OWNER'S credits and PLAN
             if (orgData.created_by && orgData.created_by !== userId) {
-              console.log(`[Credits] User is guest in org ${profile.default_organization_id} owned by ${orgData.created_by}. Fetching owner credits.`);
+              console.log(`[Inheritance] User is guest in org ${profile.default_organization_id}. Fetching owner data.`);
 
-              // Fetch Owner's specific credit balance
+              // Fetch Owner's specific credit balance AND plan
               const { data: ownerProfile } = await supabase
                 .from('profiles')
-                .select('credits')
+                .select('credits, plan_type') // UPDATED: Fetch plan_type
                 .eq('id', orgData.created_by)
                 .single();
 
-              if (ownerProfile && typeof ownerProfile.credits === 'number') {
-                console.log("[Credits] Overriding user credits with Owner credits:", ownerProfile.credits);
-                setUserCredits(ownerProfile.credits);
+              if (ownerProfile) {
+                if (typeof ownerProfile.credits === 'number') {
+                  console.log("[Inheritance] Overriding credits with Owner's:", ownerProfile.credits);
+                  setUserCredits(ownerProfile.credits);
+                }
+                if (ownerProfile.plan_type) {
+                  console.log("[Inheritance] Overriding plan with Owner's:", ownerProfile.plan_type);
+                  setUserPlan(ownerProfile.plan_type);
+                }
               }
             } else {
-              // I am the owner, so my profile.credits are correct
-              console.log("[Credits] User is owner. Using personal credits:", profile.credits);
-              // userCredits already set above
+              // I am the owner, so use my own credits and plan
+              console.log("[Inheritance] User is owner. Using personal credits/plan.");
+              // userCredits already set above from profile.credits
+              // Ensure userPlan is reset to personal plan (in case we switched back)
+              if (profile.plan_type) setUserPlan(profile.plan_type);
             }
           }
 
@@ -1986,6 +1994,11 @@ function App() {
       <div className="flex flex-col items-center gap-2 mb-4 shrink-0">
         <div className="inline-block px-4 py-2 bg-[#1e1e2d] text-indigo-400 rounded-full text-sm font-semibold border border-slate-700 flex items-center gap-2 shadow-sm">
           <span>{userOrganizationId ? "Crediti Workspace" : "Crediti disponibili"}: {userCredits}</span>
+          {userPlan && (
+            <span className="text-[10px] uppercase font-bold text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-1.5 py-0.5 rounded ml-1">
+              {userPlan === 'trial' ? 'Trial' : userPlan}
+            </span>
+          )}
           <button onClick={() => setShowPricingModal(true)} className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-500 transition-colors">
             Ricarica
           </button>

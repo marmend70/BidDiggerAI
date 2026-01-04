@@ -77,6 +77,19 @@ Deno.serve(async (req) => {
                 Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
             );
 
+            // Check if order already processed
+            const orderIdStr = String(data.id);
+            const { data: existingEvent } = await supabase
+                .from('payment_events')
+                .select('id')
+                .eq('order_id', orderIdStr)
+                .single();
+
+            if (existingEvent) {
+                console.log(`Order ${orderIdStr} already processed. Skipping.`);
+                return new Response('Already processed', { status: 200 });
+            }
+
             // Get current profile
             const { data: profile, error: fetchError } = await supabase
                 .from('profiles')
@@ -126,6 +139,19 @@ Deno.serve(async (req) => {
             if (updateError) {
                 console.error('Error updating credits/plan:', updateError);
                 return new Response('Error updating credits', { status: 500 });
+            }
+
+            // Record the event for idempotency
+            const { error: insertError } = await supabase.from('payment_events').insert({
+                order_id: orderIdStr,
+                user_id: userId,
+                amount: attributes.total / 100, // Store as main currency unit (e.g. 0.61), assuming total is in cents
+                currency: attributes.currency,
+                meta: payload
+            });
+
+            if (insertError) {
+                console.error('Error saving payment event:', insertError);
             }
 
             console.log(`Successfully processed order for ${userId}. +${creditsToAdd} credits. Plan: ${newPlan}. New Balance: ${newCredits}`);

@@ -17,6 +17,7 @@ import {
 interface TeamMember {
     user_id: string;
     role: 'owner' | 'admin' | 'member';
+    status?: 'active' | 'pending' | 'rejected'; // Added
     joined_at: string;
     profiles: {
         email: string;
@@ -89,7 +90,7 @@ export function TeamSettings({ currentUserId, organizationId }: TeamSettingsProp
             // 2. Fetch Members (without direct join to avoid schema error)
             const { data: membersData, error: membersError } = await supabase
                 .from('organization_members')
-                .select('user_id, role, joined_at')
+                .select('user_id, role, status, joined_at') // Added status
                 .eq('organization_id', organizationId);
 
             if (membersError) throw membersError;
@@ -368,10 +369,19 @@ export function TeamSettings({ currentUserId, organizationId }: TeamSettingsProp
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-800 rounded-full border border-slate-700">
-                                        <Shield className={cn("h-3 w-3", member.role === 'owner' ? "text-amber-500" : member.role === 'admin' ? "text-indigo-400" : "text-slate-400")} />
-                                        <span className={cn("text-xs font-medium capitalize", member.role === 'owner' ? "text-amber-500" : member.role === 'admin' ? "text-indigo-400" : "text-slate-400")}>
-                                            {member.role === 'owner' ? 'Proprietario' : member.role}
-                                        </span>
+                                        {member.status === 'pending' ? (
+                                            <>
+                                                <Loader2 className="h-3 w-3 text-amber-500 animate-pulse" />
+                                                <span className="text-xs font-medium text-amber-500">In Attesa</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Shield className={cn("h-3 w-3", member.role === 'owner' ? "text-amber-500" : member.role === 'admin' ? "text-indigo-400" : "text-slate-400")} />
+                                                <span className={cn("text-xs font-medium capitalize", member.role === 'owner' ? "text-amber-500" : member.role === 'admin' ? "text-indigo-400" : "text-slate-400")}>
+                                                    {member.role === 'owner' ? 'Proprietario' : member.role}
+                                                </span>
+                                            </>
+                                        )}
                                     </div>
 
                                     {canManage && member.role !== 'owner' && member.user_id !== currentUserId && (

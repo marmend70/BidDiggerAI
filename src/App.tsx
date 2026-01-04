@@ -348,6 +348,7 @@ function App() {
             .from('organization_members')
             .select(`
                 role,
+                status,
                 organization_id,
                 organizations (
                   id,
@@ -362,6 +363,7 @@ function App() {
               id: item.organizations?.id,
               name: item.organizations?.name,
               role: item.role,
+              status: item.status || 'active', // Default to active if missing (backwards compat)
               isPersonal: item.organizations?.created_by === userId
             }));
           }
@@ -432,6 +434,13 @@ function App() {
   const handleWorkspaceSwitch = async (newOrgId: string | null) => {
     if (!session?.user || !newOrgId) return;
 
+    // Reject switch if pending (security check, though UI should prevent it)
+    const targetOrg = myOrganizations.find(o => o.id === newOrgId);
+    if (targetOrg && targetOrg.status === 'pending') {
+      alert("Devi prima accettare l'invito per accedere a questo workspace.");
+      return;
+    }
+
     // Optimistic Update
     setUserOrganizationId(newOrgId);
 
@@ -456,6 +465,52 @@ function App() {
       alert("Errore cambio workspace");
     }
   };
+
+  const handleAcceptInvite = async (orgId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Check logic
+    if (!session?.user) return;
+
+    try {
+      const { error } = await supabase
+        .from('organization_members')
+        .update({ status: 'active' })
+        .eq('organization_id', orgId)
+        .eq('user_id', session.user.id);
+
+      if (error) throw error;
+
+      // Refresh list
+      await fetchUserData(session.user.id);
+      // Auto-switch to new workspace? Maybe better to let user choose.
+      alert("Invito accettato! Ora puoi accedere al workspace.");
+    } catch (err) {
+      console.error("Error accepting invite:", err);
+      alert("Errore accettazione invito");
+    }
+  };
+
+  const handleRejectInvite = async (orgId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!session?.user) return;
+    if (!confirm("Sei sicuro di voler rifiutare l'invito?")) return;
+
+    try {
+      const { error } = await supabase
+        .from('organization_members')
+        .delete() // Reject = Delete membership row
+        .eq('organization_id', orgId)
+        .eq('user_id', session.user.id);
+
+      if (error) throw error;
+
+      // Refresh list
+      await fetchUserData(session.user.id);
+    } catch (err) {
+      console.error("Error rejecting invite:", err);
+      alert("Errore rifiuto invito");
+    }
+  };
+
 
   const handleUpdatePreferences = async (newPreferences: UserPreferences) => {
     if (!session?.user) return;

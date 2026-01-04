@@ -273,8 +273,39 @@ function App() {
         if (profile.default_organization_id) {
           console.log("Setting Organization ID to:", profile.default_organization_id);
           setUserOrganizationId(profile.default_organization_id);
-          setUserOrganizationId(profile.default_organization_id);
           currentOrgId = profile.default_organization_id;
+
+          // Fetch Organization Details to check ownership
+          const { data: orgData } = await supabase
+            .from('organizations')
+            .select('created_by, name') // Fetch name here too to be safe
+            .eq('id', profile.default_organization_id)
+            .single();
+
+          if (orgData) {
+            setOrgName(orgData.name);
+
+            // CREDIT LOGIC: If I am NOT the owner, I see the OWNER'S credits
+            if (orgData.created_by && orgData.created_by !== userId) {
+              console.log(`[Credits] User is guest in org ${profile.default_organization_id} owned by ${orgData.created_by}. Fetching owner credits.`);
+
+              // Fetch Owner's specific credit balance
+              const { data: ownerProfile } = await supabase
+                .from('profiles')
+                .select('credits')
+                .eq('id', orgData.created_by)
+                .single();
+
+              if (ownerProfile && typeof ownerProfile.credits === 'number') {
+                console.log("[Credits] Overriding user credits with Owner credits:", ownerProfile.credits);
+                setUserCredits(ownerProfile.credits);
+              }
+            } else {
+              // I am the owner, so my profile.credits are correct
+              console.log("[Credits] User is owner. Using personal credits:", profile.credits);
+              // userCredits already set above
+            }
+          }
 
           // Fetch Organization Role
           const { data: memberData } = await supabase
@@ -287,8 +318,9 @@ function App() {
           if (memberData) {
             console.log("Setting Org Role to:", memberData.role);
             setOrgRole(memberData.role);
-            setOrgName((memberData as any).organizations?.name);
           }
+        } else {
+          console.log("[Credits] No Org selected (Personal). Using personal credits:", profile.credits);
         }
 
         // FETCH ALL MY ORGANIZATIONS (For Switcher)

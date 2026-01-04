@@ -18,40 +18,70 @@ export function GuideModal({ isOpen, onClose }: GuideModalProps) {
 
     const faqs = [
         {
-            question: "Cos'è la \"Genius Mode\"?",
-            answer: "La Genius Mode è il nostro motore di analisi semantica avanzata. Oltre a estrarre dati \"freddi\" (date, importi), l'IA agisce come un consulente esperto (Bid Manager + Legale), identificando rischi occulti, clausole vessatorie, ambiguità tra i documenti e suggerimenti strategici per massimizzare il punteggio tecnico."
+            category: "Generale & Funzionalità",
+            items: [
+                {
+                    question: "Cos'è la \"Genius Mode\"?",
+                    answer: "La Genius Mode è il nostro motore di analisi semantica avanzata. Oltre a estrarre dati \"freddi\" (date, importi), l'IA agisce come un consulente esperto (Bid Manager + Legale), identificando rischi occulti, clausole vessatorie, ambiguità tra i documenti e suggerimenti strategici per massimizzare il punteggio tecnico."
+                },
+                {
+                    question: "Quanto costa un'analisi completa?",
+                    answer: "1 Credito = 1 Analisi Completa. Questo include l'estrazione di tutti i dati, l'analisi dei requisiti, la checklist, i punteggi tecnici e 3 approfondimenti mirati. Nessun costo nascosto."
+                },
+                {
+                    question: "Come funzionano gli approfondimenti extra?",
+                    answer: "Se hai bisogno di più dettagli oltre ai 3 inclusi, il sistema scala automaticamente 0,5 crediti ogni 3 nuovi approfondimenti (o domande al chatbot). Il consumo è sempre mostrato prima di procedere."
+                },
+                {
+                    question: "Quanto costa usare la Genius Mode?",
+                    answer: "La Genius Mode è un potenziamento opzionale. Attivarla per un'analisi profonda su una o più sezioni specifiche costa 0,5 crediti aggiuntivi. Ti verrà chiesto conferma prima di ogni spesa extra."
+                },
+                {
+                    question: "Cosa succede se ho crediti frazionari?",
+                    answer: "I crediti frazionari (es. 0,5) rimangono nel tuo saldo e sono perfetti per Genius Mode o approfondimenti extra. Tuttavia, per avviare una nuova analisi completa serve almeno 1 credito intero."
+                },
+                {
+                    question: "Cosa succede se la gara è molto lunga (es. 300 pagine)?",
+                    answer: "Il sistema è ottimizzato per documenti lunghi. Tuttavia, per performance ottimali, consigliamo di caricare solo i documenti principali (Disciplinare, Capitolato Tecnico, Schema di Contratto) ed evitare allegati tecnici pesanti o non testuali (es. planimetrie complesse). Il limite consigliato è circa 300 pagine totali per analisi."
+                },
+                {
+                    question: "Posso modificare i dati estratti?",
+                    answer: "Certamente. Ogni campo rilevato dall'IA può essere modificato semplicemente cliccandoci sopra. Puoi anche aggiungere Note Personali per ogni sezione. Tutte le modifiche vengono salvate automaticamente e tracciate nel Log Attività del team."
+                },
+                {
+                    question: "I miei dati sono al sicuro?",
+                    answer: "Assolutamente sì. I documenti vengono elaborati in un ambiente sicuro e crittografato. I dati della tua azienda e le analisi generate sono accessibili solo al tuo account (o al tuo team) e non vengono utilizzati per addestrare modelli pubblici."
+                },
+                {
+                    question: "Perché vedo una barra rossa sulla scadenza?",
+                    answer: "La barra rossa indica che mancano meno di 10 giorni alla scadenza. È un avviso visivo per segnalare l'urgenza dell'opportunità."
+                }
+            ]
         },
         {
-            question: "Quanto costa un'analisi completa?",
-            answer: "1 Credito = 1 Analisi Completa. Questo include l'estrazione di tutti i dati, l'analisi dei requisiti, la checklist, i punteggi tecnici e 3 approfondimenti mirati. Nessun costo nascosto."
-        },
-        {
-            question: "Come funzionano gli approfondimenti extra?",
-            answer: "Se hai bisogno di più dettagli oltre ai 3 inclusi, il sistema scala automaticamente 0,5 crediti ogni 3 nuovi approfondimenti (o domande al chatbot). Il consumo è sempre mostrato prima di procedere."
-        },
-        {
-            question: "Quanto costa usare la Genius Mode?",
-            answer: "La Genius Mode è un potenziamento opzionale. Attivarla per un'analisi profonda su una o più sezioni specifiche costa 0,5 crediti aggiuntivi. Ti verrà chiesto conferma prima di ogni spesa extra."
-        },
-        {
-            question: "Cosa succede se ho crediti frazionari?",
-            answer: "I crediti frazionari (es. 0,5) rimangono nel tuo saldo e sono perfetti per Genius Mode o approfondimenti extra. Tuttavia, per avviare una nuova analisi completa serve almeno 1 credito intero."
-        },
-        {
-            question: "Cosa succede se la gara è molto lunga (es. 300 pagine)?",
-            answer: "Il sistema è ottimizzato per documenti lunghi. Tuttavia, per performance ottimali, consigliamo di caricare solo i documenti principali (Disciplinare, Capitolato Tecnico, Schema di Contratto) ed evitare allegati tecnici pesanti o non testuali (es. planimetrie complesse). Il limite consigliato è circa 300 pagine totali per analisi."
-        },
-        {
-            question: "Posso modificare i dati estratti?",
-            answer: "Certamente. Ogni campo rilevato dall'IA può essere modificato semplicemente cliccandoci sopra. Puoi anche aggiungere Note Personali per ogni sezione. Tutte le modifiche vengono salvate automaticamente e tracciate nel Log Attività del team."
-        },
-        {
-            question: "I miei dati sono al sicuro?",
-            answer: "Assolutamente sì. I documenti vengono elaborati in un ambiente sicuro e crittografato. I dati della tua azienda e le analisi generate sono accessibili solo al tuo account (o al tuo team) e non vengono utilizzati per addestrare modelli pubblici."
-        },
-        {
-            question: "Perché vedo una barra rossa sulla scadenza?",
-            answer: "La barra rossa indica che mancano meno di 10 giorni alla scadenza. È un avviso visivo per segnalare l'urgenza dell'opportunità."
+            category: "Pagamenti & Fatturazione",
+            items: [
+                {
+                    question: "I prezzi includono l’IVA?",
+                    answer: "No. L’IVA, se dovuta, viene calcolata e mostrata durante il checkout."
+                },
+                {
+                    question: "Chi gestisce l’IVA e la fatturazione?",
+                    answer: "La fatturazione e la gestione dell’IVA sono effettuate dal nostro partner di pagamento Lemon Squeezy, che agisce come Merchant of Record."
+                },
+                {
+                    question: "Riceverò una fattura?",
+                    answer: "Sì. Dopo il pagamento riceverai automaticamente il documento fiscale via email da Lemon Squeezy."
+                },
+                {
+                    question: "Sono un’azienda. Posso inserire la Partita IVA?",
+                    answer: "Sì. Durante il checkout puoi inserire la Partita IVA. Se valida, verrà applicato il corretto trattamento fiscale."
+                },
+                {
+                    question: "Devo fare qualcosa per l’IVA?",
+                    answer: "No. Tutti gli adempimenti fiscali relativi al pagamento sono gestiti direttamente da Lemon Squeezy."
+                }
+            ]
         }
     ];
 
@@ -222,26 +252,38 @@ export function GuideModal({ isOpen, onClose }: GuideModalProps) {
                             Domande Frequenti (FAQ)
                         </h2>
 
-                        <div className="space-y-4">
-                            {faqs.map((faq, idx) => (
-                                <div key={idx} className="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">
-                                    <button
-                                        onClick={() => toggleFaq(idx)}
-                                        className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-800/50 transition-colors"
-                                    >
-                                        <span className="font-medium text-slate-200">{faq.question}</span>
-                                        {openFaq === idx ? (
-                                            <ChevronUp className="h-5 w-5 text-slate-500" />
-                                        ) : (
-                                            <ChevronDown className="h-5 w-5 text-slate-500" />
-                                        )}
-                                    </button>
+                        <div className="space-y-8">
+                            {faqs.map((cat, catIdx) => (
+                                <div key={catIdx}>
+                                    <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 ml-1">
+                                        {cat.category}
+                                    </h3>
+                                    <div className="space-y-4">
+                                        {cat.items.map((faq, itemIdx) => {
+                                            const globalIndex = catIdx * 100 + itemIdx; // Unique ID simplified
+                                            return (
+                                                <div key={itemIdx} className="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">
+                                                    <button
+                                                        onClick={() => toggleFaq(globalIndex)}
+                                                        className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-800/50 transition-colors"
+                                                    >
+                                                        <span className="font-medium text-slate-200">{faq.question}</span>
+                                                        {openFaq === globalIndex ? (
+                                                            <ChevronUp className="h-5 w-5 text-slate-500" />
+                                                        ) : (
+                                                            <ChevronDown className="h-5 w-5 text-slate-500" />
+                                                        )}
+                                                    </button>
 
-                                    {openFaq === idx && (
-                                        <div className="p-4 pt-0 text-sm text-slate-400 leading-relaxed border-t border-slate-800/50 bg-slate-900/30">
-                                            {faq.answer}
-                                        </div>
-                                    )}
+                                                    {openFaq === globalIndex && (
+                                                        <div className="p-4 pt-0 text-sm text-slate-400 leading-relaxed border-t border-slate-800/50 bg-slate-900/30">
+                                                            {faq.answer}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             ))}
                         </div>

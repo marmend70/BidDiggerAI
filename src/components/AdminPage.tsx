@@ -15,6 +15,10 @@ export function AdminPage() {
     const [timeoutSeconds, setTimeoutSeconds] = useState<number>(240);
     const [updatingTimeout, setUpdatingTimeout] = useState(false);
 
+    // Payments State
+    const [paymentsEnabled, setPaymentsEnabled] = useState<boolean>(false);
+    const [updatingPayments, setUpdatingPayments] = useState(false);
+
     useEffect(() => {
         checkAdminStatus();
     }, []);
@@ -81,6 +85,20 @@ export function AdminPage() {
                 setTimeoutSeconds(240); // Default
             }
 
+            // Fetch Payments Setting
+            const { data: payData } = await supabase
+                .from('app_settings')
+                .select('value')
+                .eq('key', 'payments_enabled')
+                .single();
+
+            if (payData) {
+                const val = payData.value;
+                setPaymentsEnabled(val === true || String(val).toLowerCase() === 'true');
+            } else {
+                setPaymentsEnabled(false); // Default OFF
+            }
+
         } catch (error) {
             console.error('Error fetching settings:', error);
         }
@@ -92,9 +110,9 @@ export function AdminPage() {
         const newValue = !registrationActive;
 
         try {
-            const { error } = await supabase
-                .from('app_settings')
-                .upsert({ key: 'registrazione_attiva', value: newValue });
+            const { error } = await supabase.functions.invoke('admin-action', {
+                body: { action: 'update_setting', key: 'registrazione_attiva', value: newValue }
+            });
 
             if (error) throw error;
             setRegistrationActive(newValue);
@@ -106,12 +124,31 @@ export function AdminPage() {
         }
     };
 
+    const togglePayments = async () => {
+        setUpdatingPayments(true);
+        const newValue = !paymentsEnabled;
+
+        try {
+            const { error } = await supabase.functions.invoke('admin-action', {
+                body: { action: 'update_setting', key: 'payments_enabled', value: newValue }
+            });
+
+            if (error) throw error;
+            setPaymentsEnabled(newValue);
+        } catch (error: any) {
+            console.error('Error updating payments:', error);
+            alert(`Errore aggiornamento: ${error.message}`);
+        } finally {
+            setUpdatingPayments(false);
+        }
+    };
+
     const saveTimeoutSettings = async () => {
         setUpdatingTimeout(true);
         try {
-            const { error } = await supabase
-                .from('app_settings')
-                .upsert({ key: 'analysis_timeout_seconds', value: timeoutSeconds });
+            const { error } = await supabase.functions.invoke('admin-action', {
+                body: { action: 'update_setting', key: 'analysis_timeout_seconds', value: timeoutSeconds }
+            });
 
             if (error) throw error;
             alert("Timeout aggiornato con successo!");
@@ -189,6 +226,47 @@ export function AdminPage() {
                     <Card>
                         <CardHeader>
                             <div className="flex items-center gap-2">
+                                <ShieldAlert className="h-5 w-5 text-indigo-600" />
+                                <CardTitle>Gestione Pagamenti</CardTitle>
+                            </div>
+                            <CardDescription>
+                                Abilita/Disabilita la schermata di acquisto crediti reale (vs messaggio Beta).
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                <div className="space-y-1">
+                                    <h3 className="font-medium text-slate-900">Schermata Tier / Acquisto</h3>
+                                    <p className="text-sm text-slate-500">
+                                        {paymentsEnabled
+                                            ? "ATTIVA: Gli utenti vedono i prezzi e possono acquistare."
+                                            : "DISATTIVA: Gli utenti vedono il messaggio 'Beta Test'."}
+                                    </p>
+                                </div>
+                                <Button
+                                    onClick={togglePayments}
+                                    disabled={updatingPayments}
+                                    variant={paymentsEnabled ? "default" : "secondary"}
+                                    className={`w-32 gap-2 ${paymentsEnabled ? "bg-green-600 hover:bg-green-700" : "bg-slate-200 text-slate-600 hover:bg-slate-300"}`}
+                                >
+                                    {updatingPayments ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <>
+                                            {paymentsEnabled ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
+                                            {paymentsEnabled ? "ON" : "OFF"}
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <div className="grid gap-6">
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center gap-2">
                                 <Clock className="h-5 w-5 text-indigo-600" />
                                 <CardTitle>Impostazioni Sistema</CardTitle>
                             </div>
@@ -224,7 +302,7 @@ export function AdminPage() {
                         </CardContent>
                     </Card>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }

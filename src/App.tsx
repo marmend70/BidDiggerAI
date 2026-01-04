@@ -122,19 +122,44 @@ function App() {
   const [activeSection, setActiveSection] = useState('3_sintesi');
   const [snapshotModalOpen, setSnapshotModalOpen] = useState(false);
   const [analysisData, setAnalysisData] = useState<AnalysisResult | null>(null);
-  const analysisDataRef = useRef<AnalysisResult | null>(null); // Ref to track live state for async access
+  const analysisDataRef = useRef<AnalysisResult | null>(null);
+  const activeTenderIdRef = useRef<string | null>(null); // Track ID for robust deletion // Ref to track live state for async access
 
   useEffect(() => {
     analysisDataRef.current = analysisData;
   }, [analysisData]);
 
   const [isUploading, setIsUploading] = useState(false);
+  const [isStopRequested, setIsStopRequested] = useState(false);
+  const [showStopConfirm, setShowStopConfirm] = useState(false); // NEW STATE
+  const stopAnalysisRef = useRef(false);
+
   const [isAsking, setIsAsking] = useState(false);
   const [userPreferences, setUserPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
 
   // Trial & Logic State
-  const [userPlan, setUserPlan] = useState<'trial' | 'pro'>('trial');
+  const [userPlan, setUserPlan] = useState<string>('trial');
   const [userCredits, setUserCredits] = useState<number>(0); // Credits state
+  const [paymentsEnabled, setPaymentsEnabled] = useState(false); // NEW STATE for Pricing Toggle
+
+  // FETCH GLOBAL SETTINGS
+  useEffect(() => {
+    supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'payments_enabled')
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          // Robust boolean conversion (handles boolean or "true" string)
+          const val = data.value;
+          console.log('[DEBUG] PAYMENTS SETTING RAW:', val, typeof val);
+          const resolved = val === true || String(val).toLowerCase() === 'true';
+          console.log('[DEBUG] PAYMENTS SETTING RESOLVED:', resolved);
+          setPaymentsEnabled(resolved);
+        }
+      });
+  }, []);
   const [userRole, setUserRole] = useState<string>('user'); // Store role
   const [orgRole, setOrgRole] = useState<string | null>(null); // NEW: Store Workspace Role
   const [orgName, setOrgName] = useState<string | null>(null); // NEW: Store Workspace Name
@@ -228,6 +253,7 @@ function App() {
       let currentOrgId = null;
 
       if (profile) {
+        if (profile.plan_type) setUserPlan(profile.plan_type); // Set exact plan type
         // Check app_role first (main source), then fallback to role
         const effectiveRole = (profile as any).app_role || profile.role;
         console.log("DEBUG: Profile roles - app_role:", (profile as any).app_role, "role:", profile.role);
@@ -503,6 +529,10 @@ function App() {
     currentPreferences: UserPreferences,
     existingPartialIds: string[] = []
   ) => {
+    // RESET STOP STATE
+    stopAnalysisRef.current = false;
+    setIsStopRequested(false);
+
     // VALIDATION: Ensure session exists for path construction
     if (!session?.user?.id) {
       console.error("Critical: Session missing in executeAnalysis");
@@ -646,6 +676,13 @@ function App() {
         let elapsed = 0;
 
         while (elapsed < MAX_POLL_TIME) {
+          // IMMEDIATE STOP CHECK
+          if (stopAnalysisRef.current) {
+            console.warn(`[Analysis] Batch ${batchName} aborted by user.`);
+            setLoadingBatches(prev => prev.filter(b => b !== batchName));
+            return {}; // Abort this batch immediately
+          }
+
           await new Promise(r => setTimeout(r, POLL_INTERVAL));
           elapsed += POLL_INTERVAL;
 
@@ -719,6 +756,13 @@ function App() {
     const semanticModelId = userPreferences.semantic_model || 'gemini-3-pro-preview';
 
     for (const batch of batchConfigs) {
+      // CHECK FOR STOP SIGNAL
+      if (stopAnalysisRef.current) {
+        console.warn("[Analysis] STOP REQUESTED. Breaking batch loop.");
+        setProgressMessage("Analisi interrotta dall'utente.");
+        break;
+      }
+
       // RESUME FILTER: Only process batches that contain missing sections
       if (isResume && sectionsToResume.length > 0) {
         const batchSectionKeys = Object.keys(batch.prefs); // e.g. ["3_sintesi", "5_scadenze"]
@@ -804,7 +848,17 @@ function App() {
     await supabase.from('tenders').update({ status: 'completed' }).eq('id', tenderId);
     setIsUploading(false);
 
-    // COMPLETION CHECK
+    // COMPLETION CHECK / STOP HANDLING
+    if (stopAnalysisRef.current) {
+      // STOP LOGIC: Reset Dashboard to Neutral State
+      setAnalysisData(null);
+      setPendingFiles([]);
+      setUploadedPaths([]); // Optional: clear uploads context
+      setIsUploading(false);
+      setProgressMessage('');
+      return; // Exit function, do not show resume modal
+    }
+
     // Only verify if we are truly done (no other batches loading)
     if (currentPreferences.analysis_sections) {
       const req = Object.keys(currentPreferences.analysis_sections).filter(k => currentPreferences.analysis_sections[k]);
@@ -814,9 +868,12 @@ function App() {
 
 
       if (missing.length > 0) {
-        console.warn("Analysis incomplete. Missing:", missing);
-        setResumeSections(missing);
-        setShowResumeModal(true);
+        // Only show Resume Modal if it was NOT a voluntary stop
+        if (!stopAnalysisRef.current) {
+          console.warn("Analysis incomplete. Missing:", missing);
+          setResumeSections(missing);
+          setShowResumeModal(true);
+        }
       } else {
         // --- ACTIVITY LOGGING: DONE ---
         // Log only if fully complete or at least "done" with this run
@@ -838,8 +895,14 @@ function App() {
 
 
   const handleFileSelection = async (files: File[]) => {
-    // 1. Check Credits
-    if (userCredits < 1) {
+    // 1. Check Credits (Dynamic Cost)
+    const activeGenius = Object.keys(userPreferences.semantic_analysis_sections).some(k =>
+      userPreferences.semantic_analysis_sections[k] && !['14_note_importanti', '17_ambiguita_punti_da_chiarire'].includes(k)
+    );
+    const estimatedCost = 1 + (activeGenius ? 0.5 : 0);
+
+    if (userCredits < estimatedCost) {
+      alert(`Crediti insufficienti. Questa analisi richiede ${estimatedCost} crediti (1 Base + 0.5 Genius).\nSaldo attuale: ${userCredits}`);
       setShowPricingModal(true);
       return;
     }
@@ -849,7 +912,7 @@ function App() {
     const filesToProcess = files.length > 0 ? files : (uploadedPaths.length > 0 ? [] : []); // Logic handled below or passed arg
 
     // We expect files arg to be empty if resuming, but let's handle it in runAnalysis primarily.
-    // Actually handleFileSelection is triggered by file input usually. 
+    // Actually handleFileSelection is triggered by file input usually.
     // Resume will call runAnalysis directly.
 
     // ... logic continues ...
@@ -898,6 +961,33 @@ function App() {
     startAnalysis(pendingFiles, structuredId, semanticId);
   };
 
+  const handleStopAnalysis = () => {
+    setShowStopConfirm(true);
+  };
+
+  const confirmStopAnalysis = async () => {
+    setShowStopConfirm(false);
+    stopAnalysisRef.current = true;
+    setIsStopRequested(true);
+    setLoadingBatches([]); // Immediate visual cleanup
+    setProgressMessage("Interruzione richiesta... ripristino stato iniziale.");
+
+    // CLEANUP: Delete the partial tender record to avoid "residues" in dashboard
+    const currentTenderId = activeTenderIdRef.current || analysisDataRef.current?.tender_id || analysisData?.tender_id;
+    if (currentTenderId) {
+      console.log(`[Stop Analysis] Deleting partial tender record: ${currentTenderId}`);
+      const { error } = await supabase.from('tenders').delete().eq('id', currentTenderId);
+      if (error) {
+        console.error("Error deleting partial tender:", error);
+      } else {
+        console.log("Partial tender deleted successfully.");
+        activeTenderIdRef.current = null;
+      }
+    } else {
+      console.warn("[Stop Analysis] Could not determine Tender ID to delete.");
+    }
+  };
+
   const startAnalysis = async (files: File[], structuredModelId: string, semanticModelId: string) => {
     if (!session?.user) return;
 
@@ -916,7 +1006,7 @@ function App() {
         });
         // Note: The state update above is async, but for the immediate 'startAnalysis' run
         // we need to patch the preferences object used locally or rely on the updated state if we re-read it.
-        // However, userPreferences is a const in this closure. 
+        // However, userPreferences is a const in this closure.
         // We should patch it locally for the current execution flow.
         missingDeps.forEach(k => userPreferences.analysis_sections[k] = true);
       }
@@ -1008,6 +1098,9 @@ function App() {
 
       if (tenderError) throw tenderError;
 
+      // SET ACTIVE TENDER ID REF IMMEDIATELY
+      activeTenderIdRef.current = tender.id;
+
       // 2.5 Insert into tender_documents
       const documentsToInsert = uploadedPaths.map((path, index) => ({
         tender_id: tender.id,
@@ -1069,15 +1162,41 @@ function App() {
       console.log("Text stored at:", textStoragePath);
 
       // DEDUCT CREDIT (1 per Analysis) - SKIP IF RESUMING
-      // DEDUCT CREDIT (1 per Analysis)
-      const { error: creditError } = await supabase.rpc('deduct_user_credits', {
-        count: 1,
-        org_id: userOrganizationId || null
+      // DEDUCT CREDIT (Dynamic)
+      const activeGenius = Object.keys(userPreferences.semantic_analysis_sections).some(k =>
+        userPreferences.semantic_analysis_sections[k] && !['14_note_importanti', '17_ambiguita_punti_da_chiarire'].includes(k)
+      );
+      const analysisCost = 1 + (activeGenius ? 0.5 : 0);
+
+      const { data: deductResult, error: creditError } = await supabase.functions.invoke('analyze-tender', {
+        body: {
+          action: 'deduct_credits',
+          userId: session.user.id,
+          amount: analysisCost
+        }
       });
-      if (creditError) {
-        console.error("Credit deduction failed:", creditError);
+
+      if (creditError || !deductResult?.success) {
+        console.error("Credit deduction failed:", creditError || deductResult);
+        let detail = creditError?.message || deductResult?.error || "Errore sconosciuto";
+
+        // Try to parse detailed error from context
+        try {
+          if (creditError && typeof creditError === 'object' && 'context' in creditError) {
+            // @ts-ignore
+            const body = await creditError.context.json();
+            if (body && body.error) {
+              detail = body.error;
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing credit error body:", e);
+        }
+
+        throw new Error(`Errore durante la scalatura dei crediti: ${detail}. Analisi annullata.`);
       } else {
-        setUserCredits(prev => Math.max(0, prev - 1));
+        setUserCredits(deductResult.newBalance);
+        console.log(`Deducted ${analysisCost} credits. New balance: ${deductResult.newBalance}`);
       }
 
       setProgressMessage('Attendi ancora qualche secondo...');
@@ -1127,8 +1246,131 @@ function App() {
   };
 
 
+  // NEW CHAT ASSISTANT HANDLER (Shared Credit Logic)
+  const handleChatAssistantMessage = async (history: { role: 'user' | 'model'; content: string }[], filePaths?: string[], analysisContext?: any): Promise<{ answer: string; error?: string }> => {
+    if (!analysisData || !session?.user) return { answer: '', error: 'Session invalid' };
+
+    // --- DEEP DIVE CREDIT LOGIC (SHARED) ---
+    const totalDives = Object.values(analysisData.deep_dives || {}).flat().length;
+    const FREE_DIVES = 3;
+    const DIVES_PACK = 3;
+
+    const shouldPay = (totalDives >= FREE_DIVES) && ((totalDives - FREE_DIVES) % DIVES_PACK === 0);
+
+    if (shouldPay) {
+      const msg = totalDives === FREE_DIVES
+        ? "Hai utilizzato i 3 approfondimenti inclusi per questa analisi.\n\nProcedendo, verranno scalati 0,5 crediti per sbloccare un pacchetto di 3 ulteriori approfondimenti."
+        : "Hai esaurito il pacchetto corrente.\n\nProcedendo, verranno scalati 0,5 crediti per sbloccare un nuovo pacchetto di 3 ulteriori approfondimenti.";
+
+      if (!window.confirm(msg)) return { answer: '', error: 'Cancelled by user' };
+
+      if (userCredits < 0.5) {
+        alert("Crediti insufficienti per continuare.\nRicarica i crediti.");
+        setShowPricingModal(true);
+        return { answer: '', error: 'Insufficient credits' };
+      }
+
+      // Deduct
+      try {
+        const { data: deductRes, error: deductErr } = await supabase.functions.invoke('analyze-tender', {
+          body: { action: 'deduct_credits', userId: session.user.id, amount: 0.5 }
+        });
+        if (deductErr || !deductRes?.success) {
+          alert("Errore scalatura crediti.");
+          return { answer: '', error: 'Payment failed' };
+        }
+        setUserCredits(deductRes.newBalance);
+      } catch (e) {
+        console.error("Payment error:", e);
+        return { answer: '', error: 'Payment exception' };
+      }
+    }
+
+    // Proceed with Chat Request
+    try {
+      const { data, error } = await supabase.functions.invoke('chat-assistant', {
+        body: {
+          tenderId: (analysisData as any).tender_id || (analysisData as any).id,
+          messages: history,
+          model: 'gemini-3-pro-preview',
+          filePaths,
+          analysisContext
+        }
+      });
+
+      if (error) throw error;
+      if (data && data.error) throw new Error(data.error);
+
+      // UPDATE DEEP DIVES COUNT
+      // Store the interaction under 'chatbot' key to increment totalDives
+      if (data && data.answer) {
+        setAnalysisData(prev => {
+          if (!prev) return null;
+          const newDeepDives = { ...prev.deep_dives };
+          const chatDives = newDeepDives['chatbot'] || [];
+          // We store just the user's last question and the answer to count it as 1
+          const lastUserMsg = history[history.length - 1].content;
+
+          newDeepDives['chatbot'] = [...chatDives, {
+            question: lastUserMsg,
+            answer: data.answer,
+            timestamp: new Date().toISOString()
+          }];
+          return { ...prev, deep_dives: newDeepDives };
+        });
+      }
+
+      return { answer: data.answer };
+
+    } catch (err: any) {
+      console.error("Chat Error:", err);
+      return { answer: '', error: err.message || "Unknown error" };
+    }
+  };
+
+
   const handleAskQuestion = async (sectionId: string, question: string, forceVisualMode = false) => {
     if (!analysisData || !session?.user) return;
+
+    // --- DEEP DIVE CREDIT LOGIC ---
+    const totalDives = Object.values(analysisData.deep_dives || {}).flat().length;
+    const FREE_DIVES = 3;
+    const DIVES_PACK = 3;
+
+    // Check if we need to pay (Start of a 3-pack after free limit)
+    // Indexes: 0,1,2 (Free). 3 (Pay). 4,5 (Free). 6 (Pay).
+    const shouldPay = (totalDives >= FREE_DIVES) && ((totalDives - FREE_DIVES) % DIVES_PACK === 0);
+
+    if (shouldPay) {
+      const msg = totalDives === FREE_DIVES
+        ? "Hai utilizzato i 3 approfondimenti inclusi per questa analisi.\n\nProcedendo, verranno scalati 0,5 crediti per sbloccare un pacchetto di 3 ulteriori approfondimenti."
+        : "Hai esaurito il pacchetto corrente.\n\nProcedendo, verranno scalati 0,5 crediti per sbloccare un nuovo pacchetto di 3 ulteriori approfondimenti.";
+
+      if (!window.confirm(msg)) return;
+
+      if (userCredits < 0.5) {
+        alert("Crediti insufficienti per continuare.\nRicarica i crediti.");
+        setShowPricingModal(true);
+        return;
+      }
+
+      // Deduct
+      try {
+        const { data: deductRes, error: deductErr } = await supabase.functions.invoke('analyze-tender', {
+          body: { action: 'deduct_credits', userId: session.user.id, amount: 0.5 }
+        });
+        if (deductErr || !deductRes?.success) {
+          alert("Errore scalatura crediti.");
+          return;
+        }
+        setUserCredits(deductRes.newBalance);
+      } catch (e) {
+        console.error("Payment error:", e);
+        return;
+      }
+    }
+    // ----------------------------
+
     setIsAsking(true);
     console.log("Asking question with forceVisualMode:", forceVisualMode);
 
@@ -1497,6 +1739,9 @@ function App() {
       myOrganizations={myOrganizations} // MISSING PROP ADDED
       currentOrgId={userOrganizationId} // MISSING PROP ADDED
       onWorkspaceSwitch={handleWorkspaceSwitch} // MISSING PROP ADDED
+      userPlan={userPlan}
+      onStopAnalysis={handleStopAnalysis}
+      isStopRequested={isStopRequested}
     >
       <UpgradeModal
         isOpen={showUpgradeModal}
@@ -1530,6 +1775,7 @@ function App() {
         isOpen={showPricingModal}
         onClose={() => setShowPricingModal(false)}
         userId={session?.user?.id}
+        showTiers={paymentsEnabled}
       />
       <ChatAssistantModal
         isOpen={showChatAssistant}
@@ -1538,6 +1784,7 @@ function App() {
         tenderTitle={(analysisData as any)?.title || 'Analisi Gara'}
         filePaths={uploadedPaths} // Pass currently uploaded paths
         analysisContext={analysisData} // Pass the full analysis JSON
+        onSendMessage={handleChatAssistantMessage}
       />
       <TimeoutModal
         isOpen={showTimeoutModal}
@@ -1546,14 +1793,41 @@ function App() {
         onTerminate={() => handleTimeoutDecision('terminate')}
       />
 
+      {/* STOP CONFIRMATION MODAL */}
+      <AlertDialog open={showStopConfirm} onOpenChange={setShowStopConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Interrompere l'Analisi?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-500">
+              Sei sicuro di voler interrompere l'analisi in corso?
+              <br /><br />
+              <ul className="list-disc pl-5 space-y-1">
+                <li>I <strong>crediti sono già stati scalati</strong> e non verranno rimborsati.</li>
+                <li>L'analisi si interromperà a breve.</li>
+                <li>I dati raccolti finora non saranno visibili e tornerai alla schermata iniziale.</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowStopConfirm(false)}>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmStopAnalysis} className="bg-red-600 hover:bg-red-700 text-white">
+              Conferma Interruzione
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* RESUME ANALYSIS MODAL */}
       <AlertDialog open={showResumeModal} onOpenChange={setShowResumeModal}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Analisi Incompleta</AlertDialogTitle>
+            <AlertDialogTitle>{isStopRequested ? "Analisi Interrotta" : "Analisi Incompleta"}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="text-sm text-slate-500">
-                A causa del sovraccarico delle richieste o di un timeout, le seguenti sezioni non sono state completate:
+                {isStopRequested
+                  ? "Hai richiesto di interrompere l'analisi. Le seguenti sezioni non sono state completate:"
+                  : "A causa del sovraccarico delle richieste o di un timeout, le seguenti sezioni non sono state completate:"
+                }
                 <ul className="list-disc pl-5 mt-2 mb-2 text-slate-700 font-medium">
                   {resumeSections.map(sId => (
                     <li key={sId}>{SECTIONS_MAP[sId]?.label || sId}</li>
@@ -1567,7 +1841,9 @@ function App() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowResumeModal(false)}>Ignora e continua</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setShowResumeModal(false)}>
+              {isStopRequested ? "Conferma interruzione" : "Interrompi analisi"}
+            </AlertDialogCancel>
             <AlertDialogAction onClick={handleResumeAnalysis}>Prosegui Analisi</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1669,6 +1945,7 @@ function App() {
           userId={session.user.id}
           organizationId={userOrganizationId} // Pass Organization ID
           userPreferences={userPreferences}
+          userPlanType={userPlan}
           onLoadAnalysis={(data, tenderId) => {
             setAnalysisData({ ...data, tender_id: tenderId });
             setActiveSection('3_sintesi');

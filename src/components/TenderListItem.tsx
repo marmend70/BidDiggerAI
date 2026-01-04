@@ -52,6 +52,7 @@ interface TenderListItemProps {
     onUpdateNotes: (id: string, notes: string) => void;
     userPreferences?: any;
     isAssigning?: boolean;
+    userPlanType?: string;
 }
 
 export function TenderListItem({
@@ -62,7 +63,8 @@ export function TenderListItem({
     onUpdateStatus,
     onUpdateOwner,
     onUpdateNotes,
-    userPreferences
+    userPreferences,
+    userPlanType
 }: TenderListItemProps) {
     // --- 0. LOCAL STATE FOR CONFIRMATION & ACTIVITIES ---
     const [isAlertOpen, setIsAlertOpen] = React.useState(false);
@@ -459,12 +461,25 @@ export function TenderListItem({
                         {/* Latest Activity Snippet */}
                         {latestActivity && (
                             <div
-                                className="flex items-center gap-1 mt-1 px-2 py-1 bg-slate-900/50 rounded-full border border-slate-800 cursor-pointer hover:border-slate-600 transition-colors w-full justify-center"
+                                className={cn(
+                                    "flex items-center gap-1 mt-1 px-2 py-1 bg-slate-900/50 rounded-full border border-slate-800 transition-colors w-full justify-center",
+                                    // Check permission
+                                    ((userPlanType || 'starter').toLowerCase().includes('pro') || (userPlanType || 'starter').toLowerCase().includes('agency') || (userPlanType || 'starter').toLowerCase().includes('trial'))
+                                        ? "cursor-pointer hover:border-slate-600"
+                                        : "cursor-not-allowed opacity-70"
+                                )}
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    setIsActivitySheetOpen(true);
+                                    const p = (userPlanType || 'starter').toLowerCase();
+                                    if (p.includes('pro') || p.includes('agency') || p.includes('trial')) {
+                                        setIsActivitySheetOpen(true);
+                                    } else {
+                                        alert("Il Log Attività dettagliato è disponibile nei piani Pro e Agency.");
+                                    }
                                 }}
-                                title="Clicca per vedere il log attività"
+                                title={((userPlanType || 'starter').toLowerCase().includes('pro') || (userPlanType || 'starter').toLowerCase().includes('agency') || (userPlanType || 'starter').toLowerCase().includes('trial'))
+                                    ? "Clicca per vedere il log attività"
+                                    : "Passa a Pro per vedere lo storico completo"}
                             >
                                 <Activity className="w-3 h-3 text-slate-500" />
                                 <span className="text-[9px] text-slate-400 truncate max-w-[80px]">
@@ -472,7 +487,11 @@ export function TenderListItem({
                                         latestActivity.action_type === 'dashboard_note' ? 'Note' :
                                             latestActivity.action_type === 'analysis_run' ? 'Analisi' : 'Update'}
                                 </span>
-                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                {((userPlanType || 'starter').toLowerCase().includes('pro') || (userPlanType || 'starter').toLowerCase().includes('agency') || (userPlanType || 'starter').toLowerCase().includes('trial')) ? (
+                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                ) : (
+                                    <div className="text-[8px] text-amber-500 font-bold ml-1">🔒</div>
+                                )}
                             </div>
                         )}
                     </div>

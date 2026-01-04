@@ -48,13 +48,29 @@ export function TeamSettings({ currentUserId, organizationId }: TeamSettingsProp
     const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
     const [errorModalContent, setErrorModalContent] = useState({ title: '', message: '' });
 
+    // State for user plan
+    const [userPlan, setUserPlan] = useState<string>('starter');
+
     useEffect(() => {
         if (organizationId) {
             fetchTeamData();
+            fetchUserPlan();
         } else {
             setIsLoading(false);
         }
-    }, [organizationId]);
+    }, [organizationId, currentUserId]);
+
+    const fetchUserPlan = async () => {
+        if (!currentUserId) return;
+        const { data } = await supabase
+            .from('profiles')
+            .select('plan_type')
+            .eq('id', currentUserId)
+            .single();
+        if (data) {
+            setUserPlan(data.plan_type || 'starter');
+        }
+    };
 
     const fetchTeamData = async () => {
         setIsLoading(true);
@@ -70,22 +86,38 @@ export function TeamSettings({ currentUserId, organizationId }: TeamSettingsProp
             if (orgError) throw orgError;
             setOrganization(orgData);
 
-            // 2. Fetch Members
+            // 2. Fetch Members (without direct join to avoid schema error)
             const { data: membersData, error: membersError } = await supabase
                 .from('organization_members')
-                .select(`
-                    user_id,
-                    role,
-                    joined_at,
-                    profiles (
-                        email,
-                        full_name
-                    )
-                `)
+                .select('user_id, role, joined_at')
                 .eq('organization_id', organizationId);
 
             if (membersError) throw membersError;
-            setMembers(membersData as any || []);
+
+            // 3. Manually fetch profiles for these members
+            const memberIds = membersData.map((m: any) => m.user_id);
+            let profilesMap: Record<string, any> = {};
+
+            if (memberIds.length > 0) {
+                const { data: profilesData, error: profilesError } = await supabase
+                    .from('profiles')
+                    .select('id, email, full_name')
+                    .in('id', memberIds);
+
+                if (profilesError) throw profilesError;
+
+                profilesData?.forEach((p: any) => {
+                    profilesMap[p.id] = p;
+                });
+            }
+
+            // Merge data
+            const fullMembers = membersData.map((m: any) => ({
+                ...m,
+                profiles: profilesMap[m.user_id] || { email: 'Sconosciuto', full_name: 'Utente' }
+            }));
+
+            setMembers(fullMembers);
 
         } catch (err: any) {
             console.error('Error fetching team data:', err);
@@ -96,6 +128,18 @@ export function TeamSettings({ currentUserId, organizationId }: TeamSettingsProp
     };
 
     const handleAddMember = async () => {
+        // PERMISSION CHECK: Only Pro, Agency or Trial can add members
+        const canAddMembers = userPlan.includes('pro') || userPlan.includes('agency') || userPlan.includes('trial');
+
+        if (!canAddMembers) {
+            setErrorModalContent({
+                title: "Funzionalità Premium",
+                message: "L'aggiunta di membri al team è riservata ai piani Pro e Agency. Esegui l'upgrade per sbloccare i workspace collaborativi."
+            });
+            setIsErrorModalOpen(true);
+            return;
+        }
+
         if (!newMemberEmail || !organizationId) return;
         setIsInviting(true);
         setError(null);
@@ -258,25 +302,40 @@ export function TeamSettings({ currentUserId, organizationId }: TeamSettingsProp
                             Aggiungi Membro
                         </CardTitle>
                         <CardDescription className="text-slate-500">
-                            Invita colleghi al tuo workspace inserendo la loro email. Devono essere già registrati.
+                            Invita colleghi al tuo workspace inserendo la loro email.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex gap-4">
-                            <Input
-                                placeholder="Email utente (es. mario.rossi@azienda.it)"
-                                value={newMemberEmail}
-                                onChange={(e) => setNewMemberEmail(e.target.value)}
-                                className="bg-slate-900 border-slate-700 text-slate-200"
-                            />
-                            <Button
-                                onClick={handleAddMember}
-                                disabled={isInviting || !newMemberEmail}
-                                className="bg-indigo-600 hover:bg-indigo-500"
-                            >
-                                {isInviting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Aggiungi"}
-                            </Button>
-                        </div>
+                        {(userPlan?.includes('pro') || userPlan?.includes('agency') || userPlan?.includes('trial')) ? (
+                            <div className="flex gap-4">
+                                <Input
+                                    placeholder="Email utente (es. mario.rossi@azienda.it)"
+                                    value={newMemberEmail}
+                                    onChange={(e) => setNewMemberEmail(e.target.value)}
+                                    className="bg-slate-900 border-slate-700 text-slate-200"
+                                />
+                                <Button
+                                    onClick={handleAddMember}
+                                    disabled={isInviting || !newMemberEmail}
+                                    className="bg-indigo-600 hover:bg-indigo-500"
+                                >
+                                    {isInviting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Aggiungi"}
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6 text-center">
+                                <div className="inline-flex items-center justify-center p-3 rounded-full bg-slate-800 mb-4">
+                                    <Shield className="h-6 w-6 text-slate-400" />
+                                </div>
+                                <h3 className="text-slate-200 font-semibold mb-2">Sblocca i Workspace Collaborativi</h3>
+                                <p className="text-slate-400 text-sm mb-4 max-w-lg mx-auto">
+                                    Il tuo piano attuale <strong>Starter</strong> non supporta membri aggiuntivi.
+                                    Passa a <strong>Pro</strong> o <strong>Agency</strong> per lavorare in team.
+                                </p>
+                                {/* Note: Adding a way to open pricing modal would be ideal here if possible, 
+                                    but for now just the message is enough as per request to have "opportuno messaggio" */}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             )}

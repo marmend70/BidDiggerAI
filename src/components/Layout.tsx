@@ -38,6 +38,9 @@ interface LayoutProps {
     myOrganizations?: Organization[];
     currentOrgId?: string | null;
     onWorkspaceSwitch?: (id: string | null) => void;
+    userPlan?: string;
+    onStopAnalysis?: () => void;
+    isStopRequested?: boolean;
 }
 
 interface SidebarContentProps {
@@ -57,9 +60,12 @@ interface SidebarContentProps {
     myOrganizations?: Organization[];
     currentOrgId?: string | null;
     onWorkspaceSwitch?: (id: string | null) => void;
+    userPlan?: string;
+    onStopAnalysis?: () => void;
+    isStopRequested?: boolean;
 }
 
-function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant, userRole, orgRole, onOpenGuide, myOrganizations, currentOrgId, onWorkspaceSwitch }: SidebarContentProps) {
+function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant, userRole, orgRole, onOpenGuide, myOrganizations, currentOrgId, onWorkspaceSwitch, userPlan, onStopAnalysis, isStopRequested }: SidebarContentProps) {
     return (
         <div className="flex flex-col h-full text-white">
             <div className="p-6 bg-slate-950 shadow-sm z-10 space-y-4">
@@ -253,20 +259,43 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                     Nuova Analisi
                 </button>
 
-                {/* Workspace Button - Visible to Team Members, Owners, Admins, or System Admins */}
-                {((orgRole === 'owner' || orgRole === 'admin' || orgRole === 'member') || userRole?.toLowerCase() === 'admin') && (
+                {/* STOP ANALYSIS BUTTON */}
+                {isAnalyzing && (
                     <button
-                        onClick={() => !isAnalyzing && onSectionClick?.('team')}
-                        disabled={isAnalyzing}
-                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors my-2 ${activeSection === 'team'
-                            ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.15)]'
-                            : 'text-blue-400/80 hover:text-blue-300 hover:bg-blue-500/10 border border-transparent'
+                        onClick={onStopAnalysis}
+                        disabled={isStopRequested}
+                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors mt-2 mb-2 border ${isStopRequested
+                            ? 'bg-red-500/10 text-red-500/50 border-red-500/20 cursor-not-allowed'
+                            : 'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30 hover:text-red-300'
                             }`}
                     >
-                        <Building className={`h-4 w-4 transition-transform duration-300 group-hover:scale-110 ${activeSection === 'team' ? 'text-blue-400' : 'text-blue-400/80 group-hover:text-blue-300'}`} />
-                        <span className="font-medium">Bid Digger Workspace</span>
+                        {isStopRequested ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <div className="h-4 w-4 rounded-sm bg-current flex items-center justify-center p-[2px]">
+                                {/* Square Icon */}
+                            </div>
+                        )}
+                        {isStopRequested ? 'Interruzione...' : 'Ferma Analisi'}
                     </button>
                 )}
+
+                {/* Workspace Button - Visible to Team Members, Owners, Admins, System Admins OR Premium Plans */}
+                {((orgRole === 'owner' || orgRole === 'admin' || orgRole === 'member') ||
+                    userRole?.toLowerCase() === 'admin' ||
+                    (userPlan?.includes('agency') || userPlan?.includes('pro') || userPlan?.includes('trial'))) && (
+                        <button
+                            onClick={() => !isAnalyzing && onSectionClick?.('team')}
+                            disabled={isAnalyzing}
+                            className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors my-2 ${activeSection === 'team'
+                                ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.15)]'
+                                : 'text-blue-400/80 hover:text-blue-300 hover:bg-blue-500/10 border border-transparent'
+                                }`}
+                        >
+                            <Building className={`h-4 w-4 transition-transform duration-300 group-hover:scale-110 ${activeSection === 'team' ? 'text-blue-400' : 'text-blue-400/80 group-hover:text-blue-300'}`} />
+                            <span className="font-medium">Bid Digger Workspace</span>
+                        </button>
+                    )}
 
                 <button
                     onClick={async () => {
@@ -301,7 +330,7 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
 }
 
 export function Layout(props: LayoutProps) {
-    const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onOpenContact, onOpenChatAssistant, userRole } = props;
+    const { children, activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onOpenContact, onOpenChatAssistant, userRole, userPlan, onStopAnalysis, isStopRequested } = props;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     const [isGuideOpen, setIsGuideOpen] = React.useState(false); // NEW STATE
 
@@ -338,6 +367,9 @@ export function Layout(props: LayoutProps) {
                     myOrganizations={props.myOrganizations}
                     currentOrgId={props.currentOrgId}
                     onWorkspaceSwitch={props.onWorkspaceSwitch}
+                    userPlan={userPlan}
+                    onStopAnalysis={onStopAnalysis}
+                    isStopRequested={isStopRequested}
                 />
             </aside>
 
@@ -402,6 +434,9 @@ export function Layout(props: LayoutProps) {
                             myOrganizations={props.myOrganizations}
                             currentOrgId={props.currentOrgId}
                             onWorkspaceSwitch={props.onWorkspaceSwitch}
+                            userPlan={userPlan}
+                            onStopAnalysis={onStopAnalysis}
+                            isStopRequested={isStopRequested}
                         />
                     </div>
                 </div>

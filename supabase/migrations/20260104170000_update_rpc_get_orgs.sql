@@ -1,3 +1,6 @@
+-- Drop the function first to allow signature change
+DROP FUNCTION IF EXISTS get_user_organizations();
+
 CREATE OR REPLACE FUNCTION get_user_organizations()
 RETURNS TABLE (
   org_id uuid,

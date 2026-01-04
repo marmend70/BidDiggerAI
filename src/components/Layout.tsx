@@ -38,6 +38,8 @@ interface LayoutProps {
     myOrganizations?: Organization[];
     currentOrgId?: string | null;
     onWorkspaceSwitch?: (id: string | null) => void;
+    onAcceptInvite?: (orgId: string, e: React.MouseEvent) => void; // Added
+    onRejectInvite?: (orgId: string, e: React.MouseEvent) => void; // Added
     userPlan?: string;
     onStopAnalysis?: () => void;
     isStopRequested?: boolean;
@@ -60,12 +62,14 @@ interface SidebarContentProps {
     myOrganizations?: Organization[];
     currentOrgId?: string | null;
     onWorkspaceSwitch?: (id: string | null) => void;
+    onAcceptInvite?: (orgId: string, e: React.MouseEvent) => void; // Added
+    onRejectInvite?: (orgId: string, e: React.MouseEvent) => void; // Added
     userPlan?: string;
     onStopAnalysis?: () => void;
     isStopRequested?: boolean;
 }
 
-function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant, userRole, orgRole, onOpenGuide, myOrganizations, currentOrgId, onWorkspaceSwitch, userPlan, onStopAnalysis, isStopRequested }: SidebarContentProps) {
+function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant, userRole, orgRole, onOpenGuide, myOrganizations, currentOrgId, onWorkspaceSwitch, onAcceptInvite, onRejectInvite, userPlan, onStopAnalysis, isStopRequested }: SidebarContentProps) {
     return (
         <div className="flex flex-col h-full text-white">
             <div className="p-6 bg-slate-950 shadow-sm z-10 space-y-4">
@@ -83,6 +87,8 @@ function SidebarContent({ activeSection, onSectionClick, data, userPreferences, 
                         organizations={myOrganizations}
                         currentOrgId={currentOrgId || null}
                         onSwitch={onWorkspaceSwitch}
+                        onAcceptInvite={onAcceptInvite} // Passed
+                        onRejectInvite={onRejectInvite} // Passed
                     />
                 )}
             </div>
@@ -367,6 +373,8 @@ export function Layout(props: LayoutProps) {
                     myOrganizations={props.myOrganizations}
                     currentOrgId={props.currentOrgId}
                     onWorkspaceSwitch={props.onWorkspaceSwitch}
+                    onAcceptInvite={props.onAcceptInvite} // Passed
+                    onRejectInvite={props.onRejectInvite} // Passed
                     userPlan={userPlan}
                     onStopAnalysis={onStopAnalysis}
                     isStopRequested={isStopRequested}
@@ -434,6 +442,8 @@ export function Layout(props: LayoutProps) {
                             myOrganizations={props.myOrganizations}
                             currentOrgId={props.currentOrgId}
                             onWorkspaceSwitch={props.onWorkspaceSwitch}
+                            onAcceptInvite={props.onAcceptInvite} // Passed
+                            onRejectInvite={props.onRejectInvite} // Passed
                             userPlan={userPlan}
                             onStopAnalysis={onStopAnalysis}
                             isStopRequested={isStopRequested}

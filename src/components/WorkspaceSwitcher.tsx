@@ -29,7 +29,7 @@ interface WorkspaceSwitcherProps {
     className?: string;
 }
 
-export function WorkspaceSwitcher({ organizations, currentOrgId, onSwitch, className }: WorkspaceSwitcherProps) {
+export function WorkspaceSwitcher({ organizations, currentOrgId, onSwitch, onAcceptInvite, onRejectInvite, className }: WorkspaceSwitcherProps) {
     const [open, setOpen] = useState(false);
 
     // Find current active org

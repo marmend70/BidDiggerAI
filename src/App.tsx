@@ -336,6 +336,7 @@ function App() {
               id: item.org_id,
               name: item.org_name,
               role: item.user_role,
+              status: item.member_status, // NEW: Map Status from RPC
               isPersonal: item.is_personal,
               ownerEmail: item.owner_email // NEW: Map Owner Email
             }));
@@ -1826,6 +1827,8 @@ function App() {
       myOrganizations={myOrganizations} // MISSING PROP ADDED
       currentOrgId={userOrganizationId} // MISSING PROP ADDED
       onWorkspaceSwitch={handleWorkspaceSwitch} // MISSING PROP ADDED
+      onAcceptInvite={handleAcceptInvite} // Added
+      onRejectInvite={handleRejectInvite} // Added
       userPlan={userPlan}
       onStopAnalysis={handleStopAnalysis}
       isStopRequested={isStopRequested}

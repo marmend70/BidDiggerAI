@@ -1888,7 +1888,7 @@ function App() {
           <Upload
             onUpload={async (files) => handleFileSelection(files)}
             isUploading={isUploading}
-            userTier={userPlan}
+            userTier={(userPlan === 'pro' || userPlan === 'trial') ? userPlan : undefined}
             userCredits={userCredits}
           />
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building, ChevronsUpDown, Check, User } from 'lucide-react';
+import { Building, ChevronsUpDown, Check, User, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +15,7 @@ export interface Organization {
     id: string;
     name: string;
     role: string; // 'owner' | 'admin' | 'member'
+    status?: 'active' | 'pending' | 'rejected'; // Added
     isPersonal?: boolean; // Flag to identify personal workspace
     ownerEmail?: string; // NEW: To identify who owns the workspace
 }
@@ -23,6 +24,8 @@ interface WorkspaceSwitcherProps {
     organizations: Organization[];
     currentOrgId: string | null;
     onSwitch: (orgId: string | null) => void;
+    onAcceptInvite?: (orgId: string, e: React.MouseEvent) => void;
+    onRejectInvite?: (orgId: string, e: React.MouseEvent) => void;
     className?: string;
 }
 
@@ -34,7 +37,8 @@ export function WorkspaceSwitcher({ organizations, currentOrgId, onSwitch, class
 
     // Filter personal vs teams
     const personalOrg = organizations.find(o => o.isPersonal);
-    const teamOrgs = organizations.filter(o => !o.isPersonal);
+    const activeTeamOrgs = organizations.filter(o => !o.isPersonal && o.status !== 'pending');
+    const pendingInvites = organizations.filter(o => o.status === 'pending');
 
     const getWorkspaceLabel = (org: Organization) => {
         if (org.isPersonal) return "Il tuo Workspace";
@@ -52,7 +56,10 @@ export function WorkspaceSwitcher({ organizations, currentOrgId, onSwitch, class
                     className={cn("w-full justify-between bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white", className)}
                 >
                     <div className="flex items-center gap-2 truncate">
-                        {currentOrg?.isPersonal ? (
+                        {/* Show pending icon if current is pending (shouldn't happen if prevented, but safe UI) */}
+                        {currentOrg?.status === 'pending' ? (
+                            <Building className="h-4 w-4 text-amber-500/50 shrink-0 animate-pulse" />
+                        ) : currentOrg?.isPersonal ? (
                             <User className="h-4 w-4 text-slate-400 shrink-0" />
                         ) : (
                             <Building className="h-4 w-4 text-amber-500 shrink-0" />
@@ -63,6 +70,50 @@ export function WorkspaceSwitcher({ organizations, currentOrgId, onSwitch, class
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-[280px] bg-slate-900 border-slate-800 text-slate-200 p-0">
+
+                {/* PENDING INVITES SECTION */}
+                {pendingInvites.length > 0 && (
+                    <>
+                        <DropdownMenuLabel className="text-xs font-medium text-amber-500 uppercase tracking-wider px-2 py-1.5 mt-2 flex items-center gap-2">
+                            Inviti in Attesa
+                            <span className="bg-amber-500 text-slate-900 text-[10px] px-1 rounded-full font-bold">{pendingInvites.length}</span>
+                        </DropdownMenuLabel>
+                        {pendingInvites.map(org => (
+                            <div key={org.id} className="flex items-center justify-between p-2 m-1 bg-slate-800/50 rounded-md border border-slate-800">
+                                <div className="flex items-center gap-2 overflow-hidden">
+                                    <Building className="h-3 w-3 text-slate-500" />
+                                    <span className="text-xs text-slate-300 truncate max-w-[120px]">
+                                        {/* Use label logic to show owner email if member */}
+                                        {org.role === 'owner' ? org.name : `Workspace di ${org.ownerEmail || 'Admin'}`}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onAcceptInvite?.(org.id, e);
+                                        }}
+                                        className="p-1 hover:bg-green-500/20 text-green-500 rounded transition-colors"
+                                        title="Accetta"
+                                    >
+                                        <Check className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onRejectInvite?.(org.id, e);
+                                        }}
+                                        className="p-1 hover:bg-red-500/20 text-red-500 rounded transition-colors"
+                                        title="Rifiuta"
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                        <DropdownMenuSeparator className="bg-slate-800" />
+                    </>
+                )}
 
                 {/* Personal Workspace Section */}
                 {personalOrg && (
@@ -92,13 +143,13 @@ export function WorkspaceSwitcher({ organizations, currentOrgId, onSwitch, class
                 )}
 
                 {/* Teams Section */}
-                {teamOrgs.length > 0 && (
+                {activeTeamOrgs.length > 0 && (
                     <>
                         <DropdownMenuSeparator className="bg-slate-800" />
                         <DropdownMenuLabel className="text-xs font-medium text-slate-500 uppercase tracking-wider px-2 py-1.5 mt-2">
                             Team
                         </DropdownMenuLabel>
-                        {teamOrgs.map((org) => (
+                        {activeTeamOrgs.map((org) => (
                             <DropdownMenuItem
                                 key={org.id}
                                 onSelect={() => {
@@ -124,7 +175,7 @@ export function WorkspaceSwitcher({ organizations, currentOrgId, onSwitch, class
                     </>
                 )}
 
-                {!personalOrg && teamOrgs.length === 0 && (
+                {!personalOrg && activeTeamOrgs.length === 0 && pendingInvites.length === 0 && (
                     <div className="p-4 text-center text-sm text-slate-500">
                         Nessun workspace trovato.
                     </div>

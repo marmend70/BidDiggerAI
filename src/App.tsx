@@ -328,9 +328,12 @@ function App() {
 
         try {
           // Priority: Try Optimized RPC (if set up)
-          const { data: rpcData, error: rpcError } = await supabase.rpc('get_user_organizations');
-          if (rpcError) throw rpcError;
+          // FIXME: RPC is causing caching issues or type mismatches. Using Fallback for now.
+          // const { data: rpcData, error: rpcError } = await supabase.rpc('get_user_organizations');
+          // if (rpcError) throw rpcError;
+          throw new Error("Force Fallback");
 
+          /*
           if (rpcData) {
             formattedOrgs = rpcData.map((item: any) => ({
               id: item.org_id,
@@ -341,6 +344,7 @@ function App() {
               ownerEmail: item.owner_email // NEW: Map Owner Email
             }));
           }
+          */
         } catch (err) {
           console.warn("RPC fetch failed, using fallback:", err);
 
@@ -359,18 +363,50 @@ function App() {
               `)
             .eq('user_id', userId);
 
+          // Manually fetch owner emails to populate the label correctly
           if (fallbackData) {
-            formattedOrgs = fallbackData.map((item: any) => ({
-              id: item.organizations?.id,
-              name: item.organizations?.name,
-              role: item.role,
-              status: item.status || 'active', // Default to active if missing (backwards compat)
-              isPersonal: item.organizations?.created_by === userId
-            }));
+            const ownerIds = fallbackData
+              .map((f: any) => f.organizations?.created_by)
+              .filter(Boolean);
+
+            const { data: owners } = await supabase
+              .from('profiles')
+              .select('id, email')
+              .in('id', ownerIds);
+
+            formattedOrgs = fallbackData.map((item: any) => {
+              const owner = owners?.find(o => o.id === item.organizations?.created_by);
+              return {
+                id: item.organizations?.id,
+                name: item.organizations?.name,
+                role: item.role,
+                status: item.status || 'active',
+                isPersonal: item.organizations?.created_by === userId,
+                ownerEmail: owner?.email // Map Owner Email
+              };
+            });
           }
         }
 
-        setMyOrganizations(formattedOrgs.filter((o: any) => o.id));
+        const validOrgs = formattedOrgs.filter((o: any) => o.id);
+
+        // SECURITY CHECK: If current Org is Pending, switch to Personal
+        if (profile.default_organization_id) {
+          const currentOrg = validOrgs.find(o => o.id === profile.default_organization_id);
+          if (currentOrg && currentOrg.status === 'pending') {
+            console.warn("Security Redirect: Current workspace is pending. Switching to Personal.");
+            // Find personal org
+            const personal = validOrgs.find(o => o.isPersonal);
+            if (personal) {
+              setUserOrganizationId(personal.id);
+              profile.default_organization_id = personal.id; // Update local ref
+              // Persist change
+              await supabase.from('profiles').update({ default_organization_id: personal.id }).eq('id', userId);
+            }
+          }
+        }
+
+        setMyOrganizations(validOrgs);
 
         if (profile.preferences) {
           setUserPreferences({

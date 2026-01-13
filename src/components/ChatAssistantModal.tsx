@@ -15,7 +15,7 @@ interface ChatAssistantModalProps {
     tenderTitle: string;
     filePaths?: string[];
     analysisContext?: any;
-    onSendMessage: (history: Message[]) => Promise<{ answer: string; error?: string }>;
+    onSendMessage: (history: Message[], filePaths?: string[], analysisContext?: any) => Promise<{ answer: string; error?: string }>;
 }
 
 export function ChatAssistantModal({ isOpen, onClose, tenderId, tenderTitle, filePaths, analysisContext, onSendMessage }: ChatAssistantModalProps) {
@@ -59,7 +59,8 @@ export function ChatAssistantModal({ isOpen, onClose, tenderId, tenderTitle, fil
             const conversationHistory: Message[] = [...messages, { role: 'user', content: userMsg }];
 
             // DELEGATE TO PARENT (App.tsx) for Credit Logic
-            const { answer, error } = await onSendMessage(conversationHistory);
+            // FIX: Pass filePaths and analysisContext to the handler
+            const { answer, error } = await onSendMessage(conversationHistory, filePaths, analysisContext);
 
             if (error) {
                 // Determine if it was a user cancellation or real error

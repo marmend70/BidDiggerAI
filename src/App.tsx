@@ -2085,8 +2085,9 @@ function App() {
           organizationId={userOrganizationId} // Pass Organization ID
           userPreferences={userPreferences}
           userPlanType={userPlan}
-          onLoadAnalysis={(data, tenderId) => {
+          onLoadAnalysis={(data, tenderId, filePaths) => {
             setAnalysisData({ ...data, tender_id: tenderId });
+            if (filePaths) setUploadedPaths(filePaths);
             setActiveSection('3_sintesi');
           }}
         />

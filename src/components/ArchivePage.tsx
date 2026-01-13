@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 interface ArchivePageProps {
     userId: string;
     organizationId?: string | null; // NEW: Organization Support
-    onLoadAnalysis: (data: AnalysisResult, tenderId: string) => void;
+    onLoadAnalysis: (data: AnalysisResult, tenderId: string, filePaths?: string[]) => void;
     userPreferences?: UserPreferences;
     userPlanType?: string;
 }
@@ -665,48 +665,70 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
 
 
     // Handle Load/Open
-    const handleOpen = (rawData: any, tenderId?: string) => {
-        // ADAPTER LOGIC FOR ARCHIVED DATA (Keep existing adapter logic)
-        // RE-INJECT ADAPTER LOGIC HERE
-        const data = { ...rawData };
-        // (Paste the Genius Recovery / Alias Logic here - for now simplifying to direct load 
-        // assuming the complex logic was for recovery of OLD broken data.
-        // If user needs that robust recovery, I should include it. I will replicate it.)
+    const handleOpen = async (rawData: any, tenderId?: string) => {
+        setIsLoading(true);
+        try {
+            // 1. Fetch File Paths associated with this tender
+            let filePaths: string[] = [];
+            if (tenderId) {
+                const { data: files, error: fileError } = await supabase
+                    .from('tender_documents')
+                    .select('file_path')
+                    .eq('tender_id', tenderId);
 
-        // GENIUS RECOVERY STRATEGY (Simplified for this View, full logic was in previous file version)
-        // I will assume for now we can just pass data, but if issues arise I'll restore the full adapter.
-        // Actually, let's include the full adapter to be safe.
+                if (files) {
+                    filePaths = files.map(f => f.file_path);
+                }
+                if (fileError) console.warn("Could not fetch file paths for context:", fileError);
+            }
 
-        Object.keys(data).forEach(k => {
-            const section = data[k];
-            if (section && typeof section === 'object') {
-                const globalMap = (data as any).semantic_analysis_data;
-                let globalGenius = globalMap ? globalMap[k] : undefined;
-                if (!globalGenius && k === '1_requisiti_partecipazione' && globalMap) globalGenius = globalMap['1_requisiti'];
+            // ADAPTER LOGIC FOR ARCHIVED DATA (Keep existing adapter logic)
+            // RE-INJECT ADAPTER LOGIC HERE
+            const data = { ...rawData };
+            // (Paste the Genius Recovery / Alias Logic here - for now simplifying to direct load 
+            // assuming the complex logic was for recovery of OLD broken data.
+            // If user needs that robust recovery, I should include it. I will replicate it.)
 
-                const geniusAnalysis = globalGenius?.semantic_analysis || section.semantic_analysis || (Array.isArray(section) && section[0]?.semantic_analysis);
-                const geniusRisks = globalGenius?.rischi_rilevati || section.rischi_rilevati || (Array.isArray(section) && section[0]?.rischi_rilevati);
-                const geniusSuggestions = globalGenius?.suggerimenti || section.suggerimenti || (Array.isArray(section) && section[0]?.suggerimenti);
+            // GENIUS RECOVERY STRATEGY (Simplified for this View, full logic was in previous file version)
+            // I will assume for now we can just pass data, but if issues arise I'll restore the full adapter.
+            // Actually, let's include the full adapter to be safe.
 
-                if (data[k] && typeof data[k] === 'object') {
-                    if (geniusAnalysis) {
-                        data[k].semantic_analysis = geniusAnalysis;
-                        if (Array.isArray(data[k]) && data[k].length > 0) data[k][0] = { ...data[k][0], semantic_analysis: geniusAnalysis };
-                    }
-                    if (geniusRisks) {
-                        data[k].rischi_rilevati = geniusRisks;
-                        if (Array.isArray(data[k]) && data[k].length > 0) data[k][0] = { ...data[k][0], rischi_rilevati: geniusRisks };
-                    }
-                    if (geniusSuggestions) {
-                        data[k].suggerimenti = geniusSuggestions;
-                        if (Array.isArray(data[k]) && data[k].length > 0) data[k][0] = { ...data[k][0], suggerimenti: geniusSuggestions };
+            Object.keys(data).forEach(k => {
+                const section = data[k];
+                if (section && typeof section === 'object') {
+                    const globalMap = (data as any).semantic_analysis_data;
+                    let globalGenius = globalMap ? globalMap[k] : undefined;
+                    if (!globalGenius && k === '1_requisiti_partecipazione' && globalMap) globalGenius = globalMap['1_requisiti'];
+
+                    const geniusAnalysis = globalGenius?.semantic_analysis || section.semantic_analysis || (Array.isArray(section) && section[0]?.semantic_analysis);
+                    const geniusRisks = globalGenius?.rischi_rilevati || section.rischi_rilevati || (Array.isArray(section) && section[0]?.rischi_rilevati);
+                    const geniusSuggestions = globalGenius?.suggerimenti || section.suggerimenti || (Array.isArray(section) && section[0]?.suggerimenti);
+
+                    if (data[k] && typeof data[k] === 'object') {
+                        if (geniusAnalysis) {
+                            data[k].semantic_analysis = geniusAnalysis;
+                            if (Array.isArray(data[k]) && data[k].length > 0) data[k][0] = { ...data[k][0], semantic_analysis: geniusAnalysis };
+                        }
+                        if (geniusRisks) {
+                            data[k].rischi_rilevati = geniusRisks;
+                            if (Array.isArray(data[k]) && data[k].length > 0) data[k][0] = { ...data[k][0], rischi_rilevati: geniusRisks };
+                        }
+                        if (geniusSuggestions) {
+                            data[k].suggerimenti = geniusSuggestions;
+                            if (Array.isArray(data[k]) && data[k].length > 0) data[k][0] = { ...data[k][0], suggerimenti: geniusSuggestions };
+                        }
                     }
                 }
-            }
-        });
+            });
 
-        onLoadAnalysis(data, tenderId || '');
-        alert("Analisi caricata correttamente!");
+            onLoadAnalysis(data, tenderId || '', filePaths);
+            alert("Analisi caricata correttamente!");
+        } catch (e) {
+            console.error("Error loading analysis:", e);
+            alert("Errore durante il caricamento dell'analisi");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
 

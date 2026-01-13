@@ -717,10 +717,13 @@ function createGeniusSection(data: any) {
     }
 
     // 2. Risks
-    if (risks && Array.isArray(risks) && risks.length > 0) {
+    // Clean up risks: ensure they have at least a description
+    const validRisks = risks?.filter((r: any) => r && (r.rischio || r.descrizione));
+
+    if (validRisks && Array.isArray(validRisks) && validRisks.length > 0) {
         geniusContent.push(
             createSubHeading("Rischi Rilevati"),
-            ...risks.flatMap((r: any) => {
+            ...validRisks.flatMap((r: any) => {
                 const description = r.rischio || r.descrizione || "Nessuna descrizione";
                 const details: any[] = [];
 
@@ -760,23 +763,26 @@ function createGeniusSection(data: any) {
     }
 
     // 3. Suggestions
-    if (suggestions && Array.isArray(suggestions) && suggestions.length > 0) {
+    // Clean up suggestions: ensure they have at least an 'azione' or valid content
+    const validSuggestions = suggestions?.filter((s: any) => s && (s.azione || s.motivazione || s.target));
+
+    if (validSuggestions && Array.isArray(validSuggestions) && validSuggestions.length > 0) {
         geniusContent.push(
             createSubHeading("Suggerimenti Operativi"),
-            ...suggestions.flatMap((s: any) => [
+            ...validSuggestions.flatMap((s: any) => [
                 new Paragraph({
                     children: [
-                        new TextRun({ text: s.azione, bold: true }),
+                        new TextRun({ text: safeText(s.azione), bold: true }),
                     ],
                     bullet: { level: 0 }
                 }),
                 new Paragraph({
-                    text: `Motivazione: ${s.motivazione}`,
+                    text: `Motivazione: ${safeText(s.motivazione)}`,
                     indent: { left: 720 },
                     run: { italics: true }
                 }),
                 new Paragraph({
-                    text: `Target: ${s.target}`,
+                    text: `Target: ${safeText(s.target)}`,
                     indent: { left: 720 },
                     spacing: { after: 100 }
                 })

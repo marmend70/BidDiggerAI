@@ -327,9 +327,9 @@ JSON SCHEMA:
   "15_remunerazione": {
     "structured": [
       {
-        "modalita": "...",
-        "pagamenti": "...",
-        "clausole": "..."
+        "modalita": "Modalità di remunerazione e misura (es. A corpo, A misura, A canone, A consumo, A giorni uomo, Misto, ecc.) - Specifica ripartizione se mista",
+        "pagamenti": "Termini e modalità liquidazione fatture (es. 30/60 gg)",
+        "clausole": "Clausole specifiche su fatturazione o SAL"
       }
     ],
       "analysis": { "sostenibilita_finanziaria": "..." }${semanticPreferences['15_remunerazione'] ? geniusFields : ''}

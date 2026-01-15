@@ -1637,20 +1637,220 @@ export function Dashboard({ data, activeSection, onAskQuestion, isGlobalLoading,
                                 </ul>
                             </CardContent>
                         </Card>
-                        <Card className="bg-slate-900 border-slate-800">
-                            <CardHeader>
-                                <CardTitle className="text-slate-200">Modalità di Presentazione</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-slate-300 whitespace-pre-line">
-                                    <EditableField
-                                        value={data['12_offerta_tecnica'][0]?.formattazione_modalita}
-                                        onSave={(val) => onUpdateAnalysisField?.('12_offerta_tecnica', ['12_offerta_tecnica', 0, 'formattazione_modalita'], val) || Promise.resolve()}
-                                        type="textarea"
-                                    />
-                                </div>
-                            </CardContent>
-                        </Card>
+
+
+                        {/* NEW: VINCOLI DI FORMATTAZIONE */}
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <Card className="bg-slate-900 border-slate-800">
+                                <CardHeader>
+                                    <CardTitle className="text-slate-200 flex items-center gap-2">
+                                        <FileCode className="h-5 w-5 text-purple-500" />
+                                        Vincoli di Formattazione
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {data['12_offerta_tecnica'][0]?.formattazione ? (
+                                        <>
+                                            <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                                                <span className="text-sm text-slate-400">Font Ammessi</span>
+                                                <div className="text-sm text-slate-200">
+                                                    <EditableField
+                                                        value={data['12_offerta_tecnica'][0].formattazione.font}
+                                                        onSave={(val) => onUpdateAnalysisField?.('12_offerta_tecnica', ['12_offerta_tecnica', 0, 'formattazione', 'font'], val) || Promise.resolve()}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                                                <span className="text-sm text-slate-400">Dimensione Carattere</span>
+                                                <div className="text-sm text-slate-200">
+                                                    <EditableField
+                                                        value={data['12_offerta_tecnica'][0].formattazione.dimensione_carattere}
+                                                        onSave={(val) => onUpdateAnalysisField?.('12_offerta_tecnica', ['12_offerta_tecnica', 0, 'formattazione', 'dimensione_carattere'], val) || Promise.resolve()}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                                                <span className="text-sm text-slate-400">Interlinea</span>
+                                                <div className="text-sm text-slate-200">
+                                                    <EditableField
+                                                        value={data['12_offerta_tecnica'][0].formattazione.interlinea}
+                                                        onSave={(val) => onUpdateAnalysisField?.('12_offerta_tecnica', ['12_offerta_tecnica', 0, 'formattazione', 'interlinea'], val) || Promise.resolve()}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                                                <span className="text-sm text-slate-400">Margini</span>
+                                                <div className="text-sm text-slate-200">
+                                                    <EditableField
+                                                        value={data['12_offerta_tecnica'][0].formattazione.margini}
+                                                        onSave={(val) => onUpdateAnalysisField?.('12_offerta_tecnica', ['12_offerta_tecnica', 0, 'formattazione', 'margini'], val) || Promise.resolve()}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm text-slate-400">Formato Carta</span>
+                                                <div className="text-sm text-slate-200">
+                                                    <EditableField
+                                                        value={data['12_offerta_tecnica'][0].formattazione.formato_carta}
+                                                        onSave={(val) => onUpdateAnalysisField?.('12_offerta_tecnica', ['12_offerta_tecnica', 0, 'formattazione', 'formato_carta'], val) || Promise.resolve()}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <p className="text-slate-500 italic">Dettagli di formattazione non strutturati.</p>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            <Card className="bg-slate-900 border-slate-800">
+                                <CardHeader>
+                                    <CardTitle className="text-slate-200 flex items-center gap-2">
+                                        <Scale className="h-5 w-5 text-red-500" />
+                                        Limiti Dimensionali
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {data['12_offerta_tecnica'][0]?.limiti_dimensionali ? (
+                                        <>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="outline" className="text-red-400 border-red-900 bg-red-950/20 text-lg py-1 px-3">
+                                                    <EditableField
+                                                        value={data['12_offerta_tecnica'][0].limiti_dimensionali.max_pagine}
+                                                        onSave={(val) => onUpdateAnalysisField?.('12_offerta_tecnica', ['12_offerta_tecnica', 0, 'limiti_dimensionali', 'max_pagine'], val) || Promise.resolve()}
+                                                        className="font-bold"
+                                                    />
+                                                </Badge>
+                                                <span className="text-slate-400 text-sm">
+                                                    <EditableField
+                                                        value={data['12_offerta_tecnica'][0].limiti_dimensionali.unit_di_conteggio}
+                                                        onSave={(val) => onUpdateAnalysisField?.('12_offerta_tecnica', ['12_offerta_tecnica', 0, 'limiti_dimensionali', 'unit_di_conteggio'], val) || Promise.resolve()}
+                                                    />
+                                                </span>
+                                            </div>
+                                            <div className="p-3 bg-slate-800/50 rounded border border-slate-700">
+                                                <p className="text-xs font-semibold text-slate-500 mb-1 uppercase">Elementi Esclusi dal Conteggio</p>
+                                                <div className="text-sm text-slate-300">
+                                                    <EditableField
+                                                        value={data['12_offerta_tecnica'][0].limiti_dimensionali.elementi_esclusi}
+                                                        onSave={(val) => onUpdateAnalysisField?.('12_offerta_tecnica', ['12_offerta_tecnica', 0, 'limiti_dimensionali', 'elementi_esclusi'], val) || Promise.resolve()}
+                                                        type="textarea"
+                                                    />
+                                                </div>
+                                            </div>
+                                            {data['12_offerta_tecnica'][0].limiti_dimensionali.note && (
+                                                <div className="flex gap-2 items-start text-xs text-amber-500 bg-amber-950/20 p-2 rounded">
+                                                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                                                    <EditableField
+                                                        value={data['12_offerta_tecnica'][0].limiti_dimensionali.note}
+                                                        onSave={(val) => onUpdateAnalysisField?.('12_offerta_tecnica', ['12_offerta_tecnica', 0, 'limiti_dimensionali', 'note'], val) || Promise.resolve()}
+                                                        type="textarea"
+                                                    />
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <p className="text-slate-500 italic">Limiti dimensionali non strutturati.</p>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        {/* NEW: CONFEZIONAMENTO E INDICI */}
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <Card className="bg-slate-900 border-slate-800">
+                                <CardHeader>
+                                    <CardTitle className="text-slate-200 flex items-center gap-2">
+                                        <Box className="h-5 w-5 text-indigo-500" />
+                                        Predisposizione e Confezionamento
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {data['12_offerta_tecnica'][0]?.confezionamento ? (
+                                        <>
+                                            <div>
+                                                <span className="text-sm font-medium text-slate-400 block mb-1">Modalità Fascicolazione</span>
+                                                <div className="text-sm text-slate-300">
+                                                    <EditableField
+                                                        value={data['12_offerta_tecnica'][0].confezionamento.modalita_fascicolazione}
+                                                        onSave={(val) => onUpdateAnalysisField?.('12_offerta_tecnica', ['12_offerta_tecnica', 0, 'confezionamento', 'modalita_fascicolazione'], val) || Promise.resolve()}
+                                                        type="textarea"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between border-t border-slate-800 pt-3 mt-2">
+                                                <div className="w-1/2 pr-2">
+                                                    <span className="text-xs font-medium text-slate-500 block mb-1">Separatori</span>
+                                                    <div className="text-sm text-slate-300">
+                                                        <EditableField
+                                                            value={data['12_offerta_tecnica'][0].confezionamento.separatori}
+                                                            onSave={(val) => onUpdateAnalysisField?.('12_offerta_tecnica', ['12_offerta_tecnica', 0, 'confezionamento', 'separatori'], val) || Promise.resolve()}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="w-1/2 pl-2 border-l border-slate-800">
+                                                    <span className="text-xs font-medium text-slate-500 block mb-1">Copertina</span>
+                                                    <div className="text-sm text-slate-300">
+                                                        <EditableField
+                                                            value={data['12_offerta_tecnica'][0].confezionamento.copertina}
+                                                            onSave={(val) => onUpdateAnalysisField?.('12_offerta_tecnica', ['12_offerta_tecnica', 0, 'confezionamento', 'copertina'], val) || Promise.resolve()}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        // FALLBACK LEGACY
+                                        <div className="text-slate-300 whitespace-pre-line">
+                                            <EditableField
+                                                value={data['12_offerta_tecnica'][0]?.formattazione_modalita}
+                                                onSave={(val) => onUpdateAnalysisField?.('12_offerta_tecnica', ['12_offerta_tecnica', 0, 'formattazione_modalita'], val) || Promise.resolve()}
+                                                type="textarea"
+                                            />
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            <Card className="bg-slate-900 border-slate-800">
+                                <CardHeader>
+                                    <CardTitle className="text-slate-200 flex items-center gap-2">
+                                        <BookOpen className="h-5 w-5 text-amber-500" />
+                                        Indice e Sommario
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {data['12_offerta_tecnica'][0]?.indici ? (
+                                        <>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm text-slate-400">Richiesto</span>
+                                                <Badge variant={data['12_offerta_tecnica'][0].indici.richiesto?.toLowerCase().includes('si') ? 'default' : 'secondary'} className="bg-slate-800 text-slate-200">
+                                                    <EditableField
+                                                        value={data['12_offerta_tecnica'][0].indici.richiesto}
+                                                        onSave={(val) => onUpdateAnalysisField?.('12_offerta_tecnica', ['12_offerta_tecnica', 0, 'indici', 'richiesto'], val) || Promise.resolve()}
+                                                    />
+                                                </Badge>
+                                            </div>
+                                            <div>
+                                                <span className="text-sm font-medium text-slate-400 block mb-1">Conteggio Pagine</span>
+                                                <div className={`p-2 rounded text-sm font-medium ${data['12_offerta_tecnica'][0].indici.incluso_nel_limite?.toLowerCase().includes('si') ? 'bg-red-950/30 text-red-400 border border-red-900' : 'bg-emerald-950/30 text-emerald-400 border border-emerald-900'}`}>
+                                                    <span className="flex items-center gap-2">
+                                                        {data['12_offerta_tecnica'][0].indici.incluso_nel_limite?.toLowerCase().includes('si') ? <AlertTriangle className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
+                                                        Incluso nel limite: <EditableField
+                                                            value={data['12_offerta_tecnica'][0].indici.incluso_nel_limite}
+                                                            onSave={(val) => onUpdateAnalysisField?.('12_offerta_tecnica', ['12_offerta_tecnica', 0, 'indici', 'incluso_nel_limite'], val) || Promise.resolve()}
+                                                            className="ml-1 inline"
+                                                        />
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <p className="text-slate-500 italic">Informazioni indice non strutturate.</p>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
                         <SemanticAnalysisBlock data={data['12_offerta_tecnica'][0]} sectionId="12_offerta_tecnica" isGeniusEnabled={userPreferences?.semantic_analysis_sections?.['12_offerta_tecnica']}>
                             <SuggerimentiOffertaBlock suggestions={data['12_offerta_tecnica'][0]?.suggerimenti_progettuali_offerta} />
                         </SemanticAnalysisBlock>

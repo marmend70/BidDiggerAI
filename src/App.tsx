@@ -1304,6 +1304,7 @@ function App() {
         body: {
           action: 'deduct_credits',
           userId: session.user.id,
+          organizationId: userOrganizationId, // Pass Org ID for proper deduction
           amount: analysisCost
         }
       });
@@ -1405,7 +1406,7 @@ function App() {
       // Deduct
       try {
         const { data: deductRes, error: deductErr } = await supabase.functions.invoke('analyze-tender', {
-          body: { action: 'deduct_credits', userId: session.user.id, amount: 0.5 }
+          body: { action: 'deduct_credits', userId: session.user.id, organizationId: userOrganizationId, amount: 0.5 }
         });
         if (deductErr || !deductRes?.success) {
           alert("Errore scalatura crediti.");
@@ -1489,7 +1490,7 @@ function App() {
       // Deduct
       try {
         const { data: deductRes, error: deductErr } = await supabase.functions.invoke('analyze-tender', {
-          body: { action: 'deduct_credits', userId: session.user.id, amount: 0.5 }
+          body: { action: 'deduct_credits', userId: session.user.id, organizationId: userOrganizationId, amount: 0.5 }
         });
         if (deductErr || !deductRes?.success) {
           alert("Errore scalatura crediti.");

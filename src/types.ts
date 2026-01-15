@@ -130,7 +130,31 @@ export interface AnalysisResult {
     "12_offerta_tecnica": Array<{
         lotto: string;
         documenti: string[];
-        formattazione_modalita: string;
+        formattazione_modalita: string; // Legacy field, kept for backward compatibility/summary
+        // NEW DETAILED FIELDS
+        formattazione?: {
+            font: string;
+            dimensione_carattere: string;
+            interlinea: string;
+            margini: string;
+            formato_carta: string;
+        };
+        limiti_dimensionali?: {
+            max_pagine: string;
+            unit_di_conteggio: string; // pagine, cartelle, facciate
+            elementi_esclusi: string; // copertina, indice, allegati...
+            note: string; // se incerto o ambiguo
+        };
+        confezionamento?: {
+            modalita_fascicolazione: string;
+            separatori: string;
+            copertina: string;
+        };
+        indici?: {
+            richiesto: string; // Si/No
+            posizionamento: string;
+            incluso_nel_limite: string; // Si/No/Da verificare
+        };
         ref: string;
         suggerimenti_progettuali_offerta?: Array<{ // NEW
             proposta: string;

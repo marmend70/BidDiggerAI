@@ -392,7 +392,21 @@ JSON SCHEMA:
   // Dashboard: data['12_offerta_tecnica'][0].documenti (Array of Strings) + formattazione_modalita
   if (preferences['12_offerta_tecnica']) prompts.push(`
   Chiave: "12_offerta_tecnica"
-  ISTRUZIONI: Offerta Tecnica.
+  ISTRUZIONI: Offerta Tecnica - Analisi Vincoli Formali e Contenutistici.
+  
+  OBJ: Oltre all'elenco dei documenti, DEVI estrarre TUTTI i vincoli di scrittura e presentazione.
+  
+  CERCA ATTENTAMENTE:
+  1. FORMATTAZIONE: Font ammessi (es. Arial, Times), dimensione minima carattere (es. 11pt, 12pt), interlinea (es. singola, 1.5), margini (es. 2cm), formato carta (A4/A3).
+  2. LIMITI DIMENSIONALI: 
+     - Numero massimo pagine/facciate/cartelle per l'intera offerta o per singola relazione.
+     - COSA E' ESCLUSO DAL CONTEGGIO: Cerca esplicitamente se Indice, Copertina, Separatori, Allegati tecnici sono esclusi o inclusi.
+  3. CONFEZIONAMENTO: Modalità di fascicolazione, rilegatura nassuna/termica/anelli, separatori colorati, buste, o file digitali (unico file vs file separati).
+  4. INDICE: Se è richiesto un indice o sommario e se questo conta nel limite pagine.
+  
+  CRITICITA': 
+  - Se il disciplinare non specifica se copertina/indice sono nel conteggio pagine, SCRIVI ESPLICITAMENTE: "Non specificato - Consigliato quesito".
+  
   ${semanticPreferences['12_offerta_tecnica'] ? `
   *** GENIUS MODE ATTIVO ***
   ${GENIUS_RULES_MAP['12_offerta_tecnica']}
@@ -405,7 +419,30 @@ JSON SCHEMA:
     "structured": [
       {
         "documenti": ["doc1 (stringa)", "doc2"],
-        "formattazione_modalita": "...",
+        "formattazione_modalita": "Riassunto generale (legacy)",
+        "formattazione": {
+            "font": "...",
+            "dimensione_carattere": "...",
+            "interlinea": "...",
+            "margini": "...",
+            "formato_carta": "..."
+        },
+        "limiti_dimensionali": {
+            "max_pagine": "...",
+            "unit_di_conteggio": "pagine / facciate / cartelle",
+            "elementi_esclusi": "copertina, indice, ...",
+            "note": "..."
+        },
+        "confezionamento": {
+            "modalita_fascicolazione": "...",
+            "separatori": "...",
+            "copertina": "..."
+        },
+        "indici": {
+            "richiesto": "Si/No",
+            "posizionamento": "...",
+            "incluso_nel_limite": "Si/No/Non Specificato - Chiedere"
+        },
         "limiti": "...",
         "criteri_formali": "..."${semanticPreferences['12_offerta_tecnica'] ? `,
         "suggerimenti_progettuali_offerta": [
@@ -418,7 +455,7 @@ JSON SCHEMA:
       "strategia_redazione": "..."
     }${semanticPreferences['12_offerta_tecnica'] ? geniusFields : ''}
   }
-  Nota: "documenti" DEVE essere un array di stringhe, NON oggetti.`);
+  Nota: "documenti" DEVE essere un array di stringhe. Compila tutti i nuovi campi dettagliati se le info sono presenti, altrimenti usa null o stringa vuota.`);
 
   // --- 13. OFFERTA ECONOMICA (13_offerta_economica) ---
   // Dashboard: data['13_offerta_economica'][0].documenti (Array of Strings) + formattazione_modalita

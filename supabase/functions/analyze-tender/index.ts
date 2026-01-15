@@ -432,14 +432,51 @@ ${contextString}
 
       // --- ACTION: DEDUCT CREDITS ---
       if (action === 'deduct_credits') {
-         const { amount, userId } = body;
+         const { amount, userId, organizationId } = body;
          if (!amount || amount <= 0) return new Response(JSON.stringify({ error: "Invalid amount" }), { status: 400, headers: corsHeaders });
+
+         let targetUserId = userId || (await supabaseClient.auth.getUser()).data.user?.id;
+
+         // ORGANIZATION LOGIC IF PROVIDED
+         if (organizationId) {
+            // 1. Verify Requesting User is a Member
+            // We use the authenticated user (from session or passed userId if trusted context but here purely server-side auth is safer)
+            // Safer: Use auth.getUser() to get the caller's ID for verification
+            const callerId = (await supabaseClient.auth.getUser()).data.user?.id;
+
+            // If we are functioning as admin/service role, calling `userId` might be trusted, but let's verify caller
+            // If userId matches callerId strategies...
+
+            // SIMPLIFIED CHECK: Check if 'userId' (the active user in frontend) is member of 'organizationId'
+            const { data: membership, error: memberError } = await supabaseClient
+               .from('organization_members')
+               .select('role')
+               .eq('organization_id', organizationId)
+               .eq('user_id', targetUserId) // The user attempting the action
+               .single();
+
+            if (memberError || !membership) {
+               return new Response(JSON.stringify({ error: "User is not a member of this organization", success: false }), { status: 403, headers: corsHeaders });
+            }
+
+            // 2. Fetch Organization Owner (Target for deduction)
+            const { data: orgData, error: orgError } = await supabaseClient
+               .from('organizations')
+               .select('created_by')
+               .eq('id', organizationId)
+               .single();
+
+            if (orgError || !orgData) throw new Error("Organization not found");
+
+            console.log(`[Credits] Deducting from Org Owner: ${orgData.created_by} (Request by ${targetUserId})`);
+            targetUserId = orgData.created_by;
+         }
 
          // Fetch profile
          const { data: profile, error: fetchError } = await supabaseClient
             .from('profiles')
             .select('credits')
-            .eq('id', userId || (await supabaseClient.auth.getUser()).data.user?.id) // Handle explicit or implicit user
+            .eq('id', targetUserId)
             .single();
 
          if (fetchError || !profile) throw new Error("Profile not found");
@@ -453,7 +490,7 @@ ${contextString}
          const { error: updateError } = await supabaseClient
             .from('profiles')
             .update({ credits: newBalance })
-            .eq('id', userId || (await supabaseClient.auth.getUser()).data.user?.id);
+            .eq('id', targetUserId);
 
          if (updateError) throw updateError;
 

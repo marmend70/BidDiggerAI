@@ -148,7 +148,7 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
         if (!confirm('Sei sicuro di voler eliminare questa analisi? I file e i dati verranno rimossi permanentemente.')) return;
 
         try {
-            // 1. Get files associated with this tender
+            // 1. Get files associated with this tender and delete from storage
             const { data: files } = await supabase
                 .from('tender_documents')
                 .select('file_path')
@@ -156,7 +156,8 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
 
             if (files && files.length > 0) {
                 const searchPaths = files.map(f => f.file_path);
-                // 2. Delete files from Storage
+
+                // Delete files from Storage
                 const { error: storageError } = await supabase
                     .storage
                     .from('tenders')
@@ -164,23 +165,48 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
 
                 if (storageError) {
                     console.error('Storage deletion error:', storageError);
-                    // We continue to delete the DB record even if storage fails, 
-                    // to ensure UI consistency, but valid concern for orphan files.
                 }
             }
 
-            // 3. Delete DB record
-            const { error } = await supabase
-                .from('tenders')
-                .delete()
-                .eq('id', tenderId);
+            // 2. Manual Cascade Delete - with Error Checking
+            // All these tables use 'tender_id' as the foreign key
 
-            if (error) throw error;
+            const { error: docError } = await supabase.from('tender_documents').delete().eq('tender_id', tenderId);
+            if (docError) console.error('Error deleting tender_documents:', docError);
+
+            const { error: actError } = await supabase.from('tender_activities').delete().eq('tender_id', tenderId);
+            if (actError) console.error('Error deleting tender_activities:', actError);
+
+            // For analyses table, it also uses 'tender_id'
+            const { error: anaError } = await supabase.from('analyses').delete().eq('tender_id', tenderId);
+            if (anaError) console.error('Error deleting analyses:', anaError);
+
+            // 3. Delete Main Tender Record
+            // Importantly, we check if the row was actually found and deleted using .select()
+            const { error, count, data } = await supabase
+                .from('tenders')
+                .delete({ count: 'exact' })
+                .eq('id', tenderId)
+                .select();
+
+            if (error) {
+                console.error('Supabase Delete Error:', error);
+                throw error;
+            }
+
+            // Verification: Did we actually delete anything?
+            if (count === 0 && (!data || data.length === 0)) {
+                console.warn(`Delete operation returned 0 rows for tenderId: ${tenderId}. It might not exist or RLS blocked it.`);
+                alert('Attenzione: Impossibile eliminare l\'elemento. Potrebbe essere già stato eliminato o non hai i permessi necessari.');
+                // We do NOT update the UI if nothing was deleted, to reflect reality.
+                return;
+            }
 
             setAnalyses(prev => prev.filter(a => a.tender_id !== tenderId));
-        } catch (error) {
+
+        } catch (error: any) {
             console.error('Error deleting analysis:', error);
-            alert('Errore durante l\'eliminazione');
+            alert(`Errore durante l'eliminazione: ${error.message || 'Errore sconosciuto'}`);
         }
     };
 
@@ -497,19 +523,89 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
         if (!confirm('ATTENZIONE: Sei sicuro di voler eliminare TUTTE le analisi in archivio? Questa azione è irreversibile e cancellerà tutti i dati.')) return;
         if (!confirm('Confermi definitivamente l\'eliminazione TOTALE dell\'archivio?')) return;
 
+        setIsLoading(true);
         try {
-            // Delete all tenders for this user (cascade deletes analyses)
-            const { error } = await supabase
+            // 1. Get all tender IDs for this user
+            const { data: userTenders, error: fetchError } = await supabase
                 .from('tenders')
-                .delete()
+                .select('id')
                 .eq('user_id', userId);
 
-            if (error) throw error;
+            if (fetchError) throw fetchError;
 
-            setAnalyses([]);
-        } catch (error) {
+            if (!userTenders || userTenders.length === 0) {
+                setAnalyses([]);
+                setIsLoading(false);
+                return;
+            }
+
+            const total = userTenders.length;
+            let deletedCount = 0;
+            let failCount = 0;
+
+            // 2. Iterative Delete - Reuse logic similar to single delete for maximum reliability
+            // We do this in parallel chunks to be faster but still robust
+            const BATCH_SIZE = 5;
+            for (let i = 0; i < total; i += BATCH_SIZE) {
+                const batch = userTenders.slice(i, i + BATCH_SIZE);
+                await Promise.all(batch.map(async (tender) => {
+                    try {
+                        const tenderId = tender.id;
+
+                        // A. Files Cleanup
+                        const { data: files } = await supabase
+                            .from('tender_documents')
+                            .select('file_path')
+                            .eq('tender_id', tenderId);
+
+                        if (files && files.length > 0) {
+                            const paths = files.map(f => f.file_path);
+                            await supabase.storage.from('tenders').remove(paths);
+                        }
+
+                        // B. DB Cleanup (Manual Cascade)
+                        await supabase.from('tender_documents').delete().eq('tender_id', tenderId);
+                        await supabase.from('tender_activities').delete().eq('tender_id', tenderId);
+                        await supabase.from('analyses').delete().eq('tender_id', tenderId);
+
+                        // C. Main Record
+                        const { error, count } = await supabase
+                            .from('tenders')
+                            .delete({ count: 'exact' })
+                            .eq('id', tenderId);
+
+                        if (error || count === 0) {
+                            console.warn(`Failed to delete tender ${tenderId}`, error);
+                            failCount++;
+                        } else {
+                            deletedCount++;
+                        }
+                    } catch (err) {
+                        console.error(`Exception deleting tender ${tender.id}`, err);
+                        failCount++;
+                    }
+                }));
+            }
+
+            if (deletedCount > 0) {
+                if (failCount === 0) {
+                    setAnalyses([]);
+                    alert("Tutto l'archivio è stato eliminato correttamente.");
+                } else {
+                    fetchAnalyses(); // Reload to show what's left
+                    alert(`Eliminati ${deletedCount} elementi. ${failCount} elementi non sono stati eliminati.`);
+                }
+            } else if (failCount > 0) {
+                alert("Impossibile eliminare gli elementi.");
+            } else {
+                setAnalyses([]);
+            }
+
+        } catch (error: any) {
             console.error('Error deleting all analyses:', error);
-            alert('Errore durante l\'eliminazione di tutte le analisi');
+            alert(`Errore critico durante l'eliminazione: ${error.message}`);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -685,10 +781,6 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
             // ADAPTER LOGIC FOR ARCHIVED DATA (Keep existing adapter logic)
             // RE-INJECT ADAPTER LOGIC HERE
             const data = { ...rawData };
-            // (Paste the Genius Recovery / Alias Logic here - for now simplifying to direct load 
-            // assuming the complex logic was for recovery of OLD broken data.
-            // If user needs that robust recovery, I should include it. I will replicate it.)
-
             // GENIUS RECOVERY STRATEGY (Simplified for this View, full logic was in previous file version)
             // I will assume for now we can just pass data, but if issues arise I'll restore the full adapter.
             // Actually, let's include the full adapter to be safe.
@@ -951,5 +1043,3 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
         </div>
     );
 }
-
-

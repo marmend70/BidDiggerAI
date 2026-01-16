@@ -23,7 +23,7 @@ export function Upload({ onUpload, isUploading, userTier = 'trial', userCredits 
     const isPro = userTier === 'pro';
     const IS_TRIAL = !isPro && !hasCredits;
 
-    const MAX_FILES = 3;
+    const MAX_FILES = 4;
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
         setFiles(prev => {
@@ -73,7 +73,7 @@ export function Upload({ onUpload, isUploading, userTier = 'trial', userCredits 
                         <div className="mb-4 p-3 bg-blue-950/30 text-blue-200 text-xs rounded-md flex items-start gap-2 border border-blue-900/50">
                             <Info className="h-4 w-4 shrink-0 mt-0.5 text-blue-400" />
                             <div>
-                                <strong>Versione Trial limitata a 3 documenti</strong> (consigliati 2).<br />
+                                <strong>Versione Trial limitata a 4 documenti</strong>.<br />
                                 Per un'analisi ottimale, carica: 1. Disciplinare, 2. Capitolato Tecnico, 3. Bando/Schema Contratto.
                             </div>
                         </div>

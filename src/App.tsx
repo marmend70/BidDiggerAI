@@ -1056,8 +1056,8 @@ function App() {
 
     // Let's implement the logic INSIDE runAnalysis loop first.
 
-    if (files.length > 3) {
-      alert("Puoi caricare un massimo di 3 documenti per analisi.");
+    if (files.length > 4) {
+      alert("Puoi caricare un massimo di 4 documenti per analisi.");
       return;
     }
 

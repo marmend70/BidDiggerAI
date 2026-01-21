@@ -8,6 +8,7 @@ import { AdminPage } from '@/components/AdminPage';
 import { ArchivePage } from '@/components/ArchivePage';
 import { TeamSettings } from '@/components/TeamSettings';
 import { UpdatePassword } from '@/components/UpdatePassword';
+import { ProfileModal } from '@/components/ProfileModal';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -177,6 +178,7 @@ function App() {
   const [timeoutSettings, setTimeoutSettings] = useState<number>(240); // Default 4 minutes
   const [showChatAssistant, setShowChatAssistant] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   // Cleanup Expired Tenders Function
   const cleanupExpiredTenders = async (userId: string, retentionDays: number) => {
@@ -1812,7 +1814,10 @@ function App() {
         window.location.reload();
       }
     } else {
-      window.location.reload();
+      // If we are just in the setup phase (uploading/configuring), "New Analysis"
+      // acts as a "Back to Home" button. We simply reset the view to the dashboard
+      // without reloading (preserving selected files).
+      setActiveSection('3_sintesi');
     }
   };
 
@@ -2005,9 +2010,16 @@ function App() {
           </button>
         </div>
         <div className="flex items-center gap-3 text-xs text-slate-500">
-          <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700">
-            Account: {session?.user?.email}
-          </span>
+          <button
+            onClick={() => setProfileModalOpen(true)}
+            className="hover:scale-105 transition-transform"
+            title="Gestisci Profilo"
+          >
+            <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 hover:border-blue-500/50 hover:bg-slate-700/50 transition-colors cursor-pointer">
+              Account: {session?.user?.email}
+            </span>
+          </button>
+
           {orgRole && (
             <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-amber-500">
               Team: {orgRole === 'owner' ? 'Proprietario' : (orgRole === 'admin' ? 'Amministratore' : 'Membro')}
@@ -2030,6 +2042,8 @@ function App() {
             isUploading={isUploading}
             userTier={(userPlan === 'pro' || userPlan === 'trial') ? userPlan : undefined}
             userCredits={userCredits}
+            initialFiles={pendingFiles}
+            onFileSelectionChange={setPendingFiles}
           />
 
           <div className="mt-8 max-w-5xl mx-auto grid gap-4 md:grid-cols-2 lg:grid-cols-4 text-left">
@@ -2111,6 +2125,11 @@ function App() {
           onUpdateAnalysisField={handleUpdateAnalysisField}
         />
       )}
+      <ProfileModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+        userEmail={session?.user?.email}
+      />
     </Layout>
   );
 }

@@ -525,11 +525,16 @@ export function ArchivePage({ userId, organizationId, onLoadAnalysis, userPrefer
 
         setIsLoading(true);
         try {
-            // 1. Get all tender IDs for this user
-            const { data: userTenders, error: fetchError } = await supabase
-                .from('tenders')
-                .select('id')
-                .eq('user_id', userId);
+            // 1. Get all tender IDs for this user or organization
+            let query = supabase.from('tenders').select('id');
+
+            if (organizationId) {
+                query = query.eq('organization_id', organizationId);
+            } else {
+                query = query.eq('user_id', userId);
+            }
+
+            const { data: userTenders, error: fetchError } = await query;
 
             if (fetchError) throw fetchError;
 

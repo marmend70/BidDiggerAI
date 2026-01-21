@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload as UploadIcon, File, X, Loader2, AlertTriangle, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,10 +12,19 @@ interface UploadProps {
     isUploading: boolean;
     userTier?: 'trial' | 'pro';
     userCredits?: number;
+    initialFiles?: File[];
+    onFileSelectionChange?: (files: File[]) => void;
 }
 
-export function Upload({ onUpload, isUploading, userTier = 'trial', userCredits = 0 }: UploadProps) {
-    const [files, setFiles] = React.useState<File[]>([]);
+export function Upload({ onUpload, isUploading, userTier = 'trial', userCredits = 0, initialFiles = [], onFileSelectionChange }: UploadProps) {
+    const [files, setFiles] = React.useState<File[]>(initialFiles);
+
+    // Sync with initialFiles if provided explicitly (e.g. from parent state resume)
+    useEffect(() => {
+        if (initialFiles.length > 0 && files.length === 0) {
+            setFiles(initialFiles);
+        }
+    }, [initialFiles]); // Simplified dependency
 
     // Limits logic
     // If user has credits OR is pro, they are not limited by trial restrictions
@@ -25,17 +34,25 @@ export function Upload({ onUpload, isUploading, userTier = 'trial', userCredits 
 
     const MAX_FILES = 4;
 
+    const updateFiles = (newFiles: File[]) => {
+        setFiles(newFiles);
+        if (onFileSelectionChange) {
+            onFileSelectionChange(newFiles);
+        }
+    };
+
     const onDrop = useCallback((acceptedFiles: File[]) => {
         setFiles(prev => {
-            const newFiles = [...prev, ...acceptedFiles];
-            if (newFiles.length > MAX_FILES) {
+            const combined = [...prev, ...acceptedFiles];
+            let final = combined;
+            if (combined.length > MAX_FILES) {
                 alert(`Hai raggiunto il limite di ${MAX_FILES} file per progetto.`);
-                // Cut to max files
-                return newFiles.slice(0, MAX_FILES);
+                final = combined.slice(0, MAX_FILES);
             }
-            return newFiles;
+            if (onFileSelectionChange) onFileSelectionChange(final);
+            return final;
         });
-    }, [MAX_FILES, IS_TRIAL]);
+    }, [MAX_FILES, IS_TRIAL, onFileSelectionChange]);
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
@@ -47,7 +64,11 @@ export function Upload({ onUpload, isUploading, userTier = 'trial', userCredits 
     });
 
     const removeFile = (index: number) => {
-        setFiles(prev => prev.filter((_, i) => i !== index));
+        setFiles(prev => {
+            const newFiles = prev.filter((_, i) => i !== index);
+            if (onFileSelectionChange) onFileSelectionChange(newFiles);
+            return newFiles;
+        });
     };
 
     const handleUpload = async () => {

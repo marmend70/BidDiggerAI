@@ -82,6 +82,101 @@ export function UpdatePassword() {
                     )}
                 </CardContent>
             </Card>
+
+            <Card className="w-full max-w-md shadow-xl mt-8 border-red-200 bg-red-50/50">
+                <CardHeader>
+                    <CardTitle className="text-red-700 text-lg">Zona Pericolo</CardTitle>
+                    <CardDescription className="text-red-600/80">
+                        Azioni irreversibili per il tuo account.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <DeleteAccountButton />
+                </CardContent>
+            </Card>
         </div>
+    );
+}
+
+function DeleteAccountButton() {
+    const [isOpen, setIsOpen] = useState(false);
+    const [confirmText, setConfirmText] = useState('');
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const handleDelete = async () => {
+        if (confirmText !== 'ELIMINA') return;
+        setIsDeleting(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const { error } = await supabase.functions.invoke('delete-account', {
+                headers: {
+                    Authorization: `Bearer ${session.access_token}`
+                }
+            });
+
+            if (error) throw error;
+
+            // Force cleanup and redirect
+            await supabase.auth.signOut();
+            window.location.href = '/';
+
+        } catch (err: any) {
+            alert(`Errore eliminazione account: ${err.message || 'Riprova più tardi'}`);
+            setIsDeleting(false);
+        }
+    };
+
+    return (
+        <>
+            <Button
+                variant="destructive"
+                className="w-full bg-red-600 hover:bg-red-700"
+                onClick={() => setIsOpen(true)}
+            >
+                Elimina Account
+            </Button>
+
+            {isOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full p-6 animate-in zoom-in-95 duration-200">
+                        <h3 className="text-lg font-bold text-slate-900 mb-2">Sei assolutamente sicuro?</h3>
+                        <p className="text-sm text-slate-500 mb-4">
+                            Questa azione è <strong>irreversibile</strong>. Cancellerà permanentemente il tuo account, i tuoi dati personali e tutte le analisi effettuate.
+                        </p>
+
+                        <label className="block text-xs font-semibold text-slate-700 mb-2">
+                            Digita <span className="font-mono text-red-600">ELIMINA</span> per confermare
+                        </label>
+                        <Input
+                            value={confirmText}
+                            onChange={(e) => setConfirmText(e.target.value)}
+                            className="mb-4 text-center tracking-widest font-bold"
+                            placeholder="ELIMINA"
+                        />
+
+                        <div className="flex flex-col gap-2">
+                            <Button
+                                variant="destructive"
+                                disabled={confirmText !== 'ELIMINA' || isDeleting}
+                                onClick={handleDelete}
+                                className="w-full"
+                            >
+                                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Conferma Eliminazione'}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => { setIsOpen(false); setConfirmText(''); }}
+                                disabled={isDeleting}
+                                className="w-full"
+                            >
+                                Annulla
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 }

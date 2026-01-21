@@ -43,6 +43,7 @@ interface LayoutProps {
     userPlan?: string;
     onStopAnalysis?: () => void;
     isStopRequested?: boolean;
+    onOpenProfile?: () => void;
 }
 
 interface SidebarContentProps {
@@ -67,9 +68,11 @@ interface SidebarContentProps {
     userPlan?: string;
     onStopAnalysis?: () => void;
     isStopRequested?: boolean;
+    onOpenProfile?: () => void;
 }
 
-function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant, userRole, orgRole, onOpenGuide, myOrganizations, currentOrgId, onWorkspaceSwitch, onAcceptInvite, onRejectInvite, userPlan, onStopAnalysis, isStopRequested }: SidebarContentProps) {
+
+function SidebarContent({ activeSection, onSectionClick, data, userPreferences, isAnalyzing, loadingBatches = [], onExport, onNewAnalysis, onOpenChatAssistant, userRole, orgRole, onOpenGuide, myOrganizations, currentOrgId, onWorkspaceSwitch, onAcceptInvite, onRejectInvite, userPlan, onStopAnalysis, isStopRequested, onOpenProfile }: SidebarContentProps) {
     return (
         <div className="flex flex-col h-full text-white">
             <div className="p-6 bg-slate-950 shadow-sm z-10 space-y-4">
@@ -378,6 +381,7 @@ export function Layout(props: LayoutProps) {
                     userPlan={userPlan}
                     onStopAnalysis={onStopAnalysis}
                     isStopRequested={isStopRequested}
+                    onOpenProfile={props.onOpenProfile}
                 />
             </aside>
 

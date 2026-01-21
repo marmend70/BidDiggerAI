@@ -332,7 +332,7 @@ export function Login({ onOpenContact }: LoginProps = {}) {
                                                     <Sparkles className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
                                                     <div className="text-sm text-amber-900">
                                                         <span className="font-semibold block text-amber-950">Prova Gratuita Attiva</span>
-                                                        Registrati ora per ottenere <strong>2 Analisi Complete</strong> in omaggio. Nessun pagamento richiesto.
+                                                        Registrati ora per ottenere <strong>5 crediti</strong> in omaggio. Nessun pagamento richiesto.
                                                     </div>
                                                 </div>
 

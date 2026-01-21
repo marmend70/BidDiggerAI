@@ -95,6 +95,21 @@ export function Login({ onOpenContact }: LoginProps = {}) {
                 throw new Error("Devi accettare tutti i termini e le condizioni per procedere.");
             }
 
+            // Custom check to bypass Supabase User Enumeration Protection
+            const { data: userExists, error: checkError } = await supabase.rpc('check_user_exists', {
+                email_check: email
+            });
+
+            if (checkError) {
+                console.error("Error checking user:", checkError);
+                // Fail silently on check error and let Supabase handle it, or throw? 
+                // Better to proceed to let standard flow handle it if check fails.
+            }
+
+            if (userExists) {
+                throw new Error("Utente già registrato. Effettua il login.");
+            }
+
             const { data, error } = await supabase.auth.signUp({
                 email,
                 password,

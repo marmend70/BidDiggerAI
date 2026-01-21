@@ -5,55 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-const [showPassword, setShowPassword] = useState(false); // Add state
-
-    // ... inside render ...
-
-                                            <div className="space-y-2 relative">
-                                                <Input
-                                                    type={showPassword ? "text" : "password"} // Toggle type
-                                                    placeholder="Password"
-                                                    value={password}
-                                                    onChange={(e) => setPassword(e.target.value)}
-                                                    required
-                                                    className="bg-white pr-10" // Add padding for icon
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setShowPassword(!showPassword)}
-                                                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none"
-                                                >
-                                                    {showPassword ? (
-                                                        <EyeOff className="h-4 w-4" />
-                                                    ) : (
-                                                        <Eye className="h-4 w-4" />
-                                                    )}
-                                                </button>
-                                            </div>
-
-// ... same for register form ...
-
-                                                <div className="space-y-2 relative">
-                                                    <Input
-                                                        type={showPassword ? "text" : "password"}
-                                                        placeholder="Crea una password"
-                                                        value={password}
-                                                        onChange={(e) => setPassword(e.target.value)}
-                                                        required
-                                                        className="bg-white pr-10"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setShowPassword(!showPassword)}
-                                                        className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none"
-                                                    >
-                                                        {showPassword ? (
-                                                            <EyeOff className="h-4 w-4" />
-                                                        ) : (
-                                                            <Eye className="h-4 w-4" />
-                                                        )}
-                                                    </button>
-                                                </div>
+import { Loader2, UploadCloud, Sliders, FileText, MessageSquare, AlertTriangle, Sparkles, X, Eye, EyeOff } from 'lucide-react';
 import { TERMS_AND_CONDITIONS, PRIVACY_POLICY } from '@/constants/legalText';
 import { LegalModal } from './LegalModal';
 import logo from '../assets/logo-final.png';

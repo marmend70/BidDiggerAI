@@ -184,7 +184,7 @@ export function Login({ onOpenContact }: LoginProps = {}) {
                                 {
                                     icon: Sparkles, color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/20",
                                     title: "5. Prova Gratuita",
-                                    desc: "2 Analisi Complete in omaggio. Nessuna carta di credito."
+                                    desc: "5 crediti trial in omaggio. Nessuna carta di credito."
                                 }
                             ].map((slide, index) => (
                                 <div

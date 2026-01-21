@@ -431,7 +431,7 @@ export function LandingPage({ onLogin, onRegister, onOpenContact }: LandingPageP
                                 <CheckCircle2 className="w-4 h-4 text-green-500" /> Nessuna carta di credito
                             </div>
                             <div className="flex items-center gap-2">
-                                <CheckCircle2 className="w-4 h-4 text-green-500" /> 2 Analisi Omaggio
+                                <CheckCircle2 className="w-4 h-4 text-green-500" /> 5 Analisi Omaggio
                             </div>
                         </div>
                     </div>

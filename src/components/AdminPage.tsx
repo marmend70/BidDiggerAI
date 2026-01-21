@@ -110,11 +110,13 @@ export function AdminPage() {
         const newValue = !registrationActive;
 
         try {
-            const { error } = await supabase.functions.invoke('admin-action', {
+            const { data, error } = await supabase.functions.invoke('admin-action', {
                 body: { action: 'update_setting', key: 'registrazione_attiva', value: newValue }
             });
 
             if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+
             setRegistrationActive(newValue);
         } catch (error: any) {
             console.error('Error updating settings:', error);
@@ -129,11 +131,13 @@ export function AdminPage() {
         const newValue = !paymentsEnabled;
 
         try {
-            const { error } = await supabase.functions.invoke('admin-action', {
+            const { data, error } = await supabase.functions.invoke('admin-action', {
                 body: { action: 'update_setting', key: 'payments_enabled', value: newValue }
             });
 
             if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+
             setPaymentsEnabled(newValue);
         } catch (error: any) {
             console.error('Error updating payments:', error);
@@ -146,11 +150,13 @@ export function AdminPage() {
     const saveTimeoutSettings = async () => {
         setUpdatingTimeout(true);
         try {
-            const { error } = await supabase.functions.invoke('admin-action', {
+            const { data, error } = await supabase.functions.invoke('admin-action', {
                 body: { action: 'update_setting', key: 'analysis_timeout_seconds', value: timeoutSeconds }
             });
 
             if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+
             alert("Timeout aggiornato con successo!");
         } catch (error: any) {
             console.error('Error updating timeout:', error);

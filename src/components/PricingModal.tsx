@@ -63,6 +63,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, use
                     <p className="text-slate-300 mb-6 leading-relaxed">
                         L'applicazione è ancora in fase di sviluppo attivo.
                         A breve sarà attivata la possibilità di acquistare nuovi crediti direttamente dalla piattaforma.
+                        Se sei interessato ad avere aggiornamenti o informazioni contattaci!
                     </p>
 
                     <button

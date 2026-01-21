@@ -385,7 +385,7 @@ export function LandingPage({ onLogin, onRegister, onOpenContact }: LandingPageP
                             className="bg-amber-600 hover:bg-amber-700 text-white rounded-full px-6 shadow-lg shadow-amber-900/20 transition-all hover:scale-105"
                             onClick={onRegister}
                         >
-                            Inizia Gratis
+                            Crea il tuo account
                         </Button>
                     </div>
                 </div>

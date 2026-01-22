@@ -10,13 +10,19 @@ function getText(item: any, propName?: string): string {
     if (typeof item === 'object') {
         if (propName && item[propName]) return safeText(item[propName]);
 
-        // Fallbacks
+        // Fallbacks for common Bid Digger objects
         if (item.descrizione) return safeText(item.descrizione);
         if (item.nota) return safeText(item.nota);
         if (item.requisito) return safeText(item.requisito);
         if (item.text) return safeText(item.text);
         if (item.valore) return safeText(item.valore);
         if (item.nome) return safeText(item.nome);
+
+        // Semantic/Genius fields fallbacks
+        if (item.rischio) return safeText(item.rischio);
+        if (item.quesito) return safeText(item.quesito);
+        if (item.azione) return safeText(item.azione);
+        if (item.motivazione) return safeText(item.motivazione);
 
         // If it's a simple object with just one or two keys, try to join them
         const values = Object.values(item).filter(v => typeof v === 'string' || typeof v === 'number');
@@ -29,7 +35,17 @@ function getText(item: any, propName?: string): string {
 
 function safeText(text: any): string {
     if (text === undefined || text === null) return "Non rilevato";
-    if (typeof text === 'object') return JSON.stringify(text);
+    if (typeof text === 'string') return text;
+    if (typeof text === 'number') return text.toString();
+
+    if (typeof text === 'object') {
+        try {
+            return JSON.stringify(text);
+        } catch (e) {
+            console.warn("Failed to stringify object in export:", e);
+            return "[Dato Complesso]";
+        }
+    }
     return String(text);
 }
 
@@ -78,9 +94,19 @@ function isMultiLot(data: any): boolean {
 }
 
 export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [key: string]: boolean }) => {
+    console.log("[DOCX] Starting export...", { dataKeys: Object.keys(data || {}), prefs: exportPreferences });
+    
+    if (!data) {
+        console.error("[DOCX] No data provided to export!");
+        alert("Nessun dato da esportare.");
+        return;
+    }
+
     const shouldInclude = (sectionKey: string) => {
         if (!exportPreferences) return true;
-        return exportPreferences[sectionKey] !== false;
+        const included = exportPreferences[sectionKey] !== false;
+        // console.log(`[DOCX] Checking section ${sectionKey}: ${included}`);
+        return included;
     };
 
     const doc = new Document({
@@ -470,8 +496,16 @@ export const exportToDocx = async (data: AnalysisResult, exportPreferences?: { [
         ],
     });
 
-    const blob = await Packer.toBlob(doc);
-    saveAs(blob, `Analisi_Gara_${new Date().toISOString().split('T')[0]}.docx`);
+    try {
+        console.log("[DOCX] Generating Blob...");
+        const blob = await Packer.toBlob(doc);
+        console.log("[DOCX] Blob generated, saving...", blob.size);
+        saveAs(blob, `Analisi_Gara_${new Date().toISOString().split('T')[0]}.docx`);
+        console.log("[DOCX] SaveAs called.");
+    } catch (err) {
+        console.error("[DOCX] Error generating docx:", err);
+        alert("Errore nella generazione del file DOCX. Verifica la console.");
+    }
 };
 
 // --- RENDERERS ---

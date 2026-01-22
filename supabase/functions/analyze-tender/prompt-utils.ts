@@ -190,19 +190,28 @@ JSON SCHEMA:
   if (preferences['5_scadenze']) prompts.push(`
   Chiave: "5_scadenze"
   ISTRUZIONI: Date e Timeline.
-  IMPORTANTE: Cerca la data di scadenza anche se indicata con formulazioni diverse da "Scadenza offerte", come ad esempio:
-  - "FINE PERIODO PER IL CARICAMENTO TELEMATICO DELLA DOCUMENTAZIONE"
-  - "Termine ultimo per il caricamento sulla piattaforma"
-  - "Chiusura telematica"
-  - "Termine perentorio presentazione"
-  Se trovi una di queste diciture, considerala equivalente a Scadenza Offerte.
+  IMPORTANTE: 
+  1. Cerca la data di scadenza anche se indicata con formulazioni diverse da "Scadenza offerte", come ad esempio:
+     - "FINE PERIODO PER IL CARICAMENTO TELEMATICO DELLA DOCUMENTAZIONE"
+     - "Termine ultimo per il caricamento sulla piattaforma"
+     - "Chiusura telematica"
+     - "Termine perentorio presentazione"
+     Se trovi una di queste diciture, considerala equivalente a Scadenza Offerte.
+  
+  2. GESTIONE DATE RELATIVE (Sopralluoghi, scadenza quesiti, ecc.):
+     - RI-ANALIZZA TUTTE LE DATE E I TERMINI: Anche quelli indicati come "X giorni dalla pubblicazione" o "Y giorni prima della scadenza".
+     - INCLUDI SEMPRE QUESTE SCADENZE NELLA LISTA "timeline".
+     - ATTENZIONE AL CONTENUTO: Se c'è ambiguità o se è una data relativa, RIPORTA ESATTAMENTE LA FRASE DEL DOCUMENTO (es. "Entro 10 giorni dalla pubblicazione...") nel campo "data" o "evento", invece di inventare una data calcolata errata.
+     - Esempio Corretto: { "evento": "Richiesta Sopralluogo", "data": "Entro 10 giorni dalla pubblicazione...", "ref": "Art. 12" }
+     - È FONDAMENTALE riportare la scadenza anche se non c'è una data di calendario esplicita.
+
   ${semanticPreferences['5_scadenze'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['5_scadenze']}` : ''}
 JSON SCHEMA:
   "5_scadenze": {
     "structured": [
       {
         "timeline": [
-          { "data": "YYYY-MM-DD", "evento": "Scadenza Offerte/Chiarimenti/Apertura", "ref": "Art. X" }
+          { "data": "YYYY-MM-DD o Frase Esatta (es. Entro 10 gg da...)", "evento": "Scadenza Offerte/Sopralluogo/Chiarimenti", "ref": "Art. X" }
         ],
         "sopralluogo": {
           "previsto": "Si/No",
@@ -213,7 +222,7 @@ JSON SCHEMA:
     ],
       "analysis": {
       "timeline_critica": "...",
-        "rischi_scadenze": "..."
+      "rischi_scadenze": "..."
     }${semanticPreferences['5_scadenze'] ? geniusFields : ''}
   } `);
 
@@ -222,28 +231,27 @@ JSON SCHEMA:
   if (preferences['6_importi']) prompts.push(`
   Chiave: "6_importi"
   ISTRUZIONI: Importi e Dettagli.
-  OBIETTIVO: Estrarre e strutturare TUTTI gli importi economici presenti nei documenti.
+  OBIETTIVO: Estrarre e strutturare TUTTI gli importi economici con ESTREMA PRECISIONE.
   
-  CERCA E RIPORTA I SEGUENTI VALORI:
-  1. Valore Complessivo Stimato (incluso opzioni/rinnovi).
-  2. Importo a Base d'Asta (soggetto a ribasso).
+  DISTINZIONE FONDAMENTALE (NON CONFONDERE):
+  1. "Importo a Base d'Asta" (Soggetto a ribasso): È l'importo su cui si calcola lo sconto. ESCLUDE opzioni, rinnovi futuri e somme a disposizione (esclusi oneri sicurezza).
+  2. "Valore Complessivo/Stimato dell'Appalto" (Totale include tutto): Include Base d'Asta + Opzioni/Rinnovi + Proroghe + Somme a disposizione. È solitamente il valore più alto indicato nel bando (spesso art. 3 o 4).
+  
+  SE HAI DUBBI O SE I DUE VALORI SONO DIVERSI:
+  - Nel campo "base_asta_totale": inserisci SOLO l'importo soggetto a ribasso (o la somma dei lotti soggetti a ribasso).
+  - Nel campo "dettaglio": DEVI RIPORTARE ENTRAMBI SE DIVERSI.
+    Es. { "voce": "Valore Complessivo Stimato (inclusi rinnovi)", "importo": 5000000.00 }
+    Es. { "voce": "Importo a Base d'Asta (quinquennale)", "importo": 3000000.00 }
+  
+  ALTRI IMPORTI DA CERCARE:
   3. Costi della Manodopera (non soggetti a ribasso).
   4. Oneri per la Sicurezza (da interferenza e aziendali).
-  5. Eventuali importi orari o unitari (es. costo uomo/ora, canone unitario).
   
-  GESTIONE LOTTI E DETTAGLI:
-  - Nel campo "base_asta_totale" inserisci la somma complessiva della base di gara.
-  - Nel campo "costi_manodopera" inserisci il totale della manodopera (se disponibile).
-  - Nel campo "dettaglio" (Array): DEVI ESPLODERE OGNI VOCE DI COSTO PER OGNI LOTTO.
-    Esempio struttura dettaglio:
-    [
-      { "voce": "Lotto 1 - Base d'Asta", "importo": 50000.00 },
-      { "voce": "Lotto 1 - Oneri Sicurezza", "importo": 1000.00 },
-      { "voce": "Lotto 1 - Costi Manodopera", "importo": 15000.00 },
-      { "voce": "Lotto 2 - Base d'Asta", "importo": ... }
-    ]
-  - Se non ci sono lotti, usa "dettaglio" per le voci che compongono il totale (es. "Oneri Sicurezza", "Manodopera").
-
+  GESTIONE LOTTI:
+  - "base_asta_totale" = Somma basi d'asta di tutti i lotti.
+  - "costi_manodopera" = Totale manodopera.
+  - "dettaglio" (Array): Esplodi le voci per ogni lotto E per i totali generali (Valore Complessivo vs Base Asta).
+  
   ${semanticPreferences['6_importi'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['6_importi']}` : ''}
 JSON SCHEMA:
   "6_importi": {
@@ -252,7 +260,7 @@ JSON SCHEMA:
         "base_asta_totale": 100000.00,
         "costi_manodopera": 50000.00,
         "dettaglio": [
-          { "voce": "Descrizione puntuale (es. Lotto X - Manodopera)", "importo": 1000.00 }
+          { "voce": "Descrizione puntuale (es. Valore Complessivo / Base Asta / Lotto X)", "importo": 1000.00 }
         ]
       }
     ],
@@ -261,7 +269,7 @@ JSON SCHEMA:
       "redditivita_commento": "..."
     }${semanticPreferences['6_importi'] ? geniusFields : ''}
   }
-  Nota: Importi numerici float(no stringhe valuta). Se un importo è 0 o non presente, metti 0 o ometti se nullo standard.`);
+  Nota: Importi numerici float. Se incerto usa 0. Usa il dettaglio per chiarire ambiguità.`);
 
   // --- 6. CCNL (8_ccnl) ---
   // Dashboard: data['8_ccnl'][0].contratti (Array Access)

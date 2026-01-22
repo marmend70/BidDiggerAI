@@ -410,8 +410,9 @@ export function LandingPage({ onLogin, onRegister, onOpenContact }: LandingPageP
                             </span>
                         </h1>
                         <p className="text-lg md:text-xl text-slate-400 leading-relaxed max-w-4xl">
-                            Bid Digger è una piattaforma di analisi sintattica e semantica delle gare d’appalto, progettata per trasformare documenti complessi in informazioni strutturate, condivisibili e verificabili da team di lavoro. <br className="hidden md:block" />
-                            Dimentica le ore passate a leggere disciplinari. Bid Digger estrae requisiti, scadenze, criteri e tanto altro in secondi: le potrai condividere con il tuo team, modificare o integrare se necessario, per avere un completo quadro di fattibilità delle tue gare in valutazione.
+                            Bid Digger è una piattaforma di analisi sintattica e semantica basata su AI per le gare d’appalto, progettata per trasformare documenti complessi in informazioni strutturate, verificabili e immediatamente utilizzabili.
+                            L’analisi semantica consente di individuare automaticamente requisiti, scadenze, criteri di valutazione e aspetti di attenzione che possono incidere sull’ammissibilità e sulla fattibilità della gara. <br className="hidden md:block" />
+                            I dati estratti vengono centralizzati in un workspace dedicato, condivisibili con il team e consultabili tramite una dashboard delle gare in corso, offrendo una visione chiara e sempre aggiornata delle opportunità in valutazione.
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-4 pt-4">
@@ -420,7 +421,7 @@ export function LandingPage({ onLogin, onRegister, onOpenContact }: LandingPageP
                                 className="bg-white text-slate-900 hover:bg-slate-200 text-lg px-8 rounded-full h-14"
                                 onClick={onRegister}
                             >
-                                Prova Gratis
+                                Accedi subito
                                 <ArrowRight className="ml-2 w-5 h-5" />
                             </Button>
 

@@ -28,7 +28,11 @@ REGOLE GENERALI:
 - Normalizza date in YYYY - MM - DD.
 - "structured" DEVE seguire rigorosamente lo schema indicato(Spesso è un ARRAY di 1 elemento).
 - IMPORTANTE: Per ogni sezione, DEVI restituire un OGGETTO contenitore con le chiavi "structured", "analysis", ecc.
-- NON restituire MAI l'array "structured" direttamente come valore della chiave di sezione. Usa sempre il wrapper.
+  - NON restituire MAI l'array "structured" direttamente come valore della chiave di sezione. Usa sempre il wrapper.
+  - GESTIONE LOTTI (Se presenti):
+    1. Se il bando prevede più lotti, le informazioni devono illustrare le specificità di ognuno.
+    2. Se ci sono differenze tra i lotti (es. requisiti diversi), EVIDENZIALE CHIARAMENTE (es. "Lotto 1: ...", "Lotto 2: ...").
+    3. Se i dati sono identici, non duplicare inutilmente.
 `;
 
   if (activeSemanticKeys.length > 0) {
@@ -218,6 +222,28 @@ JSON SCHEMA:
   if (preferences['6_importi']) prompts.push(`
   Chiave: "6_importi"
   ISTRUZIONI: Importi e Dettagli.
+  OBIETTIVO: Estrarre e strutturare TUTTI gli importi economici presenti nei documenti.
+  
+  CERCA E RIPORTA I SEGUENTI VALORI:
+  1. Valore Complessivo Stimato (incluso opzioni/rinnovi).
+  2. Importo a Base d'Asta (soggetto a ribasso).
+  3. Costi della Manodopera (non soggetti a ribasso).
+  4. Oneri per la Sicurezza (da interferenza e aziendali).
+  5. Eventuali importi orari o unitari (es. costo uomo/ora, canone unitario).
+  
+  GESTIONE LOTTI E DETTAGLI:
+  - Nel campo "base_asta_totale" inserisci la somma complessiva della base di gara.
+  - Nel campo "costi_manodopera" inserisci il totale della manodopera (se disponibile).
+  - Nel campo "dettaglio" (Array): DEVI ESPLODERE OGNI VOCE DI COSTO PER OGNI LOTTO.
+    Esempio struttura dettaglio:
+    [
+      { "voce": "Lotto 1 - Base d'Asta", "importo": 50000.00 },
+      { "voce": "Lotto 1 - Oneri Sicurezza", "importo": 1000.00 },
+      { "voce": "Lotto 1 - Costi Manodopera", "importo": 15000.00 },
+      { "voce": "Lotto 2 - Base d'Asta", "importo": ... }
+    ]
+  - Se non ci sono lotti, usa "dettaglio" per le voci che compongono il totale (es. "Oneri Sicurezza", "Manodopera").
+
   ${semanticPreferences['6_importi'] ? `*** GENIUS MODE ATTIVO ***\n${GENIUS_RULES_MAP['6_importi']}` : ''}
 JSON SCHEMA:
   "6_importi": {
@@ -226,16 +252,16 @@ JSON SCHEMA:
         "base_asta_totale": 100000.00,
         "costi_manodopera": 50000.00,
         "dettaglio": [
-          { "voce": "Descrizione voce", "importo": 1000.00 }
+          { "voce": "Descrizione puntuale (es. Lotto X - Manodopera)", "importo": 1000.00 }
         ]
       }
     ],
       "analysis": {
       "rischi_economici": "...",
-        "redditivita_commento": "..."
+      "redditivita_commento": "..."
     }${semanticPreferences['6_importi'] ? geniusFields : ''}
   }
-  Nota: Importi numerici float(no stringhe valuta).`);
+  Nota: Importi numerici float(no stringhe valuta). Se un importo è 0 o non presente, metti 0 o ometti se nullo standard.`);
 
   // --- 6. CCNL (8_ccnl) ---
   // Dashboard: data['8_ccnl'][0].contratti (Array Access)

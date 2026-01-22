@@ -1916,6 +1916,7 @@ function App() {
         onClose={() => setShowPricingModal(false)}
         userId={session?.user?.id}
         showTiers={paymentsEnabled}
+        onOpenContact={() => setContactModalOpen(true)}
       />
       <ChatAssistantModal
         isOpen={showChatAssistant}

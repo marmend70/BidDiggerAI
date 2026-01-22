@@ -8,9 +8,10 @@ interface PricingModalProps {
     onClose: () => void;
     userId: string | undefined;
     showTiers?: boolean;
+    onOpenContact?: () => void;
 }
 
-export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, userId, showTiers }) => {
+export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, userId, showTiers, onOpenContact }) => {
     if (!isOpen) return null;
 
     console.log('[DEBUG] PricingModal showTiers prop:', showTiers);
@@ -67,10 +68,13 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, use
                     </p>
 
                     <button
-                        onClick={onClose}
+                        onClick={() => {
+                            onClose();
+                            onOpenContact?.();
+                        }}
                         className="w-full py-2.5 px-4 bg-slate-100 text-slate-900 font-semibold rounded-lg hover:bg-slate-200 transition-colors shadow-lg"
                     >
-                        Ho capito
+                        Sì, mi interessa
                     </button>
                 </div>
             </div>
